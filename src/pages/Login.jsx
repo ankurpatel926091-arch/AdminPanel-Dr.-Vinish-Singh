@@ -16,8 +16,8 @@ import {
 import doctorPhoto from '../assets/doctor.jpg';
 
 export default function Login() {
-  const [email, setEmail] = useState('admin@drvinish.com');
-  const [password, setPassword] = useState('admin123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState('');
@@ -165,7 +165,7 @@ export default function Login() {
             )}
 
             {/* Login Form */}
-            <form onSubmit={handleSubmit} className="space-y-3.5 max-w-md mx-auto">
+            <form onSubmit={handleSubmit} autoComplete="off" className="space-y-3.5 max-w-md mx-auto">
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
                   Email Address
@@ -179,6 +179,7 @@ export default function Login() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="Enter your email"
+                    autoComplete="off"
                     className="w-full pl-10 pr-4 py-2.5 bg-slate-50/80 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 focus:bg-white transition-all duration-200 shadow-2xs"
                     required
                     disabled={isSubmitting}
@@ -199,6 +200,7 @@ export default function Login() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Enter your password"
+                    autoComplete="new-password"
                     className="w-full pl-10 pr-10 py-2.5 bg-slate-50/80 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 focus:bg-white transition-all duration-200 shadow-2xs"
                     required
                     disabled={isSubmitting}
@@ -316,4 +318,4 @@ export default function Login() {
       </div>
     </div>
   );
-}
+} 

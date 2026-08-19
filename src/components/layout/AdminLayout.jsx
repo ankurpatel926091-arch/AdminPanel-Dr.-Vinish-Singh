@@ -29,7 +29,7 @@ export default function AdminLayout() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex">
+    <div className="min-h-screen bg-slate-100 flex">
       {/* Sidebar Navigation */}
       <Sidebar 
         isOpen={mobileSidebarOpen} 

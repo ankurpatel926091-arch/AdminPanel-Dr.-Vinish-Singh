@@ -22,7 +22,7 @@ export default function DoctorProfile() {
   };
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="space-y-6 max-w-4xl mx-auto">
       <div>
         <h1 className="text-2xl font-extrabold text-slate-800">Doctor Profile</h1>
         <p className="text-sm text-slate-500 mt-1">Manage doctor bio, qualifications, and consultation timing shown on website</p>
@@ -41,6 +41,7 @@ export default function DoctorProfile() {
             <img
               src={doctorPhoto}
               alt="Dr. Vinish Singh"
+              loading="lazy"
               className="w-24 h-24 rounded-full object-cover border-4 border-blue-500/20 shadow-md"
             />
             <button type="button" className="absolute bottom-0 right-0 p-2 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700">

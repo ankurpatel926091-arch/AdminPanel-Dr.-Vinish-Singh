@@ -13,7 +13,7 @@ export default function Settings() {
   };
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="space-y-6 max-w-4xl mx-auto">
       <div>
         <h1 className="text-2xl font-extrabold text-slate-800">Admin Settings</h1>
         <p className="text-sm text-slate-500 mt-1">Configure Web3Forms keys, email notifications, and security</p>

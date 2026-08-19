@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Menu, Search, Bell, Calendar, ChevronDown, User, LogOut, Settings, Mail, Star, ShieldCheck, FileText, CheckCheck } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -36,7 +36,7 @@ export default function Header({ onToggleSidebar, onOpenSearch }) {
     };
   }, []);
 
-  const unreadCount = notificationsList.filter(n => n.unread).length;
+  const unreadCount = useMemo(() => notificationsList.filter(n => n.unread).length, [notificationsList]);
 
   const markAllRead = () => {
     setNotificationsList(prev => prev.map(n => ({ ...n, unread: false })));

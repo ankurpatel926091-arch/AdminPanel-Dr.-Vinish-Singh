@@ -20,12 +20,12 @@ import doctorPhoto from '../../assets/doctor.jpg';
 
 const navItems = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { path: '/enquiries', label: 'Contact Enquiries', icon: Mail, badge: 24 },
+  { path: '/enquiries', label: 'Contact Enquiries', icon: Mail, badge: 24  },
   { path: '/appointments', label: 'Appointments', icon: Calendar, badge: 12 },
-  { path: '/services', label: 'Services', icon: Layers },
-  { path: '/treatments', label: 'Treatments', icon: Stethoscope },
+  // { path: '/services', label: 'Services', icon: Layers }, 
+  // { path: '/treatments', label: 'Treatments', icon: Stethoscope },
   { path: '/gallery', label: 'Gallery', icon: ImageIcon },
-  { path: '/testimonials', label: 'Testimonials', icon: Star },
+  // { path: '/testimonials', label: 'Testimonials', icon: Star },
   { path: '/profile', label: 'Doctor Profile', icon: User },
   { path: '/clinics', label: 'Clinics', icon: MapPin },
   { path: '/articles', label: 'Articles', icon: FileText },
