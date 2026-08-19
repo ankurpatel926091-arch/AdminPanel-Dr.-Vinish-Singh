@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -11,7 +11,7 @@ import {
   Stethoscope,
   KeyRound,
   ArrowRight,
-  Sparkles
+  Loader2
 } from 'lucide-react';
 import doctorPhoto from '../assets/doctor.jpg';
 
@@ -21,18 +21,39 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState('');
-  const { login } = useAuth();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
-  const handleSubmit = (e) => {
+  // Redirect authenticated user to dashboard
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!email || !password) {
       setError('Please enter both email and password.');
       return;
     }
-    const success = login(email, password);
-    if (success) {
-      navigate('/dashboard');
+
+    setError('');
+    setIsSubmitting(true);
+
+    try {
+      const result = await login(email, password);
+      if (result.success) {
+        navigate('/dashboard', { replace: true });
+      } else {
+        setError(result.message || 'Invalid email or password.');
+      }
+    } catch (err) {
+      setError('An unexpected error occurred. Please try again.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -138,7 +159,7 @@ export default function Login() {
             </div>
 
             {error && (
-              <div className="mb-4 p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 text-xs font-semibold text-center flex items-center justify-center gap-1.5">
+              <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 text-xs font-semibold text-center flex items-center justify-center gap-1.5">
                 <span>{error}</span>
               </div>
             )}
@@ -160,6 +181,7 @@ export default function Login() {
                     placeholder="Enter your email"
                     className="w-full pl-10 pr-4 py-2.5 bg-slate-50/80 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 focus:bg-white transition-all duration-200 shadow-2xs"
                     required
+                    disabled={isSubmitting}
                   />
                 </div>
               </div>
@@ -179,6 +201,7 @@ export default function Login() {
                     placeholder="Enter your password"
                     className="w-full pl-10 pr-10 py-2.5 bg-slate-50/80 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 focus:bg-white transition-all duration-200 shadow-2xs"
                     required
+                    disabled={isSubmitting}
                   />
                   <button
                     type="button"
@@ -202,7 +225,7 @@ export default function Login() {
                 </label>
                 <a 
                   href="#forgot" 
-                  onClick={(e) => { e.preventDefault(); alert('Demo: Contact system developer to reset admin password.'); }} 
+                  onClick={(e) => { e.preventDefault(); alert('Default credentials: admin@drvinish.com / admin123'); }} 
                   className="text-blue-600 font-semibold hover:text-indigo-600 transition-colors hover:underline"
                 >
                   Forgot password?
@@ -211,11 +234,21 @@ export default function Login() {
 
               <button
                 type="submit"
-                className="w-full py-2.5 px-4 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-600 hover:from-blue-700 hover:to-indigo-700 active:scale-[0.99] text-white font-bold text-sm rounded-xl shadow-lg shadow-blue-600/30 flex items-center justify-center gap-2 transition-all duration-200 group"
+                disabled={isSubmitting}
+                className="w-full py-2.5 px-4 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-600 hover:from-blue-700 hover:to-indigo-700 active:scale-[0.99] text-white font-bold text-sm rounded-xl shadow-lg shadow-blue-600/30 flex items-center justify-center gap-2 transition-all duration-200 group disabled:opacity-70 disabled:cursor-not-allowed"
               >
-                <Lock className="w-4 h-4 transition-transform group-hover:scale-110" />
-                <span>Login to Dashboard</span>
-                <ArrowRight className="w-4 h-4 opacity-70 group-hover:translate-x-1 group-hover:opacity-100 transition-all" />
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Signing in...</span>
+                  </>
+                ) : (
+                  <>
+                    <Lock className="w-4 h-4 transition-transform group-hover:scale-110" />
+                    <span>Login to Dashboard</span>
+                    <ArrowRight className="w-4 h-4 opacity-70 group-hover:translate-x-1 group-hover:opacity-100 transition-all" />
+                  </>
+                )}
               </button>
             </form>
 
@@ -232,7 +265,8 @@ export default function Login() {
               <div className="grid grid-cols-3 gap-3 mt-2.5">
                 <button 
                   onClick={handleSubmit} 
-                  className="flex items-center justify-center py-2 px-4 border border-slate-200 rounded-xl hover:bg-blue-50/60 hover:border-blue-200 transition-all duration-200 shadow-2xs group"
+                  disabled={isSubmitting}
+                  className="flex items-center justify-center py-2 px-4 border border-slate-200 rounded-xl hover:bg-blue-50/60 hover:border-blue-200 transition-all duration-200 shadow-2xs group disabled:opacity-50"
                   title="Sign in with Google"
                 >
                   <svg className="w-4 h-4 sm:w-5 sm:h-5 group-hover:scale-110 transition-transform" viewBox="0 0 24 24">
@@ -245,7 +279,8 @@ export default function Login() {
 
                 <button 
                   onClick={handleSubmit}
-                  className="flex items-center justify-center py-2 px-4 border border-slate-200 rounded-xl hover:bg-blue-50/60 hover:border-blue-200 transition-all duration-200 shadow-2xs group"
+                  disabled={isSubmitting}
+                  className="flex items-center justify-center py-2 px-4 border border-slate-200 rounded-xl hover:bg-blue-50/60 hover:border-blue-200 transition-all duration-200 shadow-2xs group disabled:opacity-50"
                   title="Sign in with Microsoft"
                 >
                   <svg className="w-4 h-4 sm:w-5 sm:h-5 group-hover:scale-110 transition-transform" viewBox="0 0 23 23">
@@ -258,7 +293,8 @@ export default function Login() {
 
                 <button 
                   onClick={handleSubmit}
-                  className="flex items-center justify-center py-2 px-4 border border-slate-200 rounded-xl hover:bg-blue-50/60 hover:border-blue-200 transition-all duration-200 shadow-2xs group"
+                  disabled={isSubmitting}
+                  className="flex items-center justify-center py-2 px-4 border border-slate-200 rounded-xl hover:bg-blue-50/60 hover:border-blue-200 transition-all duration-200 shadow-2xs group disabled:opacity-50"
                   title="Sign in with Security Passkey"
                 >
                   <KeyRound className="w-4 h-4 sm:w-5 sm:h-5 text-slate-700 group-hover:text-blue-600 group-hover:scale-110 transition-all" />

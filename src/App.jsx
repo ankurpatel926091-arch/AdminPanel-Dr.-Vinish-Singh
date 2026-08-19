@@ -15,12 +15,24 @@ import DoctorProfile from './pages/DoctorProfile';
 import Clinics from './pages/Clinics';
 import Articles from './pages/Articles';
 import Settings from './pages/Settings';
+import { Loader2 } from 'lucide-react';
 
 function ProtectedRoute({ children }) {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-white">
+        <Loader2 className="w-8 h-8 text-blue-500 animate-spin mb-3" />
+        <span className="text-xs font-semibold tracking-wider uppercase text-slate-400">Verifying Admin Session...</span>
+      </div>
+    );
+  }
+
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
+
   return children;
 }
 
