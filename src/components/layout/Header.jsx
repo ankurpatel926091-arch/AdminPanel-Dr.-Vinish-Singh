@@ -1,30 +1,18 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { Menu, Search, Bell, Calendar, ChevronDown, User, LogOut, Settings, Mail, Star, ShieldCheck, FileText, CheckCheck } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Menu, Search, ChevronDown, User, LogOut, Settings } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import doctorPhoto from '../../assets/doctor.jpg';
 
 export default function Header({ onToggleSidebar, onOpenSearch }) {
-  const { user, logout } = useAuth();
+  const { logout } = useAuth();
   const navigate = useNavigate();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
-  const [showNotifications, setShowNotifications] = useState(false);
-  const [notificationsList, setNotificationsList] = useState([
-    { id: 1, title: 'New Appointment', text: 'Rahul Verma booked for 20 May 11:20 AM', time: '10 mins ago', unread: true, icon: Calendar, iconBg: 'bg-blue-50 text-blue-600' },
-    { id: 2, title: 'New Contact Enquiry', text: 'Kidney Stone question from Amit Kumar', time: '1 hour ago', unread: true, icon: Mail, iconBg: 'bg-emerald-50 text-emerald-600' },
-    { id: 3, title: 'New Testimonial', text: '5-star review submitted by Sandeep Gupta', time: '3 hours ago', unread: true, icon: Star, iconBg: 'bg-amber-50 text-amber-600' },
-    { id: 4, title: 'System Update', text: 'Admin Panel security patches updated', time: '1 day ago', unread: false, icon: ShieldCheck, iconBg: 'bg-slate-100 text-slate-600' },
-    { id: 5, title: 'Monthly Report', text: 'May 2025 patient statistics ready', time: '2 days ago', unread: false, icon: FileText, iconBg: 'bg-indigo-50 text-indigo-600' }
-  ]);
 
-  const notificationRef = useRef(null);
   const profileRef = useRef(null);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (notificationRef.current && !notificationRef.current.contains(event.target)) {
-        setShowNotifications(false);
-      }
       if (profileRef.current && !profileRef.current.contains(event.target)) {
         setShowProfileMenu(false);
       }
@@ -35,12 +23,6 @@ export default function Header({ onToggleSidebar, onOpenSearch }) {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
-
-  const unreadCount = useMemo(() => notificationsList.filter(n => n.unread).length, [notificationsList]);
-
-  const markAllRead = () => {
-    setNotificationsList(prev => prev.map(n => ({ ...n, unread: false })));
-  };
 
   return (
     <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-3 sm:px-6 lg:px-8 py-2.5 flex items-center justify-between shadow-2xs">
@@ -76,110 +58,12 @@ export default function Header({ onToggleSidebar, onOpenSearch }) {
         </button>
       </div>
 
-      {/* Right: Notification Bell & Doctor Profile Badge */}
+      {/* Right: Doctor Profile Badge */}
       <div className="flex items-center gap-2 sm:gap-3">
-        {/* Notification Bell Icon */}
-        <div className="relative" ref={notificationRef}>
-          <button
-            onClick={() => {
-              setShowNotifications(!showNotifications);
-              setShowProfileMenu(false);
-            }}
-            className="w-10 h-10 rounded-xl bg-slate-100/80 hover:bg-blue-50 text-slate-600 hover:text-blue-600 border border-slate-200/60 hover:border-blue-200 transition-all flex items-center justify-center relative group shadow-2xs cursor-pointer"
-            aria-label="Notifications"
-          >
-            <Bell className="w-5 h-5 group-hover:scale-110 transition-transform" />
-            {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 w-5 h-5 bg-gradient-to-r from-rose-500 to-rose-600 text-white text-[10px] font-black rounded-full flex items-center justify-center border-2 border-white shadow-md shadow-rose-500/30 animate-pulse">
-                {unreadCount}
-              </span>
-            )}
-          </button>
-
-          {/* Notifications Dropdown - Responsive positioning */}
-          {showNotifications && (
-            <div className="fixed sm:absolute top-16 sm:top-full right-3 sm:right-0 mt-1 sm:mt-3 w-[calc(100vw-24px)] max-w-sm sm:max-w-none sm:w-[420px] bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-slate-200/90 py-0 z-50 animate-in fade-in zoom-in-95 duration-150 overflow-hidden">
-              {/* Header */}
-              <div className="flex items-center justify-between px-4 py-3 bg-slate-50/90 border-b border-slate-100">
-                <div className="flex items-center gap-2">
-                  <h3 className="text-xs font-bold text-slate-800 tracking-tight">Notifications</h3>
-                  {unreadCount > 0 && (
-                    <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-blue-100 text-blue-700">
-                      {unreadCount} new
-                    </span>
-                  )}
-                </div>
-                {unreadCount > 0 && (
-                  <button 
-                    onClick={markAllRead}
-                    className="text-[11px] text-blue-600 hover:text-blue-700 font-semibold flex items-center gap-1 hover:underline transition-all"
-                  >
-                    <CheckCheck className="w-3.5 h-3.5" /> Mark all read
-                  </button>
-                )}
-              </div>
-
-              {/* Items List */}
-              <div className="max-h-64 sm:max-h-72 overflow-y-auto notification-scrollbar divide-y divide-slate-100/60 pr-1">
-                {notificationsList.map(n => {
-                  const IconComponent = n.icon;
-                  return (
-                    <div 
-                      key={n.id} 
-                      className={`p-3 sm:p-3.5 flex items-start gap-3 transition-all cursor-pointer ${
-                        n.unread 
-                          ? 'bg-gradient-to-r from-blue-50/70 via-blue-50/30 to-transparent hover:bg-blue-50/80' 
-                          : 'bg-white hover:bg-slate-50/80'
-                      }`}
-                      onClick={() => {
-                        setNotificationsList(prev => prev.map(item => item.id === n.id ? { ...item, unread: false } : item));
-                      }}
-                    >
-                      {/* Icon Badge */}
-                      <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 border border-slate-200/50 shadow-2xs mt-0.5 ${n.iconBg}`}>
-                        <IconComponent className="w-4 h-4" />
-                      </div>
-
-                      {/* Content */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between">
-                          <h4 className="text-xs font-bold text-slate-800 truncate">{n.title}</h4>
-                          {n.unread && (
-                            <span className="w-2 h-2 rounded-full bg-blue-600 flex-shrink-0"></span>
-                          )}
-                        </div>
-                        <p className="text-[11px] text-slate-600 font-medium leading-snug mt-0.5 line-clamp-2">
-                          {n.text}
-                        </p>
-                        <span className="text-[10px] text-slate-400 font-medium block mt-1">
-                          {n.time}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Footer */}
-              <div className="p-2.5 bg-slate-50/80 border-t border-slate-100 text-center">
-                <span className="text-[11px] font-semibold text-slate-500 hover:text-blue-600 cursor-pointer transition-colors">
-                  View all system notifications →
-                </span>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Vertical Divider */}
-        <div className="h-6 w-px bg-gradient-to-b from-transparent via-slate-300/70 to-transparent mx-1"></div>
-
         {/* Doctor Profile Header Badge */}
         <div className="relative" ref={profileRef}>
           <button
-            onClick={() => {
-              setShowProfileMenu(!showProfileMenu);
-              setShowNotifications(false);
-            }}
+            onClick={() => setShowProfileMenu(!showProfileMenu)}
             className="flex items-center gap-2.5 p-1 pr-2.5 rounded-2xl hover:bg-slate-100/80 border border-transparent hover:border-slate-200/80 transition-all duration-200 cursor-pointer group"
           >
             <div className="relative">

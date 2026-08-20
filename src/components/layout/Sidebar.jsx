@@ -12,6 +12,7 @@ import {
   User,
   MapPin,
   FileText,
+  BookOpen,
   Settings,
   LogOut,
   X
@@ -28,7 +29,7 @@ const navItems = [
   // { path: '/testimonials', label: 'Testimonials', icon: Star },
   { path: '/profile', label: 'Doctor Profile', icon: User },
   { path: '/clinics', label: 'Clinics', icon: MapPin },
-  { path: '/articles', label: 'Articles', icon: FileText },
+  { path: '/blogs', label: 'Blogs', icon: BookOpen },
   { path: '/settings', label: 'Settings', icon: Settings },
 ];
 

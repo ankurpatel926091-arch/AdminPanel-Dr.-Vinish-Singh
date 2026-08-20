@@ -16,7 +16,7 @@ const Gallery = lazy(() => import('./pages/Gallery'));
 const Testimonials = lazy(() => import('./pages/Testimonials'));
 const DoctorProfile = lazy(() => import('./pages/DoctorProfile'));
 const Clinics = lazy(() => import('./pages/Clinics'));
-const Articles = lazy(() => import('./pages/Articles'));
+const Blogs = lazy(() => import('./pages/Blogs'));
 const Settings = lazy(() => import('./pages/Settings'));
 
 const PageLoader = () => (
@@ -69,7 +69,8 @@ export default function App() {
                 <Route path="testimonials" element={<Testimonials />} />
                 <Route path="profile" element={<DoctorProfile />} />
                 <Route path="clinics" element={<Clinics />} />
-                <Route path="articles" element={<Articles />} />
+                <Route path="blogs" element={<Blogs />} />
+                <Route path="articles" element={<Navigate to="/blogs" replace />} />
                 <Route path="settings" element={<Settings />} />
               </Route>
 

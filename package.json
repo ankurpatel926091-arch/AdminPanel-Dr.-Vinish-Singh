@@ -9,7 +9,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@ckeditor/ckeditor5-react": "^11.2.0",
     "axios": "^1.19.0",
+    "ckeditor5": "^48.4.0",
     "framer-motion": "^11.1.7",
     "lucide-react": "^0.469.0",
     "react": "^18.3.1",
