@@ -58,7 +58,7 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen lg:h-screen bg-slate-950 flex items-center justify-center p-3 sm:p-4 lg:p-6 font-sans overflow-y-auto lg:overflow-hidden relative select-none">
+    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-3 sm:p-4 lg:p-6 py-6 sm:py-8 font-sans overflow-y-auto relative select-none">
       {/* Decorative Ambient Glowing Orbs */}
       <div className="absolute -top-32 -left-32 w-96 h-96 bg-blue-600/20 rounded-full blur-[120px] pointer-events-none" />
       <div className="absolute -bottom-32 -right-32 w-96 h-96 bg-indigo-600/20 rounded-full blur-[120px] pointer-events-none" />

@@ -8,22 +8,14 @@ export default function Testimonials() {
 
   // Load Elfsight Platform Script for Live Google Reviews
   const loadElfsightScript = () => {
-    const existingScript1 = document.getElementById("elfsight-platform-script-1");
-    const existingScript2 = document.getElementById("elfsight-platform-script-2");
-    if (existingScript1) existingScript1.remove();
-    if (existingScript2) existingScript2.remove();
+    const existingScript = document.getElementById("elfsight-platform-script");
+    if (existingScript) existingScript.remove();
 
-    const script1 = document.createElement("script");
-    script1.id = "elfsight-platform-script-1";
-    script1.src = "https://apps.elfsightcdn.com/p/platform.js";
-    script1.async = true;
-    document.body.appendChild(script1);
-
-    const script2 = document.createElement("script");
-    script2.id = "elfsight-platform-script-2";
-    script2.src = "https://static.elfsight.com/platform/platform.js";
-    script2.async = true;
-    document.body.appendChild(script2);
+    const script = document.createElement("script");
+    script.id = "elfsight-platform-script";
+    script.src = "https://static.elfsight.com/platform/platform.js";
+    script.async = true;
+    document.body.appendChild(script);
 
     setTimeout(() => {
       window.dispatchEvent(new Event("scroll"));
