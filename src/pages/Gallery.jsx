@@ -7,6 +7,7 @@ import {
   toggleGalleryStatusApi,
   deleteGalleryItemApi
 } from '../services/galleryService';
+import { getSecureMediaUrl } from '../utils/mediaUtils';
 
 const CATEGORIES = [
   'All',
@@ -299,11 +300,11 @@ export default function Gallery() {
                 img.active ? 'border-slate-200/80' : 'border-amber-200/70 bg-amber-50/20'
               }`}>
                 <div className="h-56 overflow-hidden bg-slate-900 relative">
-                  {img.type === 'video' && img.url.startsWith('data:video') ? (
-                    <video src={img.url} className="w-full h-full object-cover object-top" muted />
+                  {img.type === 'video' ? (
+                    <video src={getSecureMediaUrl(img.url)} className="w-full h-full object-cover object-top" muted />
                   ) : (
                     <img
-                      src={img.url}
+                      src={getSecureMediaUrl(img.url)}
                       alt={img.title}
                       loading="lazy"
                       className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-300 opacity-90 group-hover:opacity-100"
@@ -598,9 +599,9 @@ export default function Gallery() {
             
             <div className="h-80 sm:h-[450px] rounded-2xl overflow-hidden bg-black flex items-center justify-center relative">
               {previewMedia.type === 'video' ? (
-                <video src={previewMedia.url} controls autoPlay className="w-full h-full object-contain" />
+                <video src={getSecureMediaUrl(previewMedia.url)} controls autoPlay className="w-full h-full object-contain" />
               ) : (
-                <img src={previewMedia.url} alt={previewMedia.title} className="w-full h-full object-contain" />
+                <img src={getSecureMediaUrl(previewMedia.url)} alt={previewMedia.title} className="w-full h-full object-contain" />
               )}
             </div>
 
