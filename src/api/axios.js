@@ -39,6 +39,11 @@ API.interceptors.response.use(
       // Token might be invalid or expired
       localStorage.removeItem('dr_vinish_admin_token');
       localStorage.removeItem('dr_vinish_admin_user');
+
+      // Auto-redirect to login screen if currently on a protected page
+      if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }

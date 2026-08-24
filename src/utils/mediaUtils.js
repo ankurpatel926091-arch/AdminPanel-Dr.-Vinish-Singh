@@ -10,15 +10,20 @@ export const getSecureMediaUrl = (url) => {
     return url;
   }
 
-  // Convert http:// to https://
-  if (typeof url === 'string' && url.startsWith('http://')) {
-    return url.replace('http://', 'https://');
-  }
-
   // Handle relative backend upload paths
   if (typeof url === 'string' && (url.startsWith('/uploads/') || url.startsWith('uploads/'))) {
     const cleanPath = url.startsWith('/') ? url : `/${url}`;
-    return `https://dr-vinish-backend.onrender.com${cleanPath}`;
+    const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+    const baseUrl = isLocal ? 'http://localhost:5000' : 'https://dr-vinish-backend.onrender.com';
+    return `${baseUrl}${cleanPath}`;
+  }
+
+  // Keep http:// intact for local dev (localhost / 127.0.0.1) to avoid ERR_SSL_PROTOCOL_ERROR
+  if (typeof url === 'string' && url.startsWith('http://')) {
+    if (url.includes('localhost') || url.includes('127.0.0.1')) {
+      return url;
+    }
+    return url.replace('http://', 'https://');
   }
 
   return url;
