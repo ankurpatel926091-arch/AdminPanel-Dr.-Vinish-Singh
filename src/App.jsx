@@ -1,5 +1,7 @@
 import React, { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { AdminDataProvider } from './context/AdminDataContext';
 import AdminLayout from './components/layout/AdminLayout';
@@ -49,6 +51,18 @@ export default function App() {
   return (
     <AuthProvider>
       <AdminDataProvider>
+        <ToastContainer
+          position="top-right"
+          autoClose={3500}
+          hideProgressBar={false}
+          newestOnTop
+          closeOnClick
+          rtl={false}
+          pauseOnFocusLoss
+          draggable
+          pauseOnHover
+          theme="colored"
+        />
         <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
           <Suspense fallback={<PageLoader />}>
             <Routes>

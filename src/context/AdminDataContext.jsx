@@ -1,10 +1,11 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { getAdminEnquiriesApi, updateEnquiryStatusApi, deleteEnquiryApi } from '../services/enquiryService';
 
 const AdminDataContext = createContext();
 
 export const AdminDataProvider = ({ children }) => {
   const [stats, setStats] = useState({
-    enquiries: { count: 24, change: '+12%', isPositive: true },
+    enquiries: { count: 0, change: '+12%', isPositive: true },
     appointments: { count: 12, change: '+8%', isPositive: true },
     testimonials: { count: 18, change: '+15%', isPositive: true },
     treatments: { count: 12, change: 'No change', isNeutral: true },
@@ -69,13 +70,31 @@ export const AdminDataProvider = ({ children }) => {
     }
   ]);
 
-  const [enquiries, setEnquiries] = useState([
-    { id: 1, name: 'Rahul Verma', phone: '9876543210', subject: 'Kidney Stone', status: 'New', date: '18 May 2025', message: 'Hello Doctor, I have severe left flank pain. Need urgent appointment for kidney stone ultrasound.' },
-    { id: 2, name: 'Amit Kumar', phone: '9765432101', subject: 'Consultation', status: 'Read', date: '17 May 2025', message: 'Want to know clinic timings in Lucknow for second opinion.' },
-    { id: 3, name: 'Neha Singh', phone: '9654321098', subject: 'Prostate Problem', status: 'Replied', date: '16 May 2025', message: 'My father aged 64 has frequent night urination issues.' },
-    { id: 4, name: 'Pooja Sharma', phone: '9543210987', subject: 'UTI Issue', status: 'New', date: '16 May 2025', message: 'Recurrent UTI infection issue since 2 weeks.' },
-    { id: 5, name: 'Vikas Yadav', phone: '9432109876', subject: 'Appointment', status: 'Read', date: '15 May 2025', message: 'Booking confirmation for Saturday afternoon.' }
-  ]);
+  const [enquiries, setEnquiries] = useState([]);
+
+  // Fetch real contact enquiries from backend API
+  const fetchEnquiries = async () => {
+    try {
+      const res = await getAdminEnquiriesApi();
+      if (res && res.data) {
+        const items = res.data.map(item => ({
+          ...item,
+          id: item._id || item.id
+        }));
+        setEnquiries(items);
+        setStats(prev => ({
+          ...prev,
+          enquiries: { ...prev.enquiries, count: items.length }
+        }));
+      }
+    } catch (err) {
+      console.warn('Backend enquiry fetch offline or error, using default state:', err.message);
+    }
+  };
+
+  useEffect(() => {
+    fetchEnquiries();
+  }, []);
 
   const [testimonials, setTestimonials] = useState([
     { id: 1, name: 'Sandeep Gupta', rating: 5, text: 'Very good experience with Dr. Vinish Singh. He is very kind and treats patients with care.', status: 'Approved', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200' },
@@ -146,8 +165,34 @@ export const AdminDataProvider = ({ children }) => {
     setAppointments(prev => prev.filter(item => item.id !== id));
   };
 
-  const updateEnquiryStatus = (id, newStatus) => {
-    setEnquiries(prev => prev.map(item => item.id === id ? { ...item, status: newStatus } : item));
+  const updateEnquiryStatus = async (id, newStatus) => {
+    const realId = id._id || id;
+    setEnquiries(prev => prev.map(item => (item.id === realId || item._id === realId) ? { ...item, status: newStatus } : item));
+
+    try {
+      if (typeof realId === 'string' && realId.length === 24) {
+        await updateEnquiryStatusApi(realId, newStatus);
+      }
+    } catch (err) {
+      console.error('Error updating enquiry status:', err.message);
+    }
+  };
+
+  const deleteEnquiry = async (id) => {
+    const realId = id._id || id;
+    setEnquiries(prev => prev.filter(item => item.id !== realId && item._id !== realId));
+    setStats(prev => ({
+      ...prev,
+      enquiries: { ...prev.enquiries, count: Math.max(0, prev.enquiries.count - 1) }
+    }));
+
+    try {
+      if (typeof realId === 'string' && realId.length === 24) {
+        await deleteEnquiryApi(realId);
+      }
+    } catch (err) {
+      console.error('Error deleting enquiry:', err.message);
+    }
   };
 
   const toggleTestimonialApproval = (id) => {
@@ -183,10 +228,12 @@ export const AdminDataProvider = ({ children }) => {
       testimonials,
       chartData,
       services,
+      fetchEnquiries,
       addAppointment,
       updateAppointmentStatus,
       deleteAppointment,
       updateEnquiryStatus,
+      deleteEnquiry,
       toggleTestimonialApproval,
       deleteTestimonial,
       addService,

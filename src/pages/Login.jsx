@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import { useAuth } from '../context/AuthContext';
 import {
   Lock,
@@ -32,10 +33,25 @@ export default function Login() {
     }
   }, [isAuthenticated, navigate]);
 
+  // Check for pending session expiration toasts
+  useEffect(() => {
+    const pendingToast = sessionStorage.getItem('admin_toast');
+    if (pendingToast) {
+      try {
+        const { type, message } = JSON.parse(pendingToast);
+        if (type === 'error') toast.error(message, { toastId: 'session-expired' });
+        else if (type === 'success') toast.success(message);
+        else if (type === 'info') toast.info(message);
+      } catch (e) {}
+      sessionStorage.removeItem('admin_toast');
+    }
+  }, []);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!email || !password) {
       setError('Please enter both email and password.');
+      toast.warning('Please enter both email and password.');
       return;
     }
 
@@ -45,12 +61,17 @@ export default function Login() {
     try {
       const result = await login(email, password);
       if (result.success) {
+        toast.success('Login Successful! Welcome to Dashboard.', { toastId: 'login-success' });
         navigate('/dashboard', { replace: true });
       } else {
-        setError(result.message || 'Invalid email or password.');
+        const msg = result.message || 'Invalid email or password.';
+        setError(msg);
+        toast.error(msg, { toastId: 'login-failed' });
       }
     } catch (err) {
-      setError('An unexpected error occurred. Please try again.');
+      const msg = 'An unexpected error occurred. Please try again.';
+      setError(msg);
+      toast.error(msg);
     } finally {
       setIsSubmitting(false);
     }

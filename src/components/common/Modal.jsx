@@ -1,12 +1,13 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 
 export default function Modal({ isOpen, onClose, title, children }) {
   if (!isOpen) return null;
 
-  return (
+  return createPortal(
     <div 
-      className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 cursor-pointer"
+      className="fixed inset-0 z-[9999] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 cursor-pointer"
       onClick={onClose}
     >
       <div 
@@ -26,6 +27,7 @@ export default function Modal({ isOpen, onClose, title, children }) {
           {children}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

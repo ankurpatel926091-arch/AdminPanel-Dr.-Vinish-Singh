@@ -36,9 +36,21 @@ API.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response && error.response.status === 401) {
+      const hadToken = Boolean(localStorage.getItem('dr_vinish_admin_token'));
+
       // Token might be invalid or expired
       localStorage.removeItem('dr_vinish_admin_token');
       localStorage.removeItem('dr_vinish_admin_user');
+
+      if (hadToken) {
+        sessionStorage.setItem(
+          'admin_toast',
+          JSON.stringify({
+            type: 'error',
+            message: 'Session expired! Please login again.'
+          })
+        );
+      }
 
       // Auto-redirect to login screen if currently on a protected page
       if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {

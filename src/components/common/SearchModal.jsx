@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Search, X, Calendar, Mail, User, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -25,9 +26,9 @@ export default function SearchModal({ isOpen, onClose }) {
     { label: 'Doctor Profile Settings', path: '/profile', icon: User },
   ];
 
-  return (
+  return createPortal(
     <div 
-      className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-start justify-center pt-20 px-4 cursor-pointer"
+      className="fixed inset-0 z-[9999] bg-slate-900/60 backdrop-blur-xs flex items-start justify-center pt-20 px-4 cursor-pointer"
       onClick={onClose}
     >
       <div 
@@ -76,6 +77,7 @@ export default function SearchModal({ isOpen, onClose }) {
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

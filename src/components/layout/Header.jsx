@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Menu, Search, ChevronDown, User, LogOut, Settings } from 'lucide-react';
+import { Menu, ChevronDown, User, LogOut, Settings } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import doctorPhoto from '../../assets/doctor.jpg';
@@ -26,35 +26,14 @@ export default function Header({ onToggleSidebar, onOpenSearch }) {
 
   return (
     <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-3 sm:px-6 lg:px-8 py-2.5 flex items-center justify-between shadow-2xs">
-      {/* Left: Mobile Toggle & Global Search */}
-      <div className="flex items-center gap-2 sm:gap-4 flex-1">
+      {/* Left: Mobile Sidebar Toggle */}
+      <div className="flex items-center gap-2 sm:gap-4">
         <button
           onClick={onToggleSidebar}
           className="p-2 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors"
           aria-label="Toggle Navigation"
         >
           <Menu className="w-5 h-5" />
-        </button>
-
-        {/* Global Search Bar (Desktop) */}
-        <div 
-          onClick={onOpenSearch}
-          className="hidden md:flex items-center gap-3 bg-slate-100/80 hover:bg-slate-100 text-slate-400 px-4 py-2 rounded-xl text-sm w-80 cursor-pointer border border-slate-200/60 transition-all"
-        >
-          <Search className="w-4 h-4 text-slate-400" />
-          <span className="flex-1 text-slate-400 text-xs font-medium">Search anything...</span>
-          <kbd className="hidden sm:inline-block px-2 py-0.5 text-[10px] font-semibold text-slate-400 bg-white rounded border border-slate-200 shadow-2xs">
-            Ctrl + K
-          </kbd>
-        </div>
-
-        {/* Mobile Search Button */}
-        <button
-          onClick={onOpenSearch}
-          className="md:hidden p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-xl"
-          aria-label="Search"
-        >
-          <Search className="w-5 h-5" />
         </button>
       </div>
 

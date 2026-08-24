@@ -1,6 +1,7 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useAdminData } from '../../context/AdminDataContext';
 import {
   LayoutDashboard,
   Mail,
@@ -19,23 +20,26 @@ import {
 } from 'lucide-react';
 import doctorPhoto from '../../assets/doctor.jpg';
 
-const navItems = [
-  { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { path: '/enquiries', label: 'Contact Enquiries', icon: Mail, badge: 24  },
-  { path: '/appointments', label: 'Appointments', icon: Calendar, badge: 12 },
-  // { path: '/services', label: 'Services', icon: Layers }, 
-  // { path: '/treatments', label: 'Treatments', icon: Stethoscope },
-  { path: '/gallery', label: 'Gallery', icon: ImageIcon },
-  // { path: '/testimonials', label: 'Testimonials', icon: Star },
-  { path: '/profile', label: 'Doctor Profile', icon: User },
-  { path: '/clinics', label: 'Clinics', icon: MapPin },
-  { path: '/blogs', label: 'Blogs', icon: BookOpen },
-  { path: '/settings', label: 'Settings', icon: Settings },
-];
-
 export default function Sidebar({ isOpen, isCollapsed, onClose }) {
   const { logout } = useAuth();
+  const { stats } = useAdminData();
   const navigate = useNavigate();
+
+  const enquiryCount = stats?.enquiries?.count ?? 0;
+
+  const navItems = [
+    { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { path: '/enquiries', label: 'Contact Enquiries', icon: Mail, badge: enquiryCount },
+    { path: '/appointments', label: 'Appointments', icon: Calendar, badge: 12 },
+    // { path: '/services', label: 'Services', icon: Layers }, 
+    // { path: '/treatments', label: 'Treatments', icon: Stethoscope },
+    { path: '/gallery', label: 'Gallery', icon: ImageIcon },
+    // { path: '/testimonials', label: 'Testimonials', icon: Star },
+    { path: '/profile', label: 'Doctor Profile', icon: User },
+    { path: '/clinics', label: 'Clinics', icon: MapPin },
+    { path: '/blogs', label: 'Blogs', icon: BookOpen },
+    { path: '/settings', label: 'Settings', icon: Settings },
+  ];
 
   const handleLogout = () => {
     logout();
@@ -105,12 +109,12 @@ export default function Sidebar({ isOpen, isCollapsed, onClose }) {
                     <Icon className="w-5 h-5 text-slate-300 group-hover:text-white transition-transform group-hover:scale-110 flex-shrink-0" />
                     <span className={isCollapsed ? 'lg:hidden' : 'block'}>{item.label}</span>
                   </div>
-                  {item.badge && (
+                  {item.badge !== undefined && item.badge !== null && (
                     <span className={`px-2 py-0.5 text-xs font-bold rounded-full bg-blue-500/30 text-blue-300 border border-blue-400/20 ${isCollapsed ? 'lg:hidden' : ''}`}>
                       {item.badge}
                     </span>
                   )}
-                  {item.badge && isCollapsed && (
+                  {item.badge !== undefined && item.badge !== null && isCollapsed && (
                     <span className="hidden lg:block absolute top-2 right-2 w-2 h-2 rounded-full bg-blue-400"></span>
                   )}
                 </NavLink>

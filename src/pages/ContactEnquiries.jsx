@@ -2,10 +2,10 @@ import React, { useState } from 'react';
 import { useAdminData } from '../context/AdminDataContext';
 import StatusBadge from '../components/common/StatusBadge';
 import Modal from '../components/common/Modal';
-import { Mail, Search, Eye, CheckCircle, Clock } from 'lucide-react';
+import { Mail, Search, Eye, Trash2, CheckCircle, Clock } from 'lucide-react';
 
 export default function ContactEnquiries() {
-  const { enquiries, updateEnquiryStatus } = useAdminData();
+  const { enquiries, updateEnquiryStatus, deleteEnquiry } = useAdminData();
   const [filter, setFilter] = useState('All');
   const [search, setSearch] = useState('');
   const [selectedEnquiry, setSelectedEnquiry] = useState(null);
@@ -17,6 +17,12 @@ export default function ContactEnquiries() {
                           item.phone.includes(search);
     return matchesFilter && matchesSearch;
   });
+
+  const handleDelete = (id) => {
+    if (confirm('Are you sure you want to delete this contact enquiry?')) {
+      deleteEnquiry(id);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -46,7 +52,7 @@ export default function ContactEnquiries() {
           <button
             key={tab}
             onClick={() => setFilter(tab)}
-            className={`px-4 py-2 text-xs font-bold rounded-xl transition-all ${
+            className={`px-4 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
               filter === tab
                 ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
                 : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
@@ -72,28 +78,40 @@ export default function ContactEnquiries() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-medium">
-              {filtered.map(enq => (
-                <tr key={enq.id} className="hover:bg-slate-50/80 transition-colors">
-                  <td className="py-4 px-4 font-bold text-slate-800">{enq.name}</td>
-                  <td className="py-4 px-4 text-slate-500">{enq.phone}</td>
-                  <td className="py-4 px-4 text-slate-700 font-semibold">{enq.subject}</td>
-                  <td className="py-4 px-4 text-slate-400">{enq.date}</td>
-                  <td className="py-4 px-4">
-                    <StatusBadge status={enq.status} />
-                  </td>
-                  <td className="py-4 px-4 text-right">
-                    <button
-                      onClick={() => {
-                        setSelectedEnquiry(enq);
-                        if (enq.status === 'New') updateEnquiryStatus(enq.id, 'Read');
-                      }}
-                      className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg text-xs font-semibold inline-flex items-center gap-1 transition-colors"
-                    >
-                      <Eye className="w-3.5 h-3.5" /> View Details
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              {filtered.map(enq => {
+                const itemId = enq._id || enq.id;
+                return (
+                  <tr key={itemId} className="hover:bg-slate-50/80 transition-colors">
+                    <td className="py-4 px-4 font-bold text-slate-800">{enq.name}</td>
+                    <td className="py-4 px-4 text-slate-500">{enq.phone}</td>
+                    <td className="py-4 px-4 text-slate-700 font-semibold">{enq.subject}</td>
+                    <td className="py-4 px-4 text-slate-400">{enq.date}</td>
+                    <td className="py-4 px-4">
+                      <StatusBadge status={enq.status} />
+                    </td>
+                    <td className="py-4 px-4 text-right">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <button
+                          onClick={() => {
+                            setSelectedEnquiry(enq);
+                            if (enq.status === 'New') updateEnquiryStatus(itemId, 'Read');
+                          }}
+                          className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg text-xs font-semibold inline-flex items-center gap-1 transition-colors cursor-pointer"
+                        >
+                          <Eye className="w-3.5 h-3.5" /> View Details
+                        </button>
+                        <button
+                          onClick={() => handleDelete(itemId)}
+                          className="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg transition-colors cursor-pointer"
+                          title="Delete enquiry"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

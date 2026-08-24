@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { toast } from 'react-toastify';
 import { loginAdmin, getAdminProfile, logoutAdmin } from '../services/authService';
 
 const AuthContext = createContext();
@@ -22,6 +23,13 @@ export const AuthProvider = ({ children }) => {
             setToken(storedToken);
           } else {
             handleLocalLogout();
+            sessionStorage.setItem(
+              'admin_toast',
+              JSON.stringify({
+                type: 'error',
+                message: 'Session expired! Please login again.'
+              })
+            );
           }
         } catch (error) {
           console.error('Failed to verify session token:', error);
@@ -72,6 +80,7 @@ export const AuthProvider = ({ children }) => {
       console.error('Logout error:', error);
     } finally {
       handleLocalLogout();
+      toast.info('Logged out successfully');
     }
   };
 
