@@ -10,20 +10,32 @@ export const getSecureMediaUrl = (url) => {
     return url;
   }
 
+  const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+  const prodBackend = 'https://dr-vinish-backend.onrender.com';
+
   // Handle relative backend upload paths
   if (typeof url === 'string' && (url.startsWith('/uploads/') || url.startsWith('uploads/'))) {
     const cleanPath = url.startsWith('/') ? url : `/${url}`;
-    const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-    const baseUrl = isLocal ? 'http://localhost:5000' : 'https://dr-vinish-backend.onrender.com';
+    const baseUrl = isLocal ? 'http://localhost:5000' : prodBackend;
     return `${baseUrl}${cleanPath}`;
   }
 
-  // Keep http:// intact for local dev (localhost / 127.0.0.1) to avoid ERR_SSL_PROTOCOL_ERROR
-  if (typeof url === 'string' && url.startsWith('http://')) {
-    if (url.includes('localhost') || url.includes('127.0.0.1')) {
-      return url;
+  // Handle full URLs that contain localhost:5000 or 127.0.0.1:5000 stored in database
+  if (typeof url === 'string' && (url.includes('localhost:5000') || url.includes('127.0.0.1:5000'))) {
+    if (!isLocal) {
+      // In production Vercel, replace localhost:5000 with deployed Render backend domain
+      const cleanPath = url.replace(/^https?:\/\/(localhost|127\.0\.0\.1):5000/, '');
+      const pathWithSlash = cleanPath.startsWith('/') ? cleanPath : `/${cleanPath}`;
+      return `${prodBackend}${pathWithSlash}`;
     }
-    return url.replace('http://', 'https://');
+    return url;
+  }
+
+  // Handle any other http:// URLs: convert to https:// in production to prevent mixed content
+  if (typeof url === 'string' && url.startsWith('http://')) {
+    if (!isLocal) {
+      return url.replace('http://', 'https://');
+    }
   }
 
   return url;
