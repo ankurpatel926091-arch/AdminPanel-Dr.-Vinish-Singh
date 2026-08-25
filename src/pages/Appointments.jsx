@@ -4,7 +4,7 @@ import StatusBadge from '../components/common/StatusBadge';
 import { Calendar as CalendarIcon, Search, Plus, CheckCircle, XCircle, Clock, Building2, Stethoscope, MessageSquare, Trash2, X, Send } from 'lucide-react';
 
 const HOSPITAL_CENTRES = [
-  '🌅 Morning OPD: Rudraksh IVF & Urology Centre (Sharda Nagar, 10 AM - 01 PM)',
+  '🌅 Morning OPD: Rudraksh IVF & Urology Centre (Sharda Nagar, 10 AM - 03 PM)',
   '🌇 Afternoon OPD: Apollomedics Super Speciality Hospital (LDA Colony, 02 PM - 04 PM)',
   '🌆 Evening OPD: Chandan Hospital (Faizabad Road, 05 PM - 07 PM)'
 ];

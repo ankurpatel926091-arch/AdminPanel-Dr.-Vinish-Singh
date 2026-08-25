@@ -61,7 +61,7 @@ export default function Dashboard() {
           value={stats.testimonials.count}
           change={stats.testimonials.change}
           type="testimonials"
-        /> */}
+        /> */}=
         {/* <StatCard
           title="Treatments"
           value={stats.treatments.count}

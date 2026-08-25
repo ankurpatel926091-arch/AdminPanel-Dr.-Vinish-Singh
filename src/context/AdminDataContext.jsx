@@ -1,9 +1,12 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { getAdminEnquiriesApi, updateEnquiryStatusApi, deleteEnquiryApi } from '../services/enquiryService';
+import { useAuth } from './AuthContext';
 
 const AdminDataContext = createContext();
 
 export const AdminDataProvider = ({ children }) => {
+  const { isAuthenticated } = useAuth();
+  const [loadingEnquiries, setLoadingEnquiries] = useState(false);
   const [stats, setStats] = useState({
     enquiries: { count: 0, change: '+12%', isPositive: true },
     appointments: { count: 12, change: '+8%', isPositive: true },
@@ -17,7 +20,7 @@ export const AdminDataProvider = ({ children }) => {
       id: 1,
       name: 'Rahul Verma',
       phone: '9876543210',
-      centre: '🌅 Morning OPD: Rudraksh IVF & Urology Centre (Sharda Nagar, 10 AM - 01 PM)',
+      centre: '🌅 Morning OPD: Rudraksh IVF & Urology Centre (Sharda Nagar, 10 AM - 03 PM)',
       problem: 'Laser Kidney Stones (RIRS / PCNL)',
       message: 'Severe left flank pain since yesterday night.',
       date: '20 May 2025',
@@ -50,7 +53,7 @@ export const AdminDataProvider = ({ children }) => {
       id: 4,
       name: 'Pooja Sharma',
       phone: '9543210987',
-      centre: '🌅 Morning OPD: Rudraksh IVF & Urology Centre (Sharda Nagar, 10 AM - 01 PM)',
+      centre: '🌅 Morning OPD: Rudraksh IVF & Urology Centre (Sharda Nagar, 10 AM - 03 PM)',
       problem: 'Kidney Health Followup',
       message: 'Post surgery ultrasound report discussion.',
       date: '23 May 2025',
@@ -74,6 +77,7 @@ export const AdminDataProvider = ({ children }) => {
 
   // Fetch real contact enquiries from backend API
   const fetchEnquiries = async () => {
+    setLoadingEnquiries(true);
     try {
       const res = await getAdminEnquiriesApi();
       if (res && res.data) {
@@ -89,12 +93,22 @@ export const AdminDataProvider = ({ children }) => {
       }
     } catch (err) {
       console.warn('Backend enquiry fetch offline or error, using default state:', err.message);
+    } finally {
+      setLoadingEnquiries(false);
     }
   };
 
   useEffect(() => {
-    fetchEnquiries();
-  }, []);
+    if (isAuthenticated) {
+      fetchEnquiries();
+    } else {
+      setEnquiries([]);
+      setStats(prev => ({
+        ...prev,
+        enquiries: { ...prev.enquiries, count: 0 }
+      }));
+    }
+  }, [isAuthenticated]);
 
   const [testimonials, setTestimonials] = useState([
     { id: 1, name: 'Sandeep Gupta', rating: 5, text: 'Very good experience with Dr. Vinish Singh. He is very kind and treats patients with care.', status: 'Approved', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200' },
@@ -228,6 +242,7 @@ export const AdminDataProvider = ({ children }) => {
       testimonials,
       chartData,
       services,
+      loadingEnquiries,
       fetchEnquiries,
       addAppointment,
       updateAppointmentStatus,

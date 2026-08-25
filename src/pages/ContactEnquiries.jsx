@@ -1,14 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAdminData } from '../context/AdminDataContext';
 import StatusBadge from '../components/common/StatusBadge';
 import Modal from '../components/common/Modal';
-import { Mail, Search, Eye, Trash2, CheckCircle, Clock } from 'lucide-react';
+import { Mail, Search, Eye, Trash2, CheckCircle, Clock, RefreshCw } from 'lucide-react';
 
 export default function ContactEnquiries() {
-  const { enquiries, updateEnquiryStatus, deleteEnquiry } = useAdminData();
+  const { enquiries, fetchEnquiries, loadingEnquiries, updateEnquiryStatus, deleteEnquiry } = useAdminData();
   const [filter, setFilter] = useState('All');
   const [search, setSearch] = useState('');
   const [selectedEnquiry, setSelectedEnquiry] = useState(null);
+
+  useEffect(() => {
+    fetchEnquiries();
+  }, []);
 
   const filtered = enquiries.filter(item => {
     const matchesFilter = filter === 'All' || item.status.toLowerCase() === filter.toLowerCase();
@@ -33,16 +37,27 @@ export default function ContactEnquiries() {
           <p className="text-sm text-slate-500 mt-1">Manage patient messages and consultation requests</p>
         </div>
 
-        {/* Search */}
-        <div className="relative w-full sm:w-72">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-          <input
-            type="text"
-            placeholder="Search enquiries..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-blue-600 focus:outline-hidden"
-          />
+        {/* Search & Refresh */}
+        <div className="flex items-center gap-3">
+          <div className="relative w-full sm:w-72">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+            <input
+              type="text"
+              placeholder="Search enquiries..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-blue-600 focus:outline-hidden"
+            />
+          </div>
+
+          <button
+            onClick={fetchEnquiries}
+            disabled={loadingEnquiries}
+            className="p-2 bg-white hover:bg-slate-100 border border-slate-200 rounded-xl text-slate-600 hover:text-slate-900 transition-colors cursor-pointer disabled:opacity-50"
+            title="Refresh Enquiries"
+          >
+            <RefreshCw className={`w-4 h-4 ${loadingEnquiries ? 'animate-spin' : ''}`} />
+          </button>
         </div>
       </div>
 
@@ -78,40 +93,55 @@ export default function ContactEnquiries() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-medium">
-              {filtered.map(enq => {
-                const itemId = enq._id || enq.id;
-                return (
-                  <tr key={itemId} className="hover:bg-slate-50/80 transition-colors">
-                    <td className="py-4 px-4 font-bold text-slate-800">{enq.name}</td>
-                    <td className="py-4 px-4 text-slate-500">{enq.phone}</td>
-                    <td className="py-4 px-4 text-slate-700 font-semibold">{enq.subject}</td>
-                    <td className="py-4 px-4 text-slate-400">{enq.date}</td>
-                    <td className="py-4 px-4">
-                      <StatusBadge status={enq.status} />
-                    </td>
-                    <td className="py-4 px-4 text-right">
-                      <div className="flex items-center justify-end gap-1.5">
-                        <button
-                          onClick={() => {
-                            setSelectedEnquiry(enq);
-                            if (enq.status === 'New') updateEnquiryStatus(itemId, 'Read');
-                          }}
-                          className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg text-xs font-semibold inline-flex items-center gap-1 transition-colors cursor-pointer"
-                        >
-                          <Eye className="w-3.5 h-3.5" /> View Details
-                        </button>
-                        <button
-                          onClick={() => handleDelete(itemId)}
-                          className="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg transition-colors cursor-pointer"
-                          title="Delete enquiry"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
+              {loadingEnquiries && filtered.length === 0 ? (
+                <tr>
+                  <td colSpan="6" className="py-12 text-center text-slate-400 font-medium">
+                    <RefreshCw className="w-6 h-6 animate-spin mx-auto text-blue-600 mb-2" />
+                    Loading contact enquiries...
+                  </td>
+                </tr>
+              ) : filtered.length === 0 ? (
+                <tr>
+                  <td colSpan="6" className="py-12 text-center text-slate-400 font-medium">
+                    No contact enquiries found.
+                  </td>
+                </tr>
+              ) : (
+                filtered.map(enq => {
+                  const itemId = enq._id || enq.id;
+                  return (
+                    <tr key={itemId} className="hover:bg-slate-50/80 transition-colors">
+                      <td className="py-4 px-4 font-bold text-slate-800">{enq.name}</td>
+                      <td className="py-4 px-4 text-slate-500">{enq.phone}</td>
+                      <td className="py-4 px-4 text-slate-700 font-semibold">{enq.subject}</td>
+                      <td className="py-4 px-4 text-slate-400">{enq.date}</td>
+                      <td className="py-4 px-4">
+                        <StatusBadge status={enq.status} />
+                      </td>
+                      <td className="py-4 px-4 text-right">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            onClick={() => {
+                              setSelectedEnquiry(enq);
+                              if (enq.status === 'New') updateEnquiryStatus(itemId, 'Read');
+                            }}
+                            className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg text-xs font-semibold inline-flex items-center gap-1 transition-colors cursor-pointer"
+                          >
+                            <Eye className="w-3.5 h-3.5" /> View Details
+                          </button>
+                          <button
+                            onClick={() => handleDelete(itemId)}
+                            className="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg transition-colors cursor-pointer"
+                            title="Delete enquiry"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>
