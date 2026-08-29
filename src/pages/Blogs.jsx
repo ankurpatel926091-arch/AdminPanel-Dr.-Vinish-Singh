@@ -774,11 +774,12 @@ export default function Blogs() {
 
             {/* Full Blog Content */}
             <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+              <label className="block text-xs font-bold text-slate-700 uppercase  tracking-wider mb-2">
                 Full Blog Content <span className="text-rose-500">*</span>
               </label>
               <BlogEditor
                 value={formData.content}
+                
                 onChange={(content) => setFormData({ ...formData, content })}
               />
             </div>

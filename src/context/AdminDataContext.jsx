@@ -1,5 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { getAdminEnquiriesApi, updateEnquiryStatusApi, deleteEnquiryApi } from '../services/enquiryService';
+import { getAdminAppointmentsApi, updateAppointmentStatusApi, deleteAppointmentApi } from '../services/appointmentService';
+import { getAdminGalleryApi } from '../services/galleryService';
+import { getAdminBlogsApi } from '../services/blogService';
 import { useAuth } from './AuthContext';
 
 const AdminDataContext = createContext();
@@ -7,13 +10,8 @@ const AdminDataContext = createContext();
 export const AdminDataProvider = ({ children }) => {
   const { isAuthenticated } = useAuth();
   const [loadingEnquiries, setLoadingEnquiries] = useState(false);
-  const [stats, setStats] = useState({
-    enquiries: { count: 0, change: '+12%', isPositive: true },
-    appointments: { count: 12, change: '+8%', isPositive: true },
-    testimonials: { count: 18, change: '+15%', isPositive: true },
-    treatments: { count: 12, change: 'No change', isNeutral: true },
-    galleryImages: { count: 36, change: '+5%', isPositive: true }
-  });
+  const [galleryItems, setGalleryItems] = useState([]);
+  const [blogs, setBlogs] = useState([]);
 
   const [appointments, setAppointments] = useState([
     {
@@ -70,12 +68,54 @@ export const AdminDataProvider = ({ children }) => {
       date: '24 May 2025',
       time: '03:00 PM',
       status: 'Cancelled'
+    },
+    {
+      id: 6,
+      name: 'Sanjay Patel',
+      phone: '9321098765',
+      centre: '🌆 Evening OPD: Chandan Hospital (Faizabad Road, 05 PM - 07 PM)',
+      problem: 'Kidney Stone Consultation',
+      message: 'Evaluation for endoscopic stone treatment.',
+      date: '25 May 2025',
+      time: '12:15 PM',
+      status: 'Missed'
+    },
+    {
+      id: 7,
+      name: 'Ankit Singh',
+      phone: '9210987654',
+      centre: '🌅 Morning OPD: Rudraksh IVF & Urology Centre (Sharda Nagar, 10 AM - 03 PM)',
+      problem: 'Male Infertility Consultation',
+      message: 'Andrology consultation and semen analysis review.',
+      date: '26 May 2025',
+      time: '01:45 PM',
+      status: 'Pending'
     }
   ]);
 
   const [enquiries, setEnquiries] = useState([]);
 
-  // Fetch real contact enquiries from backend API
+  const [stats, setStats] = useState({
+    enquiries: { count: 0, change: '+12%', isPositive: true },
+    appointments: { count: appointments.length, change: '+8%', isPositive: true },
+    testimonials: { count: 18, change: '+15%', isPositive: true },
+    treatments: { count: 12, change: 'No change', isNeutral: true },
+    galleryImages: { count: 36, change: '+5%', isPositive: true },
+    blogs: { count: 24, change: '+10%', isPositive: true }
+  });
+
+  // Keep stats in sync with dynamic arrays
+  useEffect(() => {
+    setStats(prev => ({
+      ...prev,
+      enquiries: { ...prev.enquiries, count: enquiries.length },
+      appointments: { ...prev.appointments, count: appointments.length },
+      galleryImages: { ...prev.galleryImages, count: galleryItems.length > 0 ? galleryItems.length : prev.galleryImages.count },
+      blogs: { ...prev.blogs, count: blogs.length > 0 ? blogs.length : prev.blogs.count }
+    }));
+  }, [enquiries.length, appointments.length, galleryItems.length, blogs.length]);
+
+  // Fetch real contact enquiries, gallery & blogs from backend API
   const fetchEnquiries = async () => {
     setLoadingEnquiries(true);
     try {
@@ -86,17 +126,91 @@ export const AdminDataProvider = ({ children }) => {
           id: item._id || item.id
         }));
         setEnquiries(items);
-        setStats(prev => ({
-          ...prev,
-          enquiries: { ...prev.enquiries, count: items.length }
-        }));
       }
     } catch (err) {
       console.warn('Backend enquiry fetch offline or error, using default state:', err.message);
     } finally {
       setLoadingEnquiries(false);
     }
+
+    try {
+      const aptRes = await getAdminAppointmentsApi();
+      if (aptRes && aptRes.data && aptRes.data.length > 0) {
+        const items = aptRes.data.map(item => ({
+          ...item,
+          id: item._id || item.id
+        }));
+        setAppointments(prev => {
+          const existingIds = new Set(prev.map(a => String(a.id)));
+          const newItems = items.filter(a => !existingIds.has(String(a.id)));
+          return newItems.length > 0 ? [...newItems, ...prev] : prev;
+        });
+      }
+    } catch (err) {
+      console.warn('Backend appointment fetch offline or error:', err.message);
+    }
+
+    try {
+      const galRes = await getAdminGalleryApi();
+      if (galRes && galRes.data) {
+        setGalleryItems(galRes.data);
+      }
+    } catch (err) {
+      console.warn('Backend gallery fetch offline or error:', err.message);
+    }
+
+    try {
+      const blogRes = await getAdminBlogsApi();
+      if (blogRes && blogRes.data) {
+        setBlogs(blogRes.data);
+      }
+    } catch (err) {
+      console.warn('Backend blog fetch offline or error:', err.message);
+    }
   };
+
+  // Real-time synchronization of local appointments and enquiries submitted from website
+  const syncLocalStorageData = () => {
+    try {
+      // 1. Appointments submitted from website
+      const localAptsStr = localStorage.getItem('dr_vinish_appointments');
+      if (localAptsStr) {
+        const localApts = JSON.parse(localAptsStr);
+        if (Array.isArray(localApts) && localApts.length > 0) {
+          setAppointments(prev => {
+            const existingIds = new Set(prev.map(a => String(a.id)));
+            const newItems = localApts.filter(a => !existingIds.has(String(a.id)));
+            return newItems.length > 0 ? [...newItems, ...prev] : prev;
+          });
+        }
+      }
+
+      // 2. Contact Enquiries submitted from website
+      const localEnqStr = localStorage.getItem('dr_vinish_enquiries');
+      if (localEnqStr) {
+        const localEnq = JSON.parse(localEnqStr);
+        if (Array.isArray(localEnq) && localEnq.length > 0) {
+          setEnquiries(prev => {
+            const existingIds = new Set(prev.map(e => String(e.id || e._id)));
+            const newItems = localEnq.filter(e => !existingIds.has(String(e.id || e._id)));
+            return newItems.length > 0 ? [...newItems, ...prev] : prev;
+          });
+        }
+      }
+    } catch (err) {
+      console.warn('Sync local data error:', err.message);
+    }
+  };
+
+  useEffect(() => {
+    syncLocalStorageData();
+    window.addEventListener('storage', syncLocalStorageData);
+    const interval = setInterval(syncLocalStorageData, 2000);
+    return () => {
+      window.removeEventListener('storage', syncLocalStorageData);
+      clearInterval(interval);
+    };
+  }, []);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -242,6 +356,8 @@ export const AdminDataProvider = ({ children }) => {
       testimonials,
       chartData,
       services,
+      galleryItems,
+      blogs,
       loadingEnquiries,
       fetchEnquiries,
       addAppointment,

@@ -3,13 +3,18 @@ import StatCard from '../components/dashboard/StatCard';
 import AppointmentsWidget from '../components/dashboard/AppointmentsWidget';
 import EnquiriesChartWidget from '../components/dashboard/EnquiriesChartWidget';
 import RecentEnquiriesWidget from '../components/dashboard/RecentEnquiriesWidget';
-import TestimonialsWidget from '../components/dashboard/TestimonialsWidget';
 import { useAdminData } from '../context/AdminDataContext';
 import { Calendar, ChevronDown, Sparkles } from 'lucide-react';
 
 export default function Dashboard() {
-  const { stats } = useAdminData();
+  const { stats, enquiries, appointments, galleryItems, blogs } = useAdminData();
   const [dateRange, setDateRange] = useState('18 May 2025 - 18 June 2025');
+
+  // Dynamic live count calculations
+  const enquiriesCount = (enquiries && enquiries.length > 0) ? enquiries.length : stats.enquiries.count;
+  const appointmentsCount = (appointments && appointments.length > 0) ? appointments.length : stats.appointments.count;
+  const galleryCount = (galleryItems && galleryItems.length > 0) ? galleryItems.length : (stats.galleryImages?.count || 36);
+  const blogsCount = (blogs && blogs.length > 0) ? blogs.length : (stats.blogs?.count || 24);
 
   return (
     <div className="space-y-8 font-sans">
@@ -43,36 +48,30 @@ export default function Dashboard() {
       </div>
 
       {/* Top Stat Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
         <StatCard
           title="Contact Enquiries"
-          value={stats.enquiries.count}
-          change={stats.enquiries.change}
+          value={enquiriesCount}
+          change={stats.enquiries?.change || '+12%'}
           type="enquiries"
         />
         <StatCard
           title="Appointments"
-          value={stats.appointments.count}
-          change={stats.appointments.change}
+          value={appointmentsCount}
+          change={stats.appointments?.change || '+8%'}
           type="appointments"
         />
-        {/* <StatCard
-          title="Testimonials"
-          value={stats.testimonials.count}
-          change={stats.testimonials.change}
-          type="testimonials"
-        /> */}=
-        {/* <StatCard
-          title="Treatments"
-          value={stats.treatments.count}
-          change={stats.treatments.change}
-          type="treatments"
-        /> */}
         <StatCard
           title="Gallery Images"
-          value={stats.galleryImages.count}
-          change={stats.galleryImages.change}
+          value={galleryCount}
+          change={stats.galleryImages?.change || '+5%'}
           type="galleryImages"
+        />
+        <StatCard
+          title="Blogs"
+          value={blogsCount}
+          change={stats.blogs?.change || '+10%'}
+          type="blogs"
         />
       </div>
 
@@ -86,14 +85,9 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Bottom Grid Row: Recent Enquiries Table & Recent Testimonials */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-        <div className="lg:col-span-7">
-          <RecentEnquiriesWidget />
-        </div>
-        <div className="lg:col-span-5">
-          <TestimonialsWidget />
-        </div>
+      {/* Bottom Grid Row: Recent Enquiries Table (Full Width) */}
+      <div className="w-full">
+        <RecentEnquiriesWidget />
       </div>
     </div>
   );

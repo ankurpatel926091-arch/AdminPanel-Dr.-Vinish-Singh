@@ -22,15 +22,16 @@ import doctorPhoto from '../../assets/doctor.jpg';
 
 export default function Sidebar({ isOpen, isCollapsed, onClose }) {
   const { logout } = useAuth();
-  const { stats } = useAdminData();
+  const { stats, appointments } = useAdminData();
   const navigate = useNavigate();
 
   const enquiryCount = stats?.enquiries?.count ?? 0;
+  const appointmentCount = (appointments && appointments.length >= 0) ? appointments.length : (stats?.appointments?.count ?? 0);
 
   const navItems = [
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { path: '/enquiries', label: 'Contact Enquiries', icon: Mail, badge: enquiryCount },
-    { path: '/appointments', label: 'Appointments', icon: Calendar, badge: 12 },
+    { path: '/appointments', label: 'Appointments', icon: Calendar, badge: appointmentCount },
     // { path: '/services', label: 'Services', icon: Layers }, 
     // { path: '/treatments', label: 'Treatments', icon: Stethoscope },
     { path: '/gallery', label: 'Gallery', icon: ImageIcon },

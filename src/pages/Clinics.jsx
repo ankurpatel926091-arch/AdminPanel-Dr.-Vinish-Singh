@@ -2,7 +2,7 @@ import React from 'react';
 import { MapPin, Phone, Clock, Plus, Building2 } from 'lucide-react';
 
 const clinics = [
-  { id: 1, name: 'Apollo Hospital & Urology Clinic', city: 'Lucknow', address: 'Sector B, Bargawan, LDA Colony, Kanpur Road, Lucknow, UP', phone: '+91 98765 43210', timings: '10:00 AM - 02:00 PM (Mon-Sat)' },
+  { id: 1, name: 'Apollo Hospital & Urology Clinic', city: 'Lucknow', address: 'Sector B, Bargawan, LDA Colony, Kanpur Road, Lucknow, UP', phone: '+91 98765 43210', timings: '10:00 AM - 03:00 PM (Mon-Sat)' },
   { id: 2, name: 'Vinish Urology Super Specialty Center', city: 'Lucknow', address: 'Hazratganj Main Road, Lucknow, UP', phone: '+91 97654 32101', timings: '04:00 PM - 07:00 PM (Mon-Sat)' }
 ];
 
