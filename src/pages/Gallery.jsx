@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Image as ImageIcon, Video, Upload, Trash2, Eye, X, Check, FileUp, Link2, Play, CheckCircle2, EyeOff, Loader2 } from 'lucide-react';
+import { Image as ImageIcon, Video, Upload, Trash2, Eye, X, Check, FileUp, Link2, Play, CheckCircle2, EyeOff, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import doctorPhoto from '../assets/doctor.jpg';
 import {
   getAdminGalleryApi,
@@ -76,6 +76,8 @@ export default function Gallery() {
   const [submitting, setSubmitting] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [previewMedia, setPreviewMedia] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 8;
 
   // Form State
   const [uploadSource, setUploadSource] = useState('file'); // 'file' or 'url'
@@ -106,12 +108,37 @@ export default function Gallery() {
     fetchGallery();
   }, []);
 
+  // Reset pagination when active category tab changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab]);
+
   const filtered = gallery.filter(item => {
     if (activeTab === 'All') return true;
     if (activeTab === 'Photos') return item.type === 'photo' || item.category === 'Photos';
     if (activeTab === 'Videos') return item.type === 'video' || item.category === 'Videos';
     return item.category === activeTab;
   });
+
+  // Pagination Calculations
+  const totalItems = filtered.length;
+  const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE) || 1;
+  const validCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
+  const startIndex = (validCurrentPage - 1) * ITEMS_PER_PAGE;
+  const paginatedItems = filtered.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+
+  const getPageNumbers = (current, total) => {
+    if (total <= 7) {
+      return Array.from({ length: total }, (_, i) => i + 1);
+    }
+    if (current <= 4) {
+      return [1, 2, 3, 4, 5, '...', total];
+    }
+    if (current >= total - 3) {
+      return [1, '...', total - 4, total - 3, total - 2, total - 1, total];
+    }
+    return [1, '...', current - 1, current, current + 1, '...', total];
+  };
 
   const getCategoryCount = (categoryName) => {
     if (categoryName === 'All') return gallery.length;
@@ -290,105 +317,161 @@ export default function Gallery() {
         </div>
       )}
 
-      {/* Gallery Grid */}
-      {!loading && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {filtered.map(img => {
-            const itemId = img._id || img.id;
-            return (
-              <div key={itemId} className={`group relative bg-white rounded-2xl overflow-hidden border shadow-xs hover:shadow-lg transition-all flex flex-col justify-between ${
-                img.active ? 'border-slate-200/80' : 'border-amber-200/70 bg-amber-50/20'
-              }`}>
-                <div className="h-56 overflow-hidden bg-slate-900 relative">
-                  {img.type === 'video' ? (
-                    <video src={getSecureMediaUrl(img.url)} className="w-full h-full object-cover object-top" muted />
-                  ) : (
-                    <img
-                      src={getSecureMediaUrl(img.url)}
-                      alt={img.title}
-                      loading="lazy"
-                      className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-300 opacity-90 group-hover:opacity-100"
-                    />
-                  )}
-
-                  {/* Category Pill */}
-                  <span className="absolute top-3 left-3 px-2.5 py-1 text-[10px] font-bold rounded-full bg-slate-900/80 backdrop-blur-xs text-white border border-white/20 uppercase tracking-wider">
-                    {img.category}
-                  </span>
-
-                  {/* Media Type Icon Badge */}
-                  <span className="absolute top-3 right-3 p-1.5 rounded-full bg-blue-600 text-white shadow-md">
-                    {img.type === 'video' ? <Video className="w-3.5 h-3.5" /> : <ImageIcon className="w-3.5 h-3.5" />}
-                  </span>
-
-                  {/* Play icon overlay for videos */}
-                  {img.type === 'video' && (
-                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                      <div className="w-10 h-10 rounded-full bg-blue-600/90 text-white flex items-center justify-center shadow-lg border border-white/40">
-                        <Play className="w-5 h-5 ml-0.5 fill-white" />
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Overlay Actions */}
-                  <div className="absolute inset-0 bg-slate-950/60 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center gap-2">
-                    <button
-                      onClick={() => setPreviewMedia(img)}
-                      className="p-2.5 rounded-xl bg-white/20 hover:bg-white text-white hover:text-slate-900 backdrop-blur-md transition-colors cursor-pointer"
-                      title="Preview"
-                    >
-                      <Eye className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(itemId)}
-                      className="p-2.5 rounded-xl bg-rose-600/80 hover:bg-rose-600 text-white backdrop-blur-md transition-colors cursor-pointer"
-                      title="Delete"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-
-                <div className="p-3.5 space-y-3">
-                  <div>
-                    <h4 className="text-xs font-bold text-slate-800 truncate" title={img.title}>
-                      {img.title}
-                    </h4>
-                    {img.fileName && (
-                      <span className="text-[10px] font-semibold text-emerald-600 block truncate mt-0.5">
-                        File: {img.fileName}
-                      </span>
+      {/* Gallery Grid & Pagination */}
+      {!loading && filtered.length > 0 && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {paginatedItems.map(img => {
+              const itemId = img._id || img.id;
+              return (
+                <div key={itemId} className={`group relative bg-white rounded-2xl overflow-hidden border shadow-xs hover:shadow-lg transition-all flex flex-col justify-between ${
+                  img.active ? 'border-slate-200/80' : 'border-amber-200/70 bg-amber-50/20'
+                }`}>
+                  <div className="h-56 overflow-hidden bg-slate-900 relative">
+                    {img.type === 'video' ? (
+                      <video src={getSecureMediaUrl(img.url)} className="w-full h-full object-cover object-top" muted />
+                    ) : (
+                      <img
+                        src={getSecureMediaUrl(img.url)}
+                        alt={img.title}
+                        loading="lazy"
+                        className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-300 opacity-90 group-hover:opacity-100"
+                      />
                     )}
+
+                    {/* Category Pill */}
+                    <span className="absolute top-3 left-3 px-2.5 py-1 text-[10px] font-bold rounded-full bg-slate-900/80 backdrop-blur-xs text-white border border-white/20 uppercase tracking-wider">
+                      {img.category}
+                    </span>
+
+                    {/* Media Type Icon Badge */}
+                    <span className="absolute top-3 right-3 p-1.5 rounded-full bg-blue-600 text-white shadow-md">
+                      {img.type === 'video' ? <Video className="w-3.5 h-3.5" /> : <ImageIcon className="w-3.5 h-3.5" />}
+                    </span>
+
+                    {/* Play icon overlay for videos */}
+                    {img.type === 'video' && (
+                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <div className="w-10 h-10 rounded-full bg-blue-600/90 text-white flex items-center justify-center shadow-lg border border-white/40">
+                          <Play className="w-5 h-5 ml-0.5 fill-white" />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Overlay Actions */}
+                    <div className="absolute inset-0 bg-slate-950/60 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center gap-2">
+                      <button
+                        onClick={() => setPreviewMedia(img)}
+                        className="p-2.5 rounded-xl bg-white/20 hover:bg-white text-white hover:text-slate-900 backdrop-blur-md transition-colors cursor-pointer"
+                        title="Preview"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(itemId)}
+                        className="p-2.5 rounded-xl bg-rose-600/80 hover:bg-rose-600 text-white backdrop-blur-md transition-colors cursor-pointer"
+                        title="Delete"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
 
-                  {/* Interactive Clickable Active / Inactive Status Button */}
-                  <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
-                    <button
-                      onClick={() => toggleGalleryStatus(itemId)}
-                      className={`w-full py-1.5 px-3 rounded-xl text-[11px] font-bold border flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                        img.active
-                          ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200'
-                          : 'bg-slate-100 hover:bg-slate-200 text-slate-600 border-slate-200'
-                      }`}
-                      title="Click to toggle website visibility status"
-                    >
-                      {img.active ? (
-                        <>
-                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                          <span>Active on Website</span>
-                        </>
-                      ) : (
-                        <>
-                          <EyeOff className="w-3.5 h-3.5 text-slate-500" />
-                          <span>Inactive / Hidden</span>
-                        </>
+                  <div className="p-3.5 space-y-3">
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-800 truncate" title={img.title}>
+                        {img.title}
+                      </h4>
+                      {img.fileName && (
+                        <span className="text-[10px] font-semibold text-emerald-600 block truncate mt-0.5">
+                          File: {img.fileName}
+                        </span>
                       )}
-                    </button>
+                    </div>
+
+                    {/* Interactive Clickable Active / Inactive Status Button */}
+                    <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+                      <button
+                        onClick={() => toggleGalleryStatus(itemId)}
+                        className={`w-full py-1.5 px-3 rounded-xl text-[11px] font-bold border flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                          img.active
+                            ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200'
+                            : 'bg-slate-100 hover:bg-slate-200 text-slate-600 border-slate-200'
+                        }`}
+                        title="Click to toggle website visibility status"
+                      >
+                        {img.active ? (
+                          <>
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>Active on Website</span>
+                          </>
+                        ) : (
+                          <>
+                            <EyeOff className="w-3.5 h-3.5 text-slate-500" />
+                            <span>Inactive / Hidden</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
                   </div>
                 </div>
+              );
+            })}
+          </div>
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-4 sm:px-6 rounded-2xl border border-slate-200/80 shadow-xs">
+              <div className="text-xs text-slate-500 font-medium">
+                Showing <span className="font-bold text-slate-800">{startIndex + 1}</span> to{' '}
+                <span className="font-bold text-slate-800">{Math.min(startIndex + ITEMS_PER_PAGE, totalItems)}</span> of{' '}
+                <span className="font-bold text-slate-800">{totalItems}</span> gallery items
               </div>
-            );
-          })}
+
+              <div className="flex items-center gap-1.5 flex-wrap justify-center">
+                {/* Previous Button */}
+                <button
+                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                  disabled={validCurrentPage === 1}
+                  className="px-3 py-1.5 rounded-xl text-xs font-bold border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-1 cursor-pointer"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  <span>Previous</span>
+                </button>
+
+                {/* Page Numbers */}
+                {getPageNumbers(validCurrentPage, totalPages).map((pageNum, idx) =>
+                  pageNum === '...' ? (
+                    <span key={`dots-${idx}`} className="px-2 text-xs font-bold text-slate-400">
+                      ...
+                    </span>
+                  ) : (
+                    <button
+                      key={pageNum}
+                      onClick={() => setCurrentPage(pageNum)}
+                      className={`w-8 h-8 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center ${
+                        validCurrentPage === pageNum
+                          ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
+                          : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  )
+                )}
+
+                {/* Next Button */}
+                <button
+                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                  disabled={validCurrentPage === totalPages}
+                  className="px-3.5 py-1.5 rounded-xl text-xs font-bold border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-1 cursor-pointer"
+                >
+                  <span>Next</span>
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

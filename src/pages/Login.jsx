@@ -277,12 +277,9 @@ export default function Login() {
 
           {/* Footer */}
           <div className="mt-4 text-center text-xs text-slate-400 border-t border-slate-100 pt-3 flex flex-wrap items-center justify-center gap-2">
-            <div className="flex items-center gap-1 text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded-full text-[10px] font-bold border border-emerald-200/60">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-              256-Bit SSL Encrypted
-            </div>
-            <span className="text-slate-300">•</span>
-            <span>© 2024 Dr. Vinish Kumar Singh. All rights reserved.</span>
+           
+            
+            <span>© 2026 Dr. Vinish Kumar Singh. All rights reserved.</span>
           </div>
         </div>
       </div>

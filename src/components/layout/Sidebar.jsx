@@ -36,10 +36,10 @@ export default function Sidebar({ isOpen, isCollapsed, onClose }) {
     // { path: '/treatments', label: 'Treatments', icon: Stethoscope },
     { path: '/gallery', label: 'Gallery', icon: ImageIcon },
     // { path: '/testimonials', label: 'Testimonials', icon: Star },
-    { path: '/profile', label: 'Doctor Profile', icon: User },
+    // { path: '/profile', label: 'Doctor Profile', icon: User },
     { path: '/clinics', label: 'Clinics', icon: MapPin },
     { path: '/blogs', label: 'Blogs', icon: BookOpen },
-    { path: '/settings', label: 'Settings', icon: Settings },
+    // { path: '/settings', label: 'Settings', icon: Settings },
   ];
 
   const handleLogout = () => {

@@ -13,6 +13,66 @@ export const AdminDataProvider = ({ children }) => {
   const [galleryItems, setGalleryItems] = useState([]);
   const [blogs, setBlogs] = useState([]);
 
+  const DEFAULT_CLINICS = [
+    {
+      id: 1,
+      name: 'Rudraksh IVF & Urology Centre',
+      tag: 'Morning OPD',
+      badgeLabel: 'MORNING CONSULTATION CENTRE',
+      city: 'Sharda Nagar, Lucknow',
+      address: '1/795, Ratan Khand, Sharda Nagar, Lucknow, UP 226002',
+      phone: '+91 89600 68307',
+      timings: '10:00 AM – 03:00 PM',
+      image: 'https://images.unsplash.com/photo-1586773860418-d37222d8fce3?auto=format&fit=crop&q=80&w=800',
+      mapUrl: 'https://maps.app.goo.gl/jbynbpoL5PcKca4Z9',
+      embedUrl: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3561.428!2d80.9242723!3d26.7803631!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x399bff149cec4b2d%3A0xe680ad74dd601b3b!2sDr.%20Vinish%20Singh%20%7C%20Rudraksh%20IVF%20%26%20Urology%20Centre!5e0!3m2!1sen!2sin',
+      active: true
+    },
+    {
+      id: 2,
+      name: 'Dr. Shilpi Maternity & Urology Centre',
+      tag: 'Evening OPD',
+      badgeLabel: 'EVENING CONSULTATION CENTRE',
+      city: 'Pakkabag, Ring Road, Lucknow',
+      address: '596Pb/1114/03, Ring Rd, Pakkabag, Lucknow, UP 226017',
+      phone: '+91 86048 91955',
+      timings: '03:00 PM – 07:00 PM',
+      image: 'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&q=80&w=800',
+      mapUrl: 'https://maps.app.goo.gl/w9mqio5fe4Hj8KLm9',
+      embedUrl: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3558.200!2d80.8609337!3d26.8566859!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x399bff2d7be105cf%3A0x87c6db827648df8!2sDr.%20Shilpi%20Maternity%20%26%20Urology%20Centre!5e0!3m2!1sen!2sin',
+      active: true
+    }
+  ];
+
+  const [clinics, setClinics] = useState(() => {
+    try {
+      const saved = localStorage.getItem('dr_vinish_clinics');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return parsed.map(c => {
+          if (c.name && c.name.includes('Rudraksh')) {
+            return { ...c, embedUrl: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3561.428!2d80.9242723!3d26.7803631!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x399bff149cec4b2d%3A0xe680ad74dd601b3b!2sDr.%20Vinish%20Singh%20%7C%20Rudraksh%20IVF%20%26%20Urology%20Centre!5e0!3m2!1sen!2sin' };
+          }
+          if (c.name && c.name.includes('Shilpi')) {
+            return { ...c, embedUrl: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3558.200!2d80.8609337!3d26.8566859!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x399bff2d7be105cf%3A0x87c6db827648df8!2sDr.%20Shilpi%20Maternity%20%26%20Urology%20Centre!5e0!3m2!1sen!2sin' };
+          }
+          return c;
+        });
+      }
+      return DEFAULT_CLINICS;
+    } catch {
+      return DEFAULT_CLINICS;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('dr_vinish_clinics', JSON.stringify(clinics));
+    } catch (err) {
+      console.warn('Failed to save clinics to localStorage', err);
+    }
+  }, [clinics]);
+
   const [appointments, setAppointments] = useState([
     {
       id: 1,
@@ -29,18 +89,18 @@ export const AdminDataProvider = ({ children }) => {
       id: 2,
       name: 'Amit Kumar',
       phone: '9765432101',
-      centre: '🌇 Afternoon OPD: Apollomedics Super Speciality Hospital (LDA Colony, 02 PM - 04 PM)',
+      centre: '🌆 Evening OPD: Dr. Shilpi Maternity & Urology Centre (Pakkabag, 03 PM - 07 PM)',
       problem: 'Prostate Care & Enlargement (BPH / TURP)',
       message: 'Frequent night urination and weak stream.',
       date: '21 May 2025',
-      time: '02:00 PM',
+      time: '04:00 PM',
       status: 'Confirmed'
     },
     {
       id: 3,
       name: 'Neha Singh',
       phone: '9654321098',
-      centre: '🌆 Evening OPD: Chandan Hospital (Faizabad Road, 05 PM - 07 PM)',
+      centre: '🌆 Evening OPD: Dr. Shilpi Maternity & Urology Centre (Pakkabag, 03 PM - 07 PM)',
       problem: 'Urine Leakage & UTI Infection',
       message: 'Burning sensation and discomfort since 3 days.',
       date: '22 May 2025',
@@ -62,22 +122,22 @@ export const AdminDataProvider = ({ children }) => {
       id: 5,
       name: 'Vikas Yadav',
       phone: '9432109876',
-      centre: '🌇 Afternoon OPD: Apollomedics Super Speciality Hospital (LDA Colony, 02 PM - 04 PM)',
+      centre: '🌅 Morning OPD: Rudraksh IVF & Urology Centre (Sharda Nagar, 10 AM - 03 PM)',
       problem: 'General Urology Consultation',
       message: 'Routine checkup for kidney health.',
       date: '24 May 2025',
-      time: '03:00 PM',
+      time: '11:30 AM',
       status: 'Cancelled'
     },
     {
       id: 6,
       name: 'Sanjay Patel',
       phone: '9321098765',
-      centre: '🌆 Evening OPD: Chandan Hospital (Faizabad Road, 05 PM - 07 PM)',
+      centre: '🌆 Evening OPD: Dr. Shilpi Maternity & Urology Centre (Pakkabag, 03 PM - 07 PM)',
       problem: 'Kidney Stone Consultation',
       message: 'Evaluation for endoscopic stone treatment.',
       date: '25 May 2025',
-      time: '12:15 PM',
+      time: '05:15 PM',
       status: 'Missed'
     },
     {
@@ -348,6 +408,28 @@ export const AdminDataProvider = ({ children }) => {
     setServices(prev => prev.filter(s => s.id !== id));
   };
 
+  // Clinics CRUD handlers
+  const addClinic = (newClinic) => {
+    const clinicWithId = {
+      ...newClinic,
+      id: Date.now(),
+      active: true
+    };
+    setClinics(prev => [...prev, clinicWithId]);
+  };
+
+  const updateClinic = (id, updatedFields) => {
+    setClinics(prev => prev.map(c => c.id === id ? { ...c, ...updatedFields } : c));
+  };
+
+  const toggleClinicStatus = (id) => {
+    setClinics(prev => prev.map(c => c.id === id ? { ...c, active: !c.active } : c));
+  };
+
+  const deleteClinic = (id) => {
+    setClinics(prev => prev.filter(c => c.id !== id));
+  };
+
   return (
     <AdminDataContext.Provider value={{
       stats,
@@ -356,6 +438,7 @@ export const AdminDataProvider = ({ children }) => {
       testimonials,
       chartData,
       services,
+      clinics,
       galleryItems,
       blogs,
       loadingEnquiries,
@@ -370,7 +453,11 @@ export const AdminDataProvider = ({ children }) => {
       addService,
       updateService,
       toggleServiceStatus,
-      deleteService
+      deleteService,
+      addClinic,
+      updateClinic,
+      toggleClinicStatus,
+      deleteClinic
     }}>
       {children}
     </AdminDataContext.Provider>

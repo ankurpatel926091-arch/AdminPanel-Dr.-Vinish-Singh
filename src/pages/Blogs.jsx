@@ -25,7 +25,9 @@ import {
   Upload,
   Image as ImageIcon,
   ArrowLeft,
-  Save
+  Save,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import {
   getAdminBlogsApi,
@@ -42,6 +44,13 @@ export default function Blogs() {
   const [error, setError] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 6;
+
+  // Reset pagination to page 1 when search query or status filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter]);
 
   // Notification Toast
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
@@ -285,6 +294,27 @@ export default function Blogs() {
     return matchesSearch && matchesStatus;
   });
 
+  // Pagination Calculations
+  const totalBlogs = filteredBlogs.length;
+  const totalPages = Math.ceil(totalBlogs / ITEMS_PER_PAGE) || 1;
+  const validCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
+  const startIndex = (validCurrentPage - 1) * ITEMS_PER_PAGE;
+  const paginatedBlogs = filteredBlogs.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+
+  // Generate page numbers array with ellipsis if needed
+  const getPageNumbers = (current, total) => {
+    if (total <= 7) {
+      return Array.from({ length: total }, (_, i) => i + 1);
+    }
+    if (current <= 4) {
+      return [1, 2, 3, 4, 5, '...', total];
+    }
+    if (current >= total - 3) {
+      return [1, '...', total - 4, total - 3, total - 2, total - 1, total];
+    }
+    return [1, '...', current - 1, current, current + 1, '...', total];
+  };
+
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
       {/* Toast Notification */}
@@ -431,115 +461,171 @@ export default function Blogs() {
             </div>
           )}
 
-          {/* Blog Cards Grid */}
+          {/* Blog Cards Grid & Pagination */}
           {!loading && !error && filteredBlogs.length > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-              {filteredBlogs.map((blog) => {
-                const isPublished = blog.status === 'Published';
-                return (
-                  <div
-                    key={blog._id || blog.id}
-                    className="bg-white rounded-3xl border border-slate-200/80 shadow-2xs hover:shadow-lg transition-all duration-300 flex flex-col justify-between overflow-hidden group"
-                  >
-                    <div>
-                      {/* Image Container with Badges */}
-                      <div className="relative h-52 sm:h-56 bg-slate-100 overflow-hidden">
-                        <img
-                          src={blog.image || 'https://images.unsplash.com/photo-1579684385127-1ef15d508118?auto=format&fit=crop&q=80&w=800'}
-                          alt={blog.title}
-                          className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-500"
-                          onError={(e) => {
-                            e.target.src = 'https://images.unsplash.com/photo-1579684385127-1ef15d508118?auto=format&fit=crop&q=80&w=800';
-                          }}
-                        />
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                {paginatedBlogs.map((blog) => {
+                  const isPublished = blog.status === 'Published';
+                  return (
+                    <div
+                      key={blog._id || blog.id}
+                      className="bg-white rounded-3xl border border-slate-200/80 shadow-2xs hover:shadow-lg transition-all duration-300 flex flex-col justify-between overflow-hidden group"
+                    >
+                      <div>
+                        {/* Image Container with Badges */}
+                        <div className="relative h-52 sm:h-56 bg-slate-100 overflow-hidden">
+                          <img
+                            src={blog.image || 'https://images.unsplash.com/photo-1579684385127-1ef15d508118?auto=format&fit=crop&q=80&w=800'}
+                            alt={blog.title}
+                            className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-500"
+                            onError={(e) => {
+                              e.target.src = 'https://images.unsplash.com/photo-1579684385127-1ef15d508118?auto=format&fit=crop&q=80&w=800';
+                            }}
+                          />
 
-                        {/* Category Pill */}
-                        <span className="absolute top-3 left-3 px-3 py-1 text-[10px] font-black uppercase tracking-wider rounded-full bg-slate-900/85 text-white backdrop-blur-md border border-white/20 shadow-xs">
-                          {blog.category || 'Urology Care'}
-                        </span>
-
-                        {/* Featured Star Badge */}
-                        {blog.featured && (
-                          <span className="absolute top-3 right-3 p-1.5 rounded-full bg-amber-500 text-white shadow-md" title="Featured Blog">
-                            <Star className="w-3.5 h-3.5 fill-current" />
+                          {/* Category Pill */}
+                          <span className="absolute top-3 left-3 px-3 py-1 text-[10px] font-black uppercase tracking-wider rounded-full bg-slate-900/85 text-white backdrop-blur-md border border-white/20 shadow-xs">
+                            {blog.category || 'Urology Care'}
                           </span>
-                        )}
 
-                        {/* Status Pill Badge */}
-                        <div className="absolute bottom-3 left-3 flex items-center gap-1.5">
-                          <span
-                            className={`px-2.5 py-0.5 text-[10px] font-extrabold rounded-full backdrop-blur-md border ${
-                              isPublished
-                                ? 'bg-emerald-500/90 text-white border-emerald-400/50 shadow-xs'
-                                : 'bg-amber-500/90 text-white border-amber-400/50 shadow-xs'
-                            }`}
-                          >
-                            {blog.status}
-                          </span>
+                          {/* Featured Star Badge */}
+                          {blog.featured && (
+                            <span className="absolute top-3 right-3 p-1.5 rounded-full bg-amber-500 text-white shadow-md" title="Featured Blog">
+                              <Star className="w-3.5 h-3.5 fill-current" />
+                            </span>
+                          )}
+
+                          {/* Status Pill Badge */}
+                          <div className="absolute bottom-3 left-3 flex items-center gap-1.5">
+                            <span
+                              className={`px-2.5 py-0.5 text-[10px] font-extrabold rounded-full backdrop-blur-md border ${
+                                isPublished
+                                  ? 'bg-emerald-500/90 text-white border-emerald-400/50 shadow-xs'
+                                  : 'bg-amber-500/90 text-white border-amber-400/50 shadow-xs'
+                              }`}
+                            >
+                              {blog.status}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Body Content */}
+                        <div className="p-5 space-y-2">
+                          <h3 className="text-sm font-bold text-slate-800 leading-snug line-clamp-2 group-hover:text-blue-600 transition-colors">
+                            {blog.title}
+                          </h3>
+                          <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed font-normal">
+                            {blog.shortDescription || blog.summary || blog.excerpt || (typeof blog.content === 'string' ? blog.content.slice(0, 120) : 'No summary available...')}
+                          </p>
                         </div>
                       </div>
 
-                      {/* Body Content */}
-                      <div className="p-5 space-y-2">
-                        <h3 className="text-sm font-bold text-slate-800 leading-snug line-clamp-2 group-hover:text-blue-600 transition-colors">
-                          {blog.title}
-                        </h3>
-                        <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed font-normal">
-                          {blog.shortDescription || blog.summary || blog.excerpt || (typeof blog.content === 'string' ? blog.content.slice(0, 120) : 'No summary available...')}
-                        </p>
+                      {/* Card Footer Meta & Actions */}
+                      <div className="p-5 pt-3 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between text-xs text-slate-400">
+                        <div className="flex items-center gap-3">
+                          <span className="flex items-center gap-1 font-medium text-[11px]">
+                            <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                            {blog.publishDate || 'Recent'}
+                          </span>
+                          <span className="flex items-center gap-1 font-medium text-[11px]">
+                            <Clock className="w-3.5 h-3.5 text-slate-400" />
+                            {blog.readTime || '5 min'}
+                          </span>
+                        </div>
+
+                        {/* Actions Row */}
+                        <div className="flex items-center gap-1">
+                          {/* Status Toggle Button */}
+                          <button
+                            onClick={() => handleToggleStatus(blog)}
+                            className={`p-1.5 rounded-lg border transition-colors cursor-pointer ${
+                              isPublished
+                                ? 'text-slate-600 hover:text-amber-600 bg-white hover:bg-amber-50 border-slate-200'
+                                : 'text-amber-600 hover:text-emerald-600 bg-amber-50 hover:bg-emerald-50 border-amber-200'
+                            }`}
+                            title={isPublished ? 'Switch to Draft' : 'Publish Blog'}
+                          >
+                            {isPublished ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+                          </button>
+
+                          {/* Edit Button */}
+                          <button
+                            onClick={() => handleOpenEditPage(blog)}
+                            className="p-1.5 text-blue-600 hover:text-blue-700 bg-white hover:bg-blue-50 rounded-lg border border-slate-200 transition-colors cursor-pointer"
+                            title="Edit Blog"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
+
+                          {/* Delete Button */}
+                          <button
+                            onClick={() => handlePromptDelete(blog)}
+                            className="p-1.5 text-rose-600 hover:text-rose-700 bg-white hover:bg-rose-50 rounded-lg border border-slate-200 transition-colors cursor-pointer"
+                            title="Delete Blog"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </div>
                     </div>
+                  );
+                })}
+              </div>
 
-                    {/* Card Footer Meta & Actions */}
-                    <div className="p-5 pt-3 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between text-xs text-slate-400">
-                      <div className="flex items-center gap-3">
-                        <span className="flex items-center gap-1 font-medium text-[11px]">
-                          <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                          {blog.publishDate || 'Recent'}
-                        </span>
-                        <span className="flex items-center gap-1 font-medium text-[11px]">
-                          <Clock className="w-3.5 h-3.5 text-slate-400" />
-                          {blog.readTime || '5 min'}
-                        </span>
-                      </div>
-
-                      {/* Actions Row */}
-                      <div className="flex items-center gap-1">
-                        {/* Status Toggle Button */}
-                        <button
-                          onClick={() => handleToggleStatus(blog)}
-                          className={`p-1.5 rounded-lg border transition-colors cursor-pointer ${
-                            isPublished
-                              ? 'text-slate-600 hover:text-amber-600 bg-white hover:bg-amber-50 border-slate-200'
-                              : 'text-amber-600 hover:text-emerald-600 bg-amber-50 hover:bg-emerald-50 border-amber-200'
-                          }`}
-                          title={isPublished ? 'Switch to Draft' : 'Publish Blog'}
-                        >
-                          {isPublished ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
-                        </button>
-
-                        {/* Edit Button */}
-                        <button
-                          onClick={() => handleOpenEditPage(blog)}
-                          className="p-1.5 text-blue-600 hover:text-blue-700 bg-white hover:bg-blue-50 rounded-lg border border-slate-200 transition-colors cursor-pointer"
-                          title="Edit Blog"
-                        >
-                          <Edit2 className="w-3.5 h-3.5" />
-                        </button>
-
-                        {/* Delete Button */}
-                        <button
-                          onClick={() => handlePromptDelete(blog)}
-                          className="p-1.5 text-rose-600 hover:text-rose-700 bg-white hover:bg-rose-50 rounded-lg border border-slate-200 transition-colors cursor-pointer"
-                          title="Delete Blog"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </div>
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-4 sm:px-6 rounded-3xl border border-slate-200/80 shadow-2xs">
+                  <div className="text-xs text-slate-500 font-medium">
+                    Showing <span className="font-bold text-slate-800">{startIndex + 1}</span> to{' '}
+                    <span className="font-bold text-slate-800">{Math.min(startIndex + ITEMS_PER_PAGE, totalBlogs)}</span> of{' '}
+                    <span className="font-bold text-slate-800">{totalBlogs}</span> blogs
                   </div>
-                );
-              })}
+
+                  <div className="flex items-center gap-1.5 flex-wrap justify-center">
+                    {/* Previous Button */}
+                    <button
+                      onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                      disabled={validCurrentPage === 1}
+                      className="px-3.5 py-2 rounded-xl text-xs font-bold border border-slate-200/80 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-900 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                      <span>Previous</span>
+                    </button>
+
+                    {/* Page Numbers */}
+                    {getPageNumbers(validCurrentPage, totalPages).map((pageNum, idx) =>
+                      pageNum === '...' ? (
+                        <span key={`dots-${idx}`} className="px-2 text-xs font-bold text-slate-400">
+                          ...
+                        </span>
+                      ) : (
+                        <button
+                          key={pageNum}
+                          onClick={() => setCurrentPage(pageNum)}
+                          className={`w-9 h-9 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center ${
+                            validCurrentPage === pageNum
+                              ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
+                              : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200/80'
+                          }`}
+                        >
+                          {pageNum}
+                        </button>
+                      )
+                    )}
+
+                    {/* Next Button */}
+                    <button
+                      onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                      disabled={validCurrentPage === totalPages}
+                      className="px-3.5 py-2 rounded-xl text-xs font-bold border border-slate-200/80 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-900 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <span>Next</span>
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </>

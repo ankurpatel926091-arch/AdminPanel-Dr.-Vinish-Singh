@@ -12,14 +12,14 @@ import {
   Hourglass,
   CheckCircle2,
   Phone,
+  XCircle,
   ChevronLeft,
   ChevronRight
 } from 'lucide-react';
 
 const HOSPITAL_CENTRES = [
   '🌅 Morning OPD: Rudraksh IVF & Urology Centre (Sharda Nagar, 10 AM - 03 PM)',
-  '🌇 Afternoon OPD: Apollomedics Super Speciality Hospital (LDA Colony, 02 PM - 04 PM)',
-  '🌆 Evening OPD: Chandan Hospital (Faizabad Road, 05 PM - 07 PM)'
+  '🌆 Evening OPD: Dr. Shilpi Maternity & Urology Centre (Pakkabag, 03 PM - 07 PM)'
 ];
 
 const SPECIALITY_CONDITIONS = [
@@ -36,6 +36,9 @@ const formatClinicDisplay = (fullString) => {
   if (!fullString) return { name: 'Rudraksh IVF & Urology', loc: '(Sharda Nagar)' };
   if (fullString.includes('Rudraksh')) {
     return { name: 'Rudraksh IVF & Urology', loc: '(Sharda Nagar)' };
+  }
+  if (fullString.includes('Shilpi')) {
+    return { name: 'Dr. Shilpi Maternity & Urology', loc: '(Pakkabag)' };
   }
   if (fullString.includes('Apollomedics')) {
     return { name: 'Apollomedics Hospital', loc: '(LDA Colony)' };
@@ -292,17 +295,17 @@ export default function Appointments() {
                       {getStatusBadge(apt.status)}
                     </td>
 
-                    {/* 4 Action Buttons in Perfectly Aligned 2x2 Grid (No Overflow) */}
+                    {/* 4 Action Buttons in Soft Container Grid */}
                     <td className="py-3 px-4 text-center whitespace-nowrap">
-                      <div className="inline-grid grid-cols-2 gap-1.5 justify-center items-center">
+                      <div className="inline-grid grid-cols-2 gap-1.5 justify-center items-center p-1 bg-slate-50/80 rounded-2xl border border-slate-100/80">
                         {/* Top Left: 1. Pending Button (Amber Hourglass) */}
                         <button
                           type="button"
                           onClick={() => updateAppointmentStatus(apt.id, 'Pending')}
                           title="Mark as Pending"
-                          className="w-8.5 h-8.5 rounded-xl bg-[#FFFBF0] border-2 border-[#FBBF24] hover:bg-[#FEF3C7] text-[#D97706] flex items-center justify-center shadow-2xs hover:scale-105 transition-all cursor-pointer"
+                          className="w-8 h-8 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-600 border border-amber-100 flex items-center justify-center shadow-2xs hover:scale-105 transition-all cursor-pointer"
                         >
-                          <Hourglass className="w-4 h-4 text-[#D97706]" strokeWidth={2.2} />
+                          <Hourglass className="w-4 h-4 text-amber-600" strokeWidth={2} />
                         </button>
 
                         {/* Top Right: 2. Confirmed Button (Emerald Checkmark) */}
@@ -310,9 +313,9 @@ export default function Appointments() {
                           type="button"
                           onClick={() => updateAppointmentStatus(apt.id, 'Confirmed')}
                           title="Mark as Confirmed"
-                          className="w-8.5 h-8.5 rounded-xl bg-[#F0FDF4] border-2 border-[#34D399] hover:bg-[#DCFCE7] text-[#059669] flex items-center justify-center shadow-2xs hover:scale-105 transition-all cursor-pointer"
+                          className="w-8 h-8 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-600 border border-emerald-100 flex items-center justify-center shadow-2xs hover:scale-105 transition-all cursor-pointer"
                         >
-                          <CheckCircle2 className="w-4 h-4 text-[#059669]" strokeWidth={2.2} />
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600" strokeWidth={2} />
                         </button>
 
                         {/* Bottom Left: 3. Missed Button (Blue Phone) */}
@@ -320,19 +323,19 @@ export default function Appointments() {
                           type="button"
                           onClick={() => updateAppointmentStatus(apt.id, 'Missed')}
                           title="Mark as Missed"
-                          className="w-8.5 h-8.5 rounded-xl bg-[#F0F7FF] border-2 border-[#60A5FA] hover:bg-[#DBEAFE] text-[#2563EB] flex items-center justify-center shadow-2xs hover:scale-105 transition-all cursor-pointer"
+                          className="w-8 h-8 rounded-xl bg-sky-50 hover:bg-sky-100 text-sky-600 border border-sky-100 flex items-center justify-center shadow-2xs hover:scale-105 transition-all cursor-pointer"
                         >
-                          <Phone className="w-4 h-4 text-[#2563EB]" strokeWidth={2.2} />
+                          <Phone className="w-4 h-4 text-sky-600" strokeWidth={2} />
                         </button>
 
-                        {/* Bottom Right: 4. Cancelled Button (Red X) */}
+                        {/* Bottom Right: 4. Cancelled Button (Red X Circle) */}
                         <button
                           type="button"
                           onClick={() => updateAppointmentStatus(apt.id, 'Cancelled')}
                           title="Mark as Cancelled"
-                          className="w-8.5 h-8.5 rounded-xl bg-[#FFF1F2] border-2 border-[#F87171] hover:bg-[#FFE4E6] text-[#E11D48] flex items-center justify-center shadow-2xs hover:scale-105 transition-all cursor-pointer"
+                          className="w-8 h-8 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-100 flex items-center justify-center shadow-2xs hover:scale-105 transition-all cursor-pointer"
                         >
-                          <X className="w-4 h-4 text-[#E11D48]" strokeWidth={2.5} />
+                          <XCircle className="w-4 h-4 text-rose-600" strokeWidth={2} />
                         </button>
                       </div>
                     </td>
@@ -408,32 +411,32 @@ export default function Appointments() {
         <div className="flex flex-wrap items-center gap-4 sm:gap-6">
           {/* Pending Guide */}
           <div className="inline-flex items-center gap-2">
-            <div className="w-7 h-7 rounded-[10px] bg-[#FFFBF0] border-2 border-[#FBBF24] text-[#D97706] flex items-center justify-center">
-              <Hourglass className="w-3.5 h-3.5" strokeWidth={2.3} />
+            <div className="w-7 h-7 rounded-xl bg-amber-50 border border-amber-200/60 text-amber-600 flex items-center justify-center">
+              <Hourglass className="w-3.5 h-3.5" strokeWidth={2} />
             </div>
             <span className="font-bold text-slate-800">Pending</span>
           </div>
 
           {/* Confirmed Guide */}
           <div className="inline-flex items-center gap-2">
-            <div className="w-7 h-7 rounded-[10px] bg-[#F0FDF4] border-2 border-[#34D399] text-[#059669] flex items-center justify-center">
-              <CheckCircle2 className="w-3.5 h-3.5" strokeWidth={2.3} />
+            <div className="w-7 h-7 rounded-xl bg-emerald-50 border border-emerald-200/60 text-emerald-600 flex items-center justify-center">
+              <CheckCircle2 className="w-3.5 h-3.5" strokeWidth={2} />
             </div>
             <span className="font-bold text-slate-800">Confirmed</span>
           </div>
 
           {/* Missed Guide */}
           <div className="inline-flex items-center gap-2">
-            <div className="w-7 h-7 rounded-[10px] bg-[#F0F7FF] border-2 border-[#60A5FA] text-[#2563EB] flex items-center justify-center">
-              <Phone className="w-3.5 h-3.5" strokeWidth={2.3} />
+            <div className="w-7 h-7 rounded-xl bg-sky-50 border border-sky-200/60 text-sky-600 flex items-center justify-center">
+              <Phone className="w-3.5 h-3.5" strokeWidth={2} />
             </div>
             <span className="font-bold text-slate-800">Missed</span>
           </div>
 
           {/* Cancelled Guide */}
           <div className="inline-flex items-center gap-2">
-            <div className="w-7 h-7 rounded-[10px] bg-[#FFF1F2] border-2 border-[#F87171] text-[#E11D48] flex items-center justify-center">
-              <X className="w-3.5 h-3.5" strokeWidth={2.5} />
+            <div className="w-7 h-7 rounded-xl bg-rose-50 border border-rose-200/60 text-rose-600 flex items-center justify-center">
+              <XCircle className="w-3.5 h-3.5" strokeWidth={2} />
             </div>
             <span className="font-bold text-slate-800">Cancelled</span>
           </div>

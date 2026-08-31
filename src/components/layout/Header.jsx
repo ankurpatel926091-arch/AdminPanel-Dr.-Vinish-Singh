@@ -73,7 +73,7 @@ export default function Header({ onToggleSidebar, onOpenSearch }) {
                 <p className="text-xs font-bold text-slate-800">Dr. Vinish Kumar Singh</p>
                 <p className="text-[11px] text-slate-400 mt-0.5">admin@drvinish.com</p>
               </div>
-              <div className="py-1">
+              {/* <div className="py-1">
                 <button
                   onClick={() => { setShowProfileMenu(false); navigate('/profile'); }}
                   className="w-full text-left px-4 py-2 text-xs font-medium text-slate-600 hover:text-blue-600 hover:bg-blue-50 flex items-center gap-2"
@@ -86,7 +86,7 @@ export default function Header({ onToggleSidebar, onOpenSearch }) {
                 >
                   <Settings className="w-4 h-4" /> Account Settings
                 </button>
-              </div>
+              </div> */}
               <div className="border-t border-slate-100 pt-1">
                 <button
                   onClick={() => { logout(); navigate('/login'); }}

@@ -2,17 +2,24 @@ import React, { useState, useEffect } from 'react';
 import { useAdminData } from '../context/AdminDataContext';
 import StatusBadge from '../components/common/StatusBadge';
 import Modal from '../components/common/Modal';
-import { Mail, Search, Eye, Trash2, CheckCircle, Clock, RefreshCw } from 'lucide-react';
+import { Mail, Search, Eye, Trash2, CheckCircle, Clock, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
 
 export default function ContactEnquiries() {
   const { enquiries, fetchEnquiries, loadingEnquiries, updateEnquiryStatus, deleteEnquiry } = useAdminData();
   const [filter, setFilter] = useState('All');
   const [search, setSearch] = useState('');
   const [selectedEnquiry, setSelectedEnquiry] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 6;
 
   useEffect(() => {
     fetchEnquiries();
   }, []);
+
+  // Reset to page 1 when filter or search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filter, search]);
 
   const filtered = enquiries.filter(item => {
     const matchesFilter = filter === 'All' || item.status.toLowerCase() === filter.toLowerCase();
@@ -21,6 +28,26 @@ export default function ContactEnquiries() {
                           item.phone.includes(search);
     return matchesFilter && matchesSearch;
   });
+
+  // Pagination Calculations
+  const totalEnquiries = filtered.length;
+  const totalPages = Math.ceil(totalEnquiries / ITEMS_PER_PAGE) || 1;
+  const validCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
+  const startIndex = (validCurrentPage - 1) * ITEMS_PER_PAGE;
+  const paginatedEnquiries = filtered.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+
+  const getPageNumbers = (current, total) => {
+    if (total <= 7) {
+      return Array.from({ length: total }, (_, i) => i + 1);
+    }
+    if (current <= 4) {
+      return [1, 2, 3, 4, 5, '...', total];
+    }
+    if (current >= total - 3) {
+      return [1, '...', total - 4, total - 3, total - 2, total - 1, total];
+    }
+    return [1, '...', current - 1, current, current + 1, '...', total];
+  };
 
   const handleDelete = (id) => {
     if (confirm('Are you sure you want to delete this contact enquiry?')) {
@@ -107,7 +134,7 @@ export default function ContactEnquiries() {
                   </td>
                 </tr>
               ) : (
-                filtered.map(enq => {
+                paginatedEnquiries.map(enq => {
                   const itemId = enq._id || enq.id;
                   return (
                     <tr key={itemId} className="hover:bg-slate-50/80 transition-colors">
@@ -147,6 +174,60 @@ export default function ContactEnquiries() {
         </div>
       </div>
 
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-4 sm:px-6 rounded-2xl border border-slate-200/80 shadow-xs">
+          <div className="text-xs text-slate-500 font-medium">
+            Showing <span className="font-bold text-slate-800">{startIndex + 1}</span> to{' '}
+            <span className="font-bold text-slate-800">{Math.min(startIndex + ITEMS_PER_PAGE, totalEnquiries)}</span> of{' '}
+            <span className="font-bold text-slate-800">{totalEnquiries}</span> enquiries
+          </div>
+
+          <div className="flex items-center gap-1.5 flex-wrap justify-center">
+            {/* Previous Button */}
+            <button
+              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+              disabled={validCurrentPage === 1}
+              className="px-3 py-1.5 rounded-xl text-xs font-bold border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-1 cursor-pointer"
+            >
+              <ChevronLeft className="w-4 h-4" />
+              <span>Previous</span>
+            </button>
+
+            {/* Page Numbers */}
+            {getPageNumbers(validCurrentPage, totalPages).map((pageNum, idx) =>
+              pageNum === '...' ? (
+                <span key={`dots-${idx}`} className="px-2 text-xs font-bold text-slate-400">
+                  ...
+                </span>
+              ) : (
+                <button
+                  key={pageNum}
+                  onClick={() => setCurrentPage(pageNum)}
+                  className={`w-8 h-8 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center ${
+                    validCurrentPage === pageNum
+                      ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
+                      : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+                  }`}
+                >
+                  {pageNum}
+                </button>
+              )
+            )}
+
+            {/* Next Button */}
+            <button
+              onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+              disabled={validCurrentPage === totalPages}
+              className="px-3.5 py-1.5 rounded-xl text-xs font-bold border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-1 cursor-pointer"
+            >
+              <span>Next</span>
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Details Modal */}
       {selectedEnquiry && (
         <Modal
@@ -185,13 +266,13 @@ export default function ContactEnquiries() {
               <span className="text-slate-400 font-semibold">Mark Status As:</span>
               <div className="flex gap-2">
                 <button
-                  onClick={() => { updateEnquiryStatus(selectedEnquiry.id, 'Read'); setSelectedEnquiry(null); }}
+                  onClick={() => { updateEnquiryStatus(selectedEnquiry._id || selectedEnquiry.id, 'Read'); setSelectedEnquiry(null); }}
                   className="px-3 py-1.5 bg-sky-50 text-sky-700 border border-sky-200 rounded-lg font-bold hover:bg-sky-100"
                 >
                   Read
                 </button>
                 <button
-                  onClick={() => { updateEnquiryStatus(selectedEnquiry.id, 'Replied'); setSelectedEnquiry(null); }}
+                  onClick={() => { updateEnquiryStatus(selectedEnquiry._id || selectedEnquiry.id, 'Replied'); setSelectedEnquiry(null); }}
                   className="px-3 py-1.5 bg-emerald-600 text-white rounded-lg font-bold hover:bg-emerald-700 shadow-xs"
                 >
                   Mark Replied
