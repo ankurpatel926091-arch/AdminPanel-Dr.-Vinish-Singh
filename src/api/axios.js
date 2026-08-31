@@ -31,10 +31,24 @@ API.interceptors.request.use(
   }
 );
 
-// Interceptor to handle 401 unauthorized errors
+// Interceptor to handle 401 unauthorized errors and automatic online fallback
 API.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
+    const originalRequest = error.config;
+
+    // If local request failed due to network error (backend stopped), fallback to Render API
+    if (!error.response && originalRequest && !originalRequest._retry) {
+      originalRequest._retry = true;
+      const fallbackBaseUrl = 'https://dr-vinish-backend.onrender.com/api';
+      originalRequest.baseURL = fallbackBaseUrl;
+      try {
+        return await axios(originalRequest);
+      } catch (fallbackErr) {
+        // Continue to reject with fallback error
+      }
+    }
+
     if (error.response && error.response.status === 401) {
       const hadToken = Boolean(localStorage.getItem('dr_vinish_admin_token'));
 

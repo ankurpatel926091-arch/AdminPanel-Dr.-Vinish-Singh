@@ -3,6 +3,13 @@ import { getAdminEnquiriesApi, updateEnquiryStatusApi, deleteEnquiryApi } from '
 import { getAdminAppointmentsApi, updateAppointmentStatusApi, deleteAppointmentApi } from '../services/appointmentService';
 import { getAdminGalleryApi } from '../services/galleryService';
 import { getAdminBlogsApi } from '../services/blogService';
+import {
+  getAdminClinicsApi,
+  updateClinicApi,
+  createClinicApi,
+  toggleClinicStatusApi,
+  deleteClinicApi
+} from '../services/clinicService';
 import { useAuth } from './AuthContext';
 
 const AdminDataContext = createContext();
@@ -227,6 +234,23 @@ export const AdminDataProvider = ({ children }) => {
     } catch (err) {
       console.warn('Backend blog fetch offline or error:', err.message);
     }
+
+    try {
+      const clinicRes = await getAdminClinicsApi();
+      if (clinicRes && clinicRes.data && clinicRes.data.length > 0) {
+        const items = clinicRes.data.map(c => ({
+          ...c,
+          id: c._id || c.id || c.clinicId
+        }));
+        setClinics(items);
+        try {
+          localStorage.setItem('dr_vinish_clinics', JSON.stringify(items));
+          window.dispatchEvent(new Event('storage'));
+        } catch (e) {}
+      }
+    } catch (err) {
+      console.warn('Backend clinic fetch offline or error:', err.message);
+    }
   };
 
   // Real-time synchronization of local appointments and enquiries submitted from website
@@ -409,25 +433,77 @@ export const AdminDataProvider = ({ children }) => {
   };
 
   // Clinics CRUD handlers
-  const addClinic = (newClinic) => {
+  const addClinic = async (newClinic) => {
     const clinicWithId = {
       ...newClinic,
       id: Date.now(),
       active: true
     };
-    setClinics(prev => [...prev, clinicWithId]);
+    setClinics(prev => {
+      const updated = [...prev, clinicWithId];
+      try {
+        localStorage.setItem('dr_vinish_clinics', JSON.stringify(updated));
+        window.dispatchEvent(new Event('storage'));
+      } catch (e) {}
+      return updated;
+    });
+
+    try {
+      await createClinicApi(newClinic);
+    } catch (err) {
+      console.warn('Error saving clinic to backend API:', err.message);
+    }
   };
 
-  const updateClinic = (id, updatedFields) => {
-    setClinics(prev => prev.map(c => c.id === id ? { ...c, ...updatedFields } : c));
+  const updateClinic = async (id, updatedFields) => {
+    setClinics(prev => {
+      const updated = prev.map(c => c.id === id ? { ...c, ...updatedFields } : c);
+      try {
+        localStorage.setItem('dr_vinish_clinics', JSON.stringify(updated));
+        window.dispatchEvent(new Event('storage'));
+      } catch (e) {}
+      return updated;
+    });
+
+    try {
+      await updateClinicApi(id, updatedFields);
+    } catch (err) {
+      console.warn('Error updating clinic on backend API:', err.message);
+    }
   };
 
-  const toggleClinicStatus = (id) => {
-    setClinics(prev => prev.map(c => c.id === id ? { ...c, active: !c.active } : c));
+  const toggleClinicStatus = async (id) => {
+    setClinics(prev => {
+      const updated = prev.map(c => c.id === id ? { ...c, active: !c.active } : c);
+      try {
+        localStorage.setItem('dr_vinish_clinics', JSON.stringify(updated));
+        window.dispatchEvent(new Event('storage'));
+      } catch (e) {}
+      return updated;
+    });
+
+    try {
+      await toggleClinicStatusApi(id);
+    } catch (err) {
+      console.warn('Error toggling clinic status on backend API:', err.message);
+    }
   };
 
-  const deleteClinic = (id) => {
-    setClinics(prev => prev.filter(c => c.id !== id));
+  const deleteClinic = async (id) => {
+    setClinics(prev => {
+      const updated = prev.filter(c => c.id !== id);
+      try {
+        localStorage.setItem('dr_vinish_clinics', JSON.stringify(updated));
+        window.dispatchEvent(new Event('storage'));
+      } catch (e) {}
+      return updated;
+    });
+
+    try {
+      await deleteClinicApi(id);
+    } catch (err) {
+      console.warn('Error deleting clinic on backend API:', err.message);
+    }
   };
 
   return (

@@ -16,7 +16,9 @@ import {
   CheckCircle2,
   XCircle,
   Search,
-  Sparkles
+  Sparkles,
+  Upload,
+  Link2
 } from 'lucide-react';
 
 export default function Clinics() {
@@ -25,6 +27,23 @@ export default function Clinics() {
   const [modalImage, setModalImage] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [editingClinic, setEditingClinic] = useState(null);
+  const [uploadSource, setUploadSource] = useState('file');
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert('File size exceeds 5MB limit. Please choose a smaller image.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setFormData(prev => ({ ...prev, image: reader.result }));
+    };
+    reader.readAsDataURL(file);
+  };
 
   const initialFormState = {
     name: '',
@@ -312,12 +331,13 @@ export default function Clinics() {
 
       {/* Modal for Add / Edit Clinic Location */}
       {showModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-lg w-full p-6 space-y-5 my-8">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-              <div className="flex items-center gap-2">
-                <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
-                  <Building2 size={18} />
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-xl w-full max-h-[90vh] flex flex-col overflow-hidden my-auto animate-fadeIn">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-slate-100 p-5 shrink-0 bg-white">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                  <Building2 size={20} />
                 </div>
                 <div>
                   <h3 className="text-lg font-extrabold text-slate-800">
@@ -327,148 +347,211 @@ export default function Clinics() {
                 </div>
               </div>
               <button
+                type="button"
                 onClick={() => setShowModal(false)}
-                className="w-8 h-8 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-all cursor-pointer"
+                className="w-9 h-9 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-all cursor-pointer"
               >
                 <X size={18} />
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4 text-xs">
-              <div>
-                <label className="block text-slate-700 font-bold mb-1">Clinic Name *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Rudraksh IVF & Urology Centre"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
+            {/* Modal Form Container */}
+            <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+              {/* Scrollable Form Body */}
+              <div className="flex-1 overflow-y-auto p-6 space-y-4 text-xs">
                 <div>
-                  <label className="block text-slate-700 font-bold mb-1">Tag / Session</label>
-                  <select
-                    value={formData.tag}
-                    onChange={(e) => setFormData({ ...formData, tag: e.target.value })}
-                    className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
-                  >
-                    <option value="Morning OPD">Morning OPD</option>
-                    <option value="Evening OPD">Evening OPD</option>
-                    <option value="Afternoon OPD">Afternoon OPD</option>
-                    <option value="Full Day OPD">Full Day OPD</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-slate-700 font-bold mb-1">Badge Label</label>
+                  <label className="block text-slate-700 font-bold mb-1">Clinic Name *</label>
                   <input
                     type="text"
-                    placeholder="e.g. MORNING CONSULTATION CENTRE"
-                    value={formData.badgeLabel}
-                    onChange={(e) => setFormData({ ...formData, badgeLabel: e.target.value })}
-                    className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-slate-700 font-bold mb-1">OPD Consultation Hours</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. 10:00 AM – 03:00 PM"
-                    value={formData.timings}
-                    onChange={(e) => setFormData({ ...formData, timings: e.target.value })}
-                    className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                    required
+                    placeholder="e.g. Rudraksh IVF & Urology Centre"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
                   />
                 </div>
 
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-slate-700 font-bold mb-1">Tag / Session</label>
+                    <select
+                      value={formData.tag}
+                      onChange={(e) => setFormData({ ...formData, tag: e.target.value })}
+                      className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                    >
+                      <option value="Morning OPD">Morning OPD</option>
+                      <option value="Evening OPD">Evening OPD</option>
+                      <option value="Afternoon OPD">Afternoon OPD</option>
+                      <option value="Full Day OPD">Full Day OPD</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-700 font-bold mb-1">Badge Label</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. MORNING CONSULTATION CENTRE"
+                      value={formData.badgeLabel}
+                      onChange={(e) => setFormData({ ...formData, badgeLabel: e.target.value })}
+                      className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-slate-700 font-bold mb-1">OPD Consultation Hours</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. 10:00 AM – 03:00 PM"
+                      value={formData.timings}
+                      onChange={(e) => setFormData({ ...formData, timings: e.target.value })}
+                      className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-700 font-bold mb-1">Helpline Phone Number</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. +91 89600 68307"
+                      value={formData.phone}
+                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                      className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                    />
+                  </div>
+                </div>
+
                 <div>
-                  <label className="block text-slate-700 font-bold mb-1">Helpline Phone Number</label>
+                  <label className="block text-slate-700 font-bold mb-1">City / Locality</label>
                   <input
                     type="text"
-                    placeholder="e.g. +91 89600 68307"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    placeholder="e.g. Sharda Nagar, Lucknow"
+                    value={formData.city}
+                    onChange={(e) => setFormData({ ...formData, city: e.target.value })}
                     className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
                   />
                 </div>
+
+                <div>
+                  <label className="block text-slate-700 font-bold mb-1">Full Address</label>
+                  <textarea
+                    rows="2"
+                    placeholder="Full street address of the clinic"
+                    value={formData.address}
+                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                    className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none resize-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-700 font-bold mb-1.5">Building Photo</label>
+                  
+                  {/* Source Switcher Tabs */}
+                  <div className="flex items-center gap-2 mb-2 bg-slate-100 p-1 rounded-xl">
+                    <button
+                      type="button"
+                      onClick={() => setUploadSource('file')}
+                      className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                        uploadSource === 'file'
+                          ? 'bg-white text-blue-600 shadow-xs'
+                          : 'text-slate-500 hover:text-slate-800'
+                      }`}
+                    >
+                      <Upload className="w-3.5 h-3.5" />
+                      <span>Upload from System</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setUploadSource('url')}
+                      className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                        uploadSource === 'url'
+                          ? 'bg-white text-blue-600 shadow-xs'
+                          : 'text-slate-500 hover:text-slate-800'
+                      }`}
+                    >
+                      <Link2 className="w-3.5 h-3.5" />
+                      <span>Web Image URL</span>
+                    </button>
+                  </div>
+
+                  {uploadSource === 'file' ? (
+                    <label className="border-2 border-dashed border-slate-300 hover:border-blue-500 rounded-2xl p-3.5 text-center cursor-pointer bg-slate-50/80 hover:bg-blue-50/40 transition-all flex flex-col items-center justify-center relative group">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleFileChange}
+                        className="hidden"
+                      />
+
+                      {formData.image ? (
+                        <div className="w-full space-y-1.5">
+                          <img src={formData.image} alt="Building Preview" className="h-36 w-full object-cover rounded-xl shadow-xs" />
+                          <span className="text-[11px] font-semibold text-blue-600 block">
+                            ✓ Photo Loaded (Click to change file from system)
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="py-2 flex flex-col items-center">
+                          <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mb-1.5 group-hover:scale-110 transition-transform">
+                            <Upload className="w-5 h-5" />
+                          </div>
+                          <p className="text-xs font-bold text-slate-700">Click to choose photo from your device / system</p>
+                          <p className="text-[10px] text-slate-400 mt-0.5">Supports JPG, PNG, WEBP, SVG</p>
+                        </div>
+                      )}
+                    </label>
+                  ) : (
+                    <input
+                      type="text"
+                      placeholder="Paste image URL (e.g. https://...)"
+                      value={formData.image}
+                      onChange={(e) => setFormData({ ...formData, image: e.target.value })}
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white"
+                    />
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-slate-700 font-bold mb-1">Google Maps Direct Link (mapUrl)</label>
+                  <input
+                    type="text"
+                    placeholder="https://maps.app.goo.gl/..."
+                    value={formData.mapUrl}
+                    onChange={(e) => setFormData({ ...formData, mapUrl: e.target.value })}
+                    className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-700 font-bold mb-1">Google Maps Embed URL (embedUrl)</label>
+                  <input
+                    type="text"
+                    placeholder="https://maps.google.com/maps?q=..."
+                    value={formData.embedUrl}
+                    onChange={(e) => setFormData({ ...formData, embedUrl: e.target.value })}
+                    className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                  />
+                </div>
+
+                <div className="flex items-center gap-2 pt-1">
+                  <input
+                    type="checkbox"
+                    id="activeCheck"
+                    checked={formData.active}
+                    onChange={(e) => setFormData({ ...formData, active: e.target.checked })}
+                    className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-slate-300 cursor-pointer"
+                  />
+                  <label htmlFor="activeCheck" className="text-slate-700 font-bold cursor-pointer">Clinic is Active & Open for Consultation</label>
+                </div>
               </div>
 
-              <div>
-                <label className="block text-slate-700 font-bold mb-1">City / Locality</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Sharda Nagar, Lucknow"
-                  value={formData.city}
-                  onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                  className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-slate-700 font-bold mb-1">Full Address</label>
-                <textarea
-                  rows="2"
-                  placeholder="Full street address of the clinic"
-                  value={formData.address}
-                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                  className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none resize-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-slate-700 font-bold mb-1">Building Image URL</label>
-                <input
-                  type="text"
-                  placeholder="Image URL for clinic building photo"
-                  value={formData.image}
-                  onChange={(e) => setFormData({ ...formData, image: e.target.value })}
-                  className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-slate-700 font-bold mb-1">Google Maps Direct Link (mapUrl)</label>
-                <input
-                  type="text"
-                  placeholder="https://maps.app.goo.gl/..."
-                  value={formData.mapUrl}
-                  onChange={(e) => setFormData({ ...formData, mapUrl: e.target.value })}
-                  className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-slate-700 font-bold mb-1">Google Maps Embed URL (embedUrl)</label>
-                <input
-                  type="text"
-                  placeholder="https://maps.google.com/maps?q=..."
-                  value={formData.embedUrl}
-                  onChange={(e) => setFormData({ ...formData, embedUrl: e.target.value })}
-                  className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
-                />
-              </div>
-
-              <div className="flex items-center gap-2 pt-2">
-                <input
-                  type="checkbox"
-                  id="activeCheck"
-                  checked={formData.active}
-                  onChange={(e) => setFormData({ ...formData, active: e.target.checked })}
-                  className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-slate-300"
-                />
-                <label htmlFor="activeCheck" className="text-slate-700 font-medium">Clinic is Active & Open for Consultation</label>
-              </div>
-
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+              {/* Fixed Modal Footer */}
+              <div className="flex items-center justify-end gap-3 p-4 border-t border-slate-100 bg-slate-50/80 shrink-0">
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="px-4 py-2 rounded-xl text-slate-600 hover:bg-slate-100 font-bold text-xs transition-all cursor-pointer"
+                  className="px-4 py-2 rounded-xl text-slate-600 hover:bg-slate-200/80 font-bold text-xs transition-all cursor-pointer"
                 >
                   Cancel
                 </button>
