@@ -1,14 +1,13 @@
-import React, { useState } from 'react';
+import React from 'react';
 import StatCard from '../components/dashboard/StatCard';
 import AppointmentsWidget from '../components/dashboard/AppointmentsWidget';
 import EnquiriesChartWidget from '../components/dashboard/EnquiriesChartWidget';
 import RecentEnquiriesWidget from '../components/dashboard/RecentEnquiriesWidget';
 import { useAdminData } from '../context/AdminDataContext';
-import { Calendar, ChevronDown, Sparkles } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 
 export default function Dashboard() {
   const { stats, enquiries, appointments, galleryItems, blogs } = useAdminData();
-  const [dateRange, setDateRange] = useState('18 May 2025 - 18 June 2025');
 
   // Dynamic live count calculations
   const enquiriesCount = (enquiries && enquiries.length > 0) ? enquiries.length : stats.enquiries.count;
@@ -18,7 +17,7 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-8 font-sans">
-      {/* Top Welcome Header & Date Selector */}
+      {/* Top Welcome Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-gradient-to-r from-[#0B1E3B] via-[#0D264E] to-[#08172F] p-6 sm:p-8 rounded-3xl text-white shadow-xl relative overflow-hidden">
         {/* Subtle Decorative Backdrop Elements */}
         <div className="absolute -top-24 -right-24 w-72 h-72 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
@@ -35,15 +34,6 @@ export default function Dashboard() {
           <p className="text-xs sm:text-sm text-slate-300 font-medium mt-1">
             Here's what's happening with your website today.
           </p>
-        </div>
-
-        {/* Date Range Selector */}
-        <div className="relative self-start md:self-auto z-10">
-          <button className="flex items-center gap-2.5 bg-white/10 hover:bg-white/20 border border-white/20 backdrop-blur-md px-4 py-2.5 rounded-2xl text-xs font-bold text-white transition-all shadow-md cursor-pointer">
-            <Calendar className="w-4 h-4 text-blue-400" />
-            <span>{dateRange}</span>
-            <ChevronDown className="w-4 h-4 text-slate-300" />
-          </button>
         </div>
       </div>
 

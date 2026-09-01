@@ -29,6 +29,7 @@ import {
   ChevronLeft,
   ChevronRight
 } from 'lucide-react';
+import { toast } from 'react-toastify';
 import {
   getAdminBlogsApi,
   createBlogApi,
@@ -113,6 +114,13 @@ export default function Blogs() {
 
   const showToast = (message, type = 'success') => {
     setToast({ show: true, message, type });
+    if (type === 'error') {
+      toast.error(message);
+    } else if (type === 'info') {
+      toast.info(message);
+    } else {
+      toast.success(message);
+    }
     setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 4000);
   };
 

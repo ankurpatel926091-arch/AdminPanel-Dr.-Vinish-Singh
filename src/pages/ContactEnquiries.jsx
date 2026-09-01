@@ -3,6 +3,7 @@ import { useAdminData } from '../context/AdminDataContext';
 import StatusBadge from '../components/common/StatusBadge';
 import Modal from '../components/common/Modal';
 import { Mail, Search, Eye, Trash2, CheckCircle, Clock, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
+import { toast } from 'react-toastify';
 
 export default function ContactEnquiries() {
   const { enquiries, fetchEnquiries, loadingEnquiries, updateEnquiryStatus, deleteEnquiry } = useAdminData();
@@ -52,7 +53,14 @@ export default function ContactEnquiries() {
   const handleDelete = (id) => {
     if (confirm('Are you sure you want to delete this contact enquiry?')) {
       deleteEnquiry(id);
+      toast.success('Enquiry deleted successfully!');
     }
+  };
+
+  const handleStatusToggle = (id, currentStatus) => {
+    const newStatus = currentStatus === 'New' ? 'Responded' : 'New';
+    updateEnquiryStatus(id, newStatus);
+    toast.info(`Enquiry status updated to ${newStatus}`);
   };
 
   return (

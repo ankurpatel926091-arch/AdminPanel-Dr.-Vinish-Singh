@@ -4,7 +4,6 @@ import {
   MapPin,
   Phone,
   Clock,
-  Plus,
   Building2,
   Sun,
   Moon,
@@ -21,8 +20,10 @@ import {
   Link2
 } from 'lucide-react';
 
+import { toast } from 'react-toastify';
+
 export default function Clinics() {
-  const { clinics, addClinic, updateClinic, toggleClinicStatus, deleteClinic } = useAdminData();
+  const { clinics, updateClinic, toggleClinicStatus, deleteClinic } = useAdminData();
   const [search, setSearch] = useState('');
   const [modalImage, setModalImage] = useState(null);
   const [showModal, setShowModal] = useState(false);
@@ -61,12 +62,6 @@ export default function Clinics() {
 
   const [formData, setFormData] = useState(initialFormState);
 
-  const handleOpenAddModal = () => {
-    setEditingClinic(null);
-    setFormData(initialFormState);
-    setShowModal(true);
-  };
-
   const handleOpenEditModal = (clinic) => {
     setEditingClinic(clinic);
     setFormData({
@@ -94,8 +89,7 @@ export default function Clinics() {
 
     if (editingClinic) {
       updateClinic(editingClinic.id, formData);
-    } else {
-      addClinic(formData);
+      toast.success('Clinic details updated successfully!');
     }
     setShowModal(false);
     setFormData(initialFormState);
@@ -125,13 +119,6 @@ export default function Clinics() {
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-800 tracking-tight">Clinic Locations</h1>
           <p className="text-xs sm:text-sm text-slate-500 mt-1">Manage OPD practice locations, consultation hours, contact helplines and Google Map locations</p>
         </div>
-
-        <button
-          onClick={handleOpenAddModal}
-          className="px-5 py-3 bg-blue-600 hover:bg-blue-700 active:scale-98 text-white rounded-2xl text-xs sm:text-sm font-bold shadow-md shadow-blue-600/30 flex items-center justify-center gap-2 transition-all cursor-pointer shrink-0"
-        >
-          <Plus className="w-4 h-4" /> Add Clinic Location
-        </button>
       </div>
 
       {/* Search & Filter Bar */}
@@ -307,20 +294,13 @@ export default function Clinics() {
                 </div>
 
                 {/* Admin Actions Bar */}
-                <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+                <div className="pt-3 border-t border-slate-100 flex items-center justify-end">
                   <button
                     onClick={() => handleOpenEditModal(c)}
-                    className="px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 flex items-center gap-1.5 transition-all cursor-pointer"
+                    className="px-4 py-2 rounded-xl text-xs font-bold text-slate-700 bg-slate-100 hover:bg-blue-600 hover:text-white flex items-center gap-1.5 transition-all cursor-pointer shadow-xs"
                   >
                     <Edit3 size={13} />
                     <span>Edit Clinic</span>
-                  </button>
-                  <button
-                    onClick={() => handleDelete(c.id, c.name)}
-                    className="px-3 py-1.5 rounded-xl text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 flex items-center gap-1.5 transition-all cursor-pointer"
-                  >
-                    <Trash2 size={13} />
-                    <span>Delete</span>
                   </button>
                 </div>
               </div>

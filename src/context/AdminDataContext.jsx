@@ -83,8 +83,57 @@ export const AdminDataProvider = ({ children }) => {
   const [appointments, setAppointments] = useState([
     {
       id: 1,
+      name: 'Rahul',
+      phone: '91983-70285',
+      consultationType: 'First Visit',
+      centre: '🌆 Evening OPD: Dr. Shilpi Maternity & Urology Centre (Pakkabag, 03 PM - 07 PM)',
+      problem: 'General Gynecology',
+      message: 'Consultation request for gynecology.',
+      date: '31 Aug 2026',
+      time: '03:00 PM',
+      status: 'Pending'
+    },
+    {
+      id: 2,
+      name: 'ankurvaa',
+      phone: '6108799891',
+      consultationType: 'Follow-up',
+      centre: '🌅 Morning OPD: Rudraksh IVF & Urology Centre (Sharda Nagar, 10 AM - 03 PM)',
+      problem: 'Laser Kidney Stones (RIRS / PCNL)',
+      message: 'Follow-up visit for laser kidney stone treatment.',
+      date: '31 Aug 2026',
+      time: '11:00 AM',
+      status: 'Pending'
+    },
+    {
+      id: 3,
+      name: 'ANKUR PATEL',
+      phone: '+919198370285',
+      consultationType: 'First Visit',
+      centre: '🌅 Morning OPD: Rudraksh IVF & Urology Centre (Sharda Nagar, 10 AM - 03 PM)',
+      problem: 'Laser Kidney Stones (RIRS / PCNL)',
+      message: 'First visit consultation for kidney stone.',
+      date: '31 Aug 2026',
+      time: '01:30 PM',
+      status: 'Pending'
+    },
+    {
+      id: 4,
+      name: 'Rani',
+      phone: '09198370285',
+      consultationType: 'Follow-up',
+      centre: '🌆 Evening OPD: Dr. Shilpi Maternity & Urology Centre (Pakkabag, 03 PM - 07 PM)',
+      problem: 'High Risk Pregnancy',
+      message: 'Follow-up checkup for pregnancy.',
+      date: '29 Aug 2026',
+      time: '03:00 PM',
+      status: 'Pending'
+    },
+    {
+      id: 5,
       name: 'Rahul Verma',
       phone: '9876543210',
+      consultationType: 'First Visit',
       centre: '🌅 Morning OPD: Rudraksh IVF & Urology Centre (Sharda Nagar, 10 AM - 03 PM)',
       problem: 'Laser Kidney Stones (RIRS / PCNL)',
       message: 'Severe left flank pain since yesterday night.',
@@ -93,9 +142,10 @@ export const AdminDataProvider = ({ children }) => {
       status: 'Pending'
     },
     {
-      id: 2,
+      id: 6,
       name: 'Amit Kumar',
       phone: '9765432101',
+      consultationType: 'First Visit',
       centre: '🌆 Evening OPD: Dr. Shilpi Maternity & Urology Centre (Pakkabag, 03 PM - 07 PM)',
       problem: 'Prostate Care & Enlargement (BPH / TURP)',
       message: 'Frequent night urination and weak stream.',
@@ -104,9 +154,10 @@ export const AdminDataProvider = ({ children }) => {
       status: 'Confirmed'
     },
     {
-      id: 3,
+      id: 7,
       name: 'Neha Singh',
       phone: '9654321098',
+      consultationType: 'Follow-up',
       centre: '🌆 Evening OPD: Dr. Shilpi Maternity & Urology Centre (Pakkabag, 03 PM - 07 PM)',
       problem: 'Urine Leakage & UTI Infection',
       message: 'Burning sensation and discomfort since 3 days.',
@@ -115,9 +166,10 @@ export const AdminDataProvider = ({ children }) => {
       status: 'Pending'
     },
     {
-      id: 4,
+      id: 8,
       name: 'Pooja Sharma',
       phone: '9543210987',
+      consultationType: 'Follow-up',
       centre: '🌅 Morning OPD: Rudraksh IVF & Urology Centre (Sharda Nagar, 10 AM - 03 PM)',
       problem: 'Kidney Health Followup',
       message: 'Post surgery ultrasound report discussion.',
@@ -126,9 +178,10 @@ export const AdminDataProvider = ({ children }) => {
       status: 'Confirmed'
     },
     {
-      id: 5,
+      id: 9,
       name: 'Vikas Yadav',
       phone: '9432109876',
+      consultationType: 'First Visit',
       centre: '🌅 Morning OPD: Rudraksh IVF & Urology Centre (Sharda Nagar, 10 AM - 03 PM)',
       problem: 'General Urology Consultation',
       message: 'Routine checkup for kidney health.',
@@ -137,9 +190,10 @@ export const AdminDataProvider = ({ children }) => {
       status: 'Cancelled'
     },
     {
-      id: 6,
+      id: 10,
       name: 'Sanjay Patel',
       phone: '9321098765',
+      consultationType: 'Follow-up',
       centre: '🌆 Evening OPD: Dr. Shilpi Maternity & Urology Centre (Pakkabag, 03 PM - 07 PM)',
       problem: 'Kidney Stone Consultation',
       message: 'Evaluation for endoscopic stone treatment.',
@@ -148,15 +202,52 @@ export const AdminDataProvider = ({ children }) => {
       status: 'Missed'
     },
     {
-      id: 7,
+      id: 11,
       name: 'Ankit Singh',
       phone: '9210987654',
+      consultationType: 'First Visit',
       centre: '🌅 Morning OPD: Rudraksh IVF & Urology Centre (Sharda Nagar, 10 AM - 03 PM)',
       problem: 'Male Infertility Consultation',
       message: 'Andrology consultation and semen analysis review.',
       date: '26 May 2025',
       time: '01:45 PM',
       status: 'Pending'
+    },
+    {
+      id: 12,
+      name: 'Meena Devi',
+      phone: '9109876543',
+      consultationType: 'Follow-up',
+      centre: '🌆 Evening OPD: Dr. Shilpi Maternity & Urology Centre (Pakkabag, 03 PM - 07 PM)',
+      problem: 'Female Urinary Incontinence',
+      message: 'Follow-up review for bladder health.',
+      date: '27 May 2025',
+      time: '04:15 PM',
+      status: 'Confirmed'
+    },
+    {
+      id: 13,
+      name: 'Deepak Saxena',
+      phone: '9098765432',
+      consultationType: 'First Visit',
+      centre: '🌅 Morning OPD: Rudraksh IVF & Urology Centre (Sharda Nagar, 10 AM - 03 PM)',
+      problem: 'Laser Prostate Surgery (HoLEP)',
+      message: 'Initial assessment for laser prostatectomy.',
+      date: '28 May 2025',
+      time: '12:00 PM',
+      status: 'Pending'
+    },
+    {
+      id: 14,
+      name: 'Sunita Rastogi',
+      phone: '8987654321',
+      consultationType: 'Follow-up',
+      centre: '🌆 Evening OPD: Dr. Shilpi Maternity & Urology Centre (Pakkabag, 03 PM - 07 PM)',
+      problem: 'General Gynecology Consultation',
+      message: 'Routine follow-up visit.',
+      date: '29 May 2025',
+      time: '05:45 PM',
+      status: 'Confirmed'
     }
   ]);
 
@@ -369,12 +460,44 @@ export const AdminDataProvider = ({ children }) => {
     }));
   };
 
-  const updateAppointmentStatus = (id, newStatus) => {
-    setAppointments(prev => prev.map(item => item.id === id ? { ...item, status: newStatus } : item));
+  const updateAppointmentStatus = async (id, newStatus) => {
+    setAppointments(prev => prev.map(item => item.id === id || item._id === id ? { ...item, status: newStatus } : item));
+    try {
+      const localAptsStr = localStorage.getItem('dr_vinish_appointments');
+      if (localAptsStr) {
+        const localApts = JSON.parse(localAptsStr);
+        const updated = localApts.map(a => String(a.id) === String(id) || String(a._id) === String(id) ? { ...a, status: newStatus } : a);
+        localStorage.setItem('dr_vinish_appointments', JSON.stringify(updated));
+      }
+    } catch (e) {}
+
+    try {
+      if (typeof id === 'string' && id.length === 24) {
+        await updateAppointmentStatusApi(id, newStatus);
+      }
+    } catch (err) {
+      console.error('Error updating appointment status API:', err.message);
+    }
   };
 
-  const deleteAppointment = (id) => {
-    setAppointments(prev => prev.filter(item => item.id !== id));
+  const deleteAppointment = async (id) => {
+    setAppointments(prev => prev.filter(item => item.id !== id && item._id !== id));
+    try {
+      const localAptsStr = localStorage.getItem('dr_vinish_appointments');
+      if (localAptsStr) {
+        const localApts = JSON.parse(localAptsStr);
+        const updated = localApts.filter(a => String(a.id) !== String(id) && String(a._id) !== String(id));
+        localStorage.setItem('dr_vinish_appointments', JSON.stringify(updated));
+      }
+    } catch (e) {}
+
+    try {
+      if (typeof id === 'string' && id.length === 24) {
+        await deleteAppointmentApi(id);
+      }
+    } catch (err) {
+      console.error('Error deleting appointment API:', err.message);
+    }
   };
 
   const updateEnquiryStatus = async (id, newStatus) => {
