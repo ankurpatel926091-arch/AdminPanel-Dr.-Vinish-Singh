@@ -461,15 +461,14 @@ export const AdminDataProvider = ({ children }) => {
   };
 
   const updateAppointmentStatus = async (id, newStatus) => {
-    setAppointments(prev => prev.map(item => item.id === id || item._id === id ? { ...item, status: newStatus } : item));
-    try {
-      const localAptsStr = localStorage.getItem('dr_vinish_appointments');
-      if (localAptsStr) {
-        const localApts = JSON.parse(localAptsStr);
-        const updated = localApts.map(a => String(a.id) === String(id) || String(a._id) === String(id) ? { ...a, status: newStatus } : a);
-        localStorage.setItem('dr_vinish_appointments', JSON.stringify(updated));
-      }
-    } catch (e) {}
+    setAppointments(prev => {
+      const updatedList = prev.map(item => (String(item.id) === String(id) || String(item._id) === String(id)) ? { ...item, status: newStatus } : item);
+      try {
+        localStorage.setItem('dr_vinish_appointments', JSON.stringify(updatedList));
+        window.dispatchEvent(new Event('storage'));
+      } catch (e) {}
+      return updatedList;
+    });
 
     try {
       if (typeof id === 'string' && id.length === 24) {
