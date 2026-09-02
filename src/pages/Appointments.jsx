@@ -3,6 +3,7 @@ import { useAdminData } from '../context/AdminDataContext';
 import { toast } from 'react-toastify';
 import {
   Calendar as CalendarIcon,
+  CalendarX,
   Search,
   Plus,
   Clock,
@@ -206,7 +207,13 @@ export default function Appointments() {
 
   const handleStatusChange = (aptId, newStatus) => {
     updateAppointmentStatus(aptId, newStatus);
-    toast.info(`Appointment status changed to ${newStatus}`);
+    if (newStatus === 'Confirmed') {
+      toast.success(`Appointment Confirmed! Confirmation email sent to patient.`);
+    } else if (newStatus === 'Cancelled') {
+      toast.info(`Appointment Cancelled! Cancellation email sent to patient.`);
+    } else {
+      toast.info(`Appointment status changed to ${newStatus}`);
+    }
   };
 
   const getStatusBadge = (status) => {
@@ -229,8 +236,8 @@ export default function Appointments() {
     }
     if (s === 'missed') {
       return (
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200/80 text-xs font-bold">
-          <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-50 text-rose-700 border border-rose-200/80 text-xs font-bold">
+          <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
           <span>Missed</span>
         </span>
       );
@@ -471,14 +478,14 @@ export default function Appointments() {
                           <CheckCircle2 className="w-4 h-4 text-emerald-600" strokeWidth={2} />
                         </button>
 
-                        {/* 3. Missed Button (Sky Phone) */}
+                        {/* 3. Missed Button (CalendarX) */}
                         <button
                           type="button"
                           onClick={() => handleStatusChange(apt.id, 'Missed')}
                           title="Mark as Missed"
-                          className="w-8 h-8 rounded-xl bg-sky-50 hover:bg-sky-100 text-sky-600 border border-sky-100 flex items-center justify-center shadow-2xs hover:scale-105 transition-all cursor-pointer"
+                          className="w-8 h-8 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-100 flex items-center justify-center shadow-2xs hover:scale-105 transition-all cursor-pointer"
                         >
-                          <Phone className="w-4 h-4 text-sky-600" strokeWidth={2} />
+                          <CalendarX className="w-4 h-4 text-rose-600" strokeWidth={2} />
                         </button>
 
                         {/* 4. Cancelled Button (Red X Circle) */}
@@ -620,8 +627,8 @@ export default function Appointments() {
 
           {/* Missed Guide */}
           <div className="inline-flex items-center gap-2">
-            <div className="w-7 h-7 rounded-xl bg-sky-50 border border-sky-200/60 text-sky-600 flex items-center justify-center">
-              <Phone className="w-3.5 h-3.5" strokeWidth={2} />
+            <div className="w-7 h-7 rounded-xl bg-rose-50 border border-rose-200/60 text-rose-600 flex items-center justify-center">
+              <CalendarX className="w-3.5 h-3.5" strokeWidth={2} />
             </div>
             <span className="font-bold text-slate-800">Missed</span>
           </div>

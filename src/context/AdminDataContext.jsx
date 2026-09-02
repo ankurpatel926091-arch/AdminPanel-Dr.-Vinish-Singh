@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { getAdminEnquiriesApi, updateEnquiryStatusApi, deleteEnquiryApi } from '../services/enquiryService';
-import { getAdminAppointmentsApi, updateAppointmentStatusApi, deleteAppointmentApi } from '../services/appointmentService';
+import { getAdminAppointmentsApi, updateAppointmentStatusApi, deleteAppointmentApi, notifyAppointmentEmailApi } from '../services/appointmentService';
 import { getAdminGalleryApi } from '../services/galleryService';
 import { getAdminBlogsApi } from '../services/blogService';
 import {
@@ -461,8 +461,16 @@ export const AdminDataProvider = ({ children }) => {
   };
 
   const updateAppointmentStatus = async (id, newStatus) => {
+    let targetApt = null;
+
     setAppointments(prev => {
-      const updatedList = prev.map(item => (String(item.id) === String(id) || String(item._id) === String(id)) ? { ...item, status: newStatus } : item);
+      const updatedList = prev.map(item => {
+        if (String(item.id) === String(id) || String(item._id) === String(id)) {
+          targetApt = { ...item, status: newStatus };
+          return targetApt;
+        }
+        return item;
+      });
       try {
         localStorage.setItem('dr_vinish_appointments', JSON.stringify(updatedList));
         window.dispatchEvent(new Event('storage'));
@@ -472,10 +480,12 @@ export const AdminDataProvider = ({ children }) => {
 
     try {
       if (typeof id === 'string' && id.length === 24) {
-        await updateAppointmentStatusApi(id, newStatus);
+        await updateAppointmentStatusApi(id, newStatus, targetApt);
+      } else if (targetApt) {
+        await notifyAppointmentEmailApi(targetApt, newStatus);
       }
     } catch (err) {
-      console.error('Error updating appointment status API:', err.message);
+      console.error('Error sending appointment status notification:', err.message);
     }
   };
 
