@@ -143,19 +143,54 @@ export default function Blogs() {
     });
   };
 
-  // Helper for local image file upload preview
-  const handleImageFileChange = (e) => {
+  // Helper to compress client-side uploaded image file via HTML5 Canvas
+  const compressImageFile = (file, maxWidth = 900, quality = 0.75) => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+
+          if (width > maxWidth) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+
+          const compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
+          resolve(compressedDataUrl);
+        };
+        img.onerror = () => resolve(e.target.result);
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  // Helper for local image file upload preview with automatic compression
+  const handleImageFileChange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
     setSelectedImageFile(file);
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const dataUrl = event.target.result;
-      setFormData((prev) => ({ ...prev, image: dataUrl }));
-    };
-    reader.readAsDataURL(file);
+    try {
+      const compressedUrl = await compressImageFile(file);
+      setFormData((prev) => ({ ...prev, image: compressedUrl }));
+    } catch (err) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setFormData((prev) => ({ ...prev, image: event.target.result }));
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   // Switch to Page View for Creating

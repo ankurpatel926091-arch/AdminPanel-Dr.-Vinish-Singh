@@ -13,7 +13,7 @@ export const uploadGalleryMediaApi = async (formDataOrData) => {
   const response = await API.post('/gallery/admin/upload', formDataOrData, config);
   return response.data;
 };
-
+    
 // Toggle active/inactive status
 export const toggleGalleryStatusApi = async (id) => {
   const response = await API.patch(`/gallery/admin/${id}/toggle`);
