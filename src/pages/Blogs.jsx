@@ -513,15 +513,15 @@ export default function Blogs() {
                   return (
                     <div
                       key={blog._id || blog.id}
-                      className="bg-white rounded-3xl border border-slate-200/80 shadow-2xs hover:shadow-lg transition-all duration-300 flex flex-col justify-between overflow-hidden group"
+                      className="bg-white rounded-3xl border border-slate-200/80 shadow-2xs hover:shadow-md transition-all duration-300 flex flex-col justify-between overflow-hidden group"
                     >
                       <div>
                         {/* Image Container with Badges */}
-                        <div className="relative h-52 sm:h-56 bg-slate-100 overflow-hidden">
+                        <div className="relative h-52 sm:h-56 bg-slate-100/90 overflow-hidden flex items-center justify-center p-2">
                           <img
                             src={blog.image || 'https://images.unsplash.com/photo-1579684385127-1ef15d508118?auto=format&fit=crop&q=80&w=800'}
                             alt={blog.title}
-                            className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-500"
+                            className="w-full h-full object-contain rounded-xl group-hover:scale-[1.01] transition-transform duration-300"
                             onError={(e) => {
                               e.target.src = 'https://images.unsplash.com/photo-1579684385127-1ef15d508118?auto=format&fit=crop&q=80&w=800';
                             }}

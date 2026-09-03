@@ -12,11 +12,11 @@ const Login = lazy(() => import('./pages/Login'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const ContactEnquiries = lazy(() => import('./pages/ContactEnquiries'));
 const Appointments = lazy(() => import('./pages/Appointments'));
-const Services = lazy(() => import('./pages/Services'));
-const Treatments = lazy(() => import('./pages/Treatments'));
+// const Services = lazy(() => import('./pages/Services'));
+// const Treatments = lazy(() => import('./pages/Treatments'));
 const Gallery = lazy(() => import('./pages/Gallery'));
 const Testimonials = lazy(() => import('./pages/Testimonials'));
-const DoctorProfile = lazy(() => import('./pages/DoctorProfile'));
+// const DoctorProfile = lazy(() => import('./pages/DoctorProfile'));
 const Clinics = lazy(() => import('./pages/Clinics'));
 const Blogs = lazy(() => import('./pages/Blogs'));
 const Settings = lazy(() => import('./pages/Settings'));
@@ -77,15 +77,15 @@ export default function App() {
                 <Route path="dashboard" element={<Dashboard />} />
                 <Route path="enquiries" element={<ContactEnquiries />} />
                 <Route path="appointments" element={<Appointments />} />
-                <Route path="services" element={<Services />} />
-                <Route path="treatments" element={<Treatments />} />
+                {/* <Route path="services" element={<Services />} /> */}
+                {/* <Route path="treatments" element={<Treatments />} /> */}
                 <Route path="gallery" element={<Gallery />} />
                 <Route path="testimonials" element={<Testimonials />} />
-                <Route path="profile" element={<DoctorProfile />} />
+                {/* <Route path="profile" element={<DoctorProfile />} /> */}
                 <Route path="clinics" element={<Clinics />} />
                 <Route path="blogs" element={<Blogs />} />
                 <Route path="articles" element={<Navigate to="/blogs" replace />} />
-                <Route path="settings" element={<Settings />} />
+                {/* <Route path="settings" element={<Settings />} /> */}
               </Route>
 
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
