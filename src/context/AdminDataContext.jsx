@@ -84,182 +84,13 @@ export const AdminDataProvider = ({ children }) => {
     }
   }, [clinics]);
 
-  const [appointments, setAppointments] = useState([
-    {
-      id: 1,
-      name: 'Rahul',
-      phone: '91983-70285',
-      consultationType: 'First Visit',
-      centre: '🌆 Evening OPD: Dr. Shilpi Maternity & Urology Centre (Pakkabag, 03 PM - 07 PM)',
-      problem: 'General Gynecology',
-      message: 'Consultation request for gynecology.',
-      date: '31 Aug 2026',
-      time: '03:00 PM',
-      status: 'Pending'
-    },
-    {
-      id: 2,
-      name: 'ankurvaa',
-      phone: '6108799891',
-      consultationType: 'Follow-up',
-      centre: '🌅 Morning OPD: Rudraksh IVF & Urology Centre (Sharda Nagar, 10 AM - 03 PM)',
-      problem: 'Laser Kidney Stones (RIRS / PCNL)',
-      message: 'Follow-up visit for laser kidney stone treatment.',
-      date: '31 Aug 2026',
-      time: '11:00 AM',
-      status: 'Pending'
-    },
-    {
-      id: 3,
-      name: 'ANKUR PATEL',
-      phone: '+919198370285',
-      consultationType: 'First Visit',
-      centre: '🌅 Morning OPD: Rudraksh IVF & Urology Centre (Sharda Nagar, 10 AM - 03 PM)',
-      problem: 'Laser Kidney Stones (RIRS / PCNL)',
-      message: 'First visit consultation for kidney stone.',
-      date: '31 Aug 2026',
-      time: '01:30 PM',
-      status: 'Pending'
-    },
-    {
-      id: 4,
-      name: 'Rani',
-      phone: '09198370285',
-      consultationType: 'Follow-up',
-      centre: '🌆 Evening OPD: Dr. Shilpi Maternity & Urology Centre (Pakkabag, 03 PM - 07 PM)',
-      problem: 'High Risk Pregnancy',
-      message: 'Follow-up checkup for pregnancy.',
-      date: '29 Aug 2026',
-      time: '03:00 PM',
-      status: 'Pending'
-    },
-    {
-      id: 5,
-      name: 'Rahul Verma',
-      phone: '9876543210',
-      consultationType: 'First Visit',
-      centre: '🌅 Morning OPD: Rudraksh IVF & Urology Centre (Sharda Nagar, 10 AM - 03 PM)',
-      problem: 'Laser Kidney Stones (RIRS / PCNL)',
-      message: 'Severe left flank pain since yesterday night.',
-      date: '20 May 2025',
-      time: '11:20 AM',
-      status: 'Pending'
-    },
-    {
-      id: 6,
-      name: 'Amit Kumar',
-      phone: '9765432101',
-      consultationType: 'First Visit',
-      centre: '🌆 Evening OPD: Dr. Shilpi Maternity & Urology Centre (Pakkabag, 03 PM - 07 PM)',
-      problem: 'Prostate Care & Enlargement (BPH / TURP)',
-      message: 'Frequent night urination and weak stream.',
-      date: '21 May 2025',
-      time: '04:00 PM',
-      status: 'Confirmed'
-    },
-    {
-      id: 7,
-      name: 'Neha Singh',
-      phone: '9654321098',
-      consultationType: 'Follow-up',
-      centre: '🌆 Evening OPD: Dr. Shilpi Maternity & Urology Centre (Pakkabag, 03 PM - 07 PM)',
-      problem: 'Urine Leakage & UTI Infection',
-      message: 'Burning sensation and discomfort since 3 days.',
-      date: '22 May 2025',
-      time: '04:30 PM',
-      status: 'Pending'
-    },
-    {
-      id: 8,
-      name: 'Pooja Sharma',
-      phone: '9543210987',
-      consultationType: 'Follow-up',
-      centre: '🌅 Morning OPD: Rudraksh IVF & Urology Centre (Sharda Nagar, 10 AM - 03 PM)',
-      problem: 'Kidney Health Followup',
-      message: 'Post surgery ultrasound report discussion.',
-      date: '23 May 2025',
-      time: '10:30 AM',
-      status: 'Confirmed'
-    },
-    {
-      id: 9,
-      name: 'Vikas Yadav',
-      phone: '9432109876',
-      consultationType: 'First Visit',
-      centre: '🌅 Morning OPD: Rudraksh IVF & Urology Centre (Sharda Nagar, 10 AM - 03 PM)',
-      problem: 'General Urology Consultation',
-      message: 'Routine checkup for kidney health.',
-      date: '24 May 2025',
-      time: '11:30 AM',
-      status: 'Cancelled'
-    },
-    {
-      id: 10,
-      name: 'Sanjay Patel',
-      phone: '9321098765',
-      consultationType: 'Follow-up',
-      centre: '🌆 Evening OPD: Dr. Shilpi Maternity & Urology Centre (Pakkabag, 03 PM - 07 PM)',
-      problem: 'Kidney Stone Consultation',
-      message: 'Evaluation for endoscopic stone treatment.',
-      date: '25 May 2025',
-      time: '05:15 PM',
-      status: 'Missed'
-    },
-    {
-      id: 11,
-      name: 'Ankit Singh',
-      phone: '9210987654',
-      consultationType: 'First Visit',
-      centre: '🌅 Morning OPD: Rudraksh IVF & Urology Centre (Sharda Nagar, 10 AM - 03 PM)',
-      problem: 'Male Infertility Consultation',
-      message: 'Andrology consultation and semen analysis review.',
-      date: '26 May 2025',
-      time: '01:45 PM',
-      status: 'Pending'
-    },
-    {
-      id: 12,
-      name: 'Meena Devi',
-      phone: '9109876543',
-      consultationType: 'Follow-up',
-      centre: '🌆 Evening OPD: Dr. Shilpi Maternity & Urology Centre (Pakkabag, 03 PM - 07 PM)',
-      problem: 'Female Urinary Incontinence',
-      message: 'Follow-up review for bladder health.',
-      date: '27 May 2025',
-      time: '04:15 PM',
-      status: 'Confirmed'
-    },
-    {
-      id: 13,
-      name: 'Deepak Saxena',
-      phone: '9098765432',
-      consultationType: 'First Visit',
-      centre: '🌅 Morning OPD: Rudraksh IVF & Urology Centre (Sharda Nagar, 10 AM - 03 PM)',
-      problem: 'Laser Prostate Surgery (HoLEP)',
-      message: 'Initial assessment for laser prostatectomy.',
-      date: '28 May 2025',
-      time: '12:00 PM',
-      status: 'Pending'
-    },
-    {
-      id: 14,
-      name: 'Sunita Rastogi',
-      phone: '8987654321',
-      consultationType: 'Follow-up',
-      centre: '🌆 Evening OPD: Dr. Shilpi Maternity & Urology Centre (Pakkabag, 03 PM - 07 PM)',
-      problem: 'General Gynecology Consultation',
-      message: 'Routine follow-up visit.',
-      date: '29 May 2025',
-      time: '05:45 PM',
-      status: 'Confirmed'
-    }
-  ]);
+  const [appointments, setAppointments] = useState([]);
 
   const [enquiries, setEnquiries] = useState([]);
 
   const [stats, setStats] = useState({
     enquiries: { count: 0, change: '+12%', isPositive: true },
-    appointments: { count: appointments.length, change: '+8%', isPositive: true },
+    appointments: { count: 0, change: '+8%', isPositive: true },
     testimonials: { count: 18, change: '+15%', isPositive: true },
     treatments: { count: 12, change: 'No change', isNeutral: true },
     galleryImages: { count: 36, change: '+5%', isPositive: true },
@@ -297,16 +128,12 @@ export const AdminDataProvider = ({ children }) => {
 
     try {
       const aptRes = await getAdminAppointmentsApi();
-      if (aptRes && aptRes.data && aptRes.data.length > 0) {
+      if (aptRes && aptRes.data && Array.isArray(aptRes.data)) {
         const items = aptRes.data.map(item => ({
           ...item,
           id: item._id || item.id
         }));
-        setAppointments(prev => {
-          const existingIds = new Set(prev.map(a => String(a.id)));
-          const newItems = items.filter(a => !existingIds.has(String(a.id)));
-          return newItems.length > 0 ? [...newItems, ...prev] : prev;
-        });
+        setAppointments(items);
       }
     } catch (err) {
       console.warn('Backend appointment fetch offline or error:', err.message);
@@ -348,23 +175,10 @@ export const AdminDataProvider = ({ children }) => {
     }
   };
 
-  // Real-time synchronization of local appointments and enquiries submitted from website
+  // Real-time synchronization of enquiries submitted from website
   const syncLocalStorageData = () => {
     try {
-      // 1. Appointments submitted from website
-      const localAptsStr = localStorage.getItem('dr_vinish_appointments');
-      if (localAptsStr) {
-        const localApts = JSON.parse(localAptsStr);
-        if (Array.isArray(localApts) && localApts.length > 0) {
-          setAppointments(prev => {
-            const existingIds = new Set(prev.map(a => String(a.id)));
-            const newItems = localApts.filter(a => !existingIds.has(String(a.id)));
-            return newItems.length > 0 ? [...newItems, ...prev] : prev;
-          });
-        }
-      }
-
-      // 2. Contact Enquiries submitted from website
+      // Contact Enquiries submitted from website
       const localEnqStr = localStorage.getItem('dr_vinish_enquiries');
       if (localEnqStr) {
         const localEnq = JSON.parse(localEnqStr);
