@@ -4,6 +4,7 @@ import { toast } from 'react-toastify';
 import {
   Calendar as CalendarIcon,
   CalendarX,
+  CalendarCheck,
   Search,
   Plus,
   Clock,
@@ -211,6 +212,8 @@ export default function Appointments() {
       toast.success(`Appointment Confirmed! Confirmation email sent to patient.`);
     } else if (newStatus === 'Cancelled') {
       toast.info(`Appointment Cancelled! Cancellation email sent to patient.`);
+    } else if (newStatus === 'Visited') {
+      toast.success(`Appointment marked as Visited!`);
     } else {
       toast.info(`Appointment status changed to ${newStatus}`);
     }
@@ -223,6 +226,14 @@ export default function Appointments() {
         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/80 text-xs font-bold">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
           <span>Confirmed</span>
+        </span>
+      );
+    }
+    if (s === 'visited') {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200/80 text-xs font-bold">
+          <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+          <span>Visited</span>
         </span>
       );
     }
@@ -299,7 +310,7 @@ export default function Appointments() {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         {/* Status Filters (Left) */}
         <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
-          {['All', 'Pending', 'Confirmed', 'Missed', 'Cancelled'].map(tab => {
+          {['All', 'Pending', 'Confirmed', 'Visited', 'Missed', 'Cancelled'].map(tab => {
             const isActive = filter === tab;
             return (
               <button
@@ -378,6 +389,8 @@ export default function Appointments() {
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50/50 text-[11px] font-extrabold uppercase tracking-wider text-slate-500">
                 <th className="py-3.5 pl-6 pr-3 text-center w-12">#</th>
+                <th className="py-3.5 px-4 text-center min-w-[180px]">Action</th>
+                <th className="py-3.5 px-4 min-w-[110px]">Status</th>
                 <th className="py-3.5 px-4 min-w-[180px]">Patient Name</th>
                 <th className="py-3.5 px-4 min-w-[130px]">Phone</th>
                 <th className="py-3.5 px-4 min-w-[135px]">Consultation Type</th>
@@ -385,8 +398,6 @@ export default function Appointments() {
                 <th className="py-3.5 px-4 min-w-[120px]">Date</th>
                 <th className="py-3.5 px-4 min-w-[100px]">Time</th>
                 <th className="py-3.5 px-4 min-w-[220px]">Reason / Condition</th>
-                <th className="py-3.5 px-4 min-w-[110px]">Status</th>
-                <th className="py-3.5 px-4 text-center min-w-[170px]">Action</th>
                 <th className="py-3.5 px-4 text-center min-w-[180px]">Manage</th>
               </tr>
             </thead>
@@ -400,6 +411,56 @@ export default function Appointments() {
                     {/* Index */}
                     <td className="py-4 pl-6 pr-3 text-center font-bold text-slate-400">
                       {globalIdx}
+                    </td>
+
+                    {/* 4 Action Buttons in Soft Horizontal Bar */}
+                    <td className="py-3 px-4 text-center whitespace-nowrap min-w-[180px]">
+                      <div className="inline-flex items-center justify-center gap-1.5 p-1.5 bg-slate-50/80 rounded-2xl border border-slate-100/80">
+                        {/* 1. Confirmed Button (Emerald Checkmark) */}
+                        <button
+                          type="button"
+                          onClick={() => handleStatusChange(apt.id, 'Confirmed')}
+                          title="Mark as Confirmed"
+                          className="w-8 h-8 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-600 border border-emerald-100 flex items-center justify-center shadow-2xs hover:scale-105 transition-all cursor-pointer"
+                        >
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600" strokeWidth={2} />
+                        </button>
+
+                        {/* 2. Visited Button (Blue CalendarCheck) */}
+                        <button
+                          type="button"
+                          onClick={() => handleStatusChange(apt.id, 'Visited')}
+                          title="Mark as Visited"
+                          className="w-8 h-8 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-600 border border-blue-100 flex items-center justify-center shadow-2xs hover:scale-105 transition-all cursor-pointer"
+                        >
+                          <CalendarCheck className="w-4 h-4 text-blue-600" strokeWidth={2} />
+                        </button>
+
+                        {/* 3. Missed Button (CalendarX) */}
+                        <button
+                          type="button"
+                          onClick={() => handleStatusChange(apt.id, 'Missed')}
+                          title="Mark as Missed"
+                          className="w-8 h-8 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-100 flex items-center justify-center shadow-2xs hover:scale-105 transition-all cursor-pointer"
+                        >
+                          <CalendarX className="w-4 h-4 text-rose-600" strokeWidth={2} />
+                        </button>
+
+                        {/* 4. Cancelled Button (Red X Circle) */}
+                        <button
+                          type="button"
+                          onClick={() => handleStatusChange(apt.id, 'Cancelled')}
+                          title="Mark as Cancelled"
+                          className="w-8 h-8 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-100 flex items-center justify-center shadow-2xs hover:scale-105 transition-all cursor-pointer"
+                        >
+                          <XCircle className="w-4 h-4 text-rose-600" strokeWidth={2} />
+                        </button>
+                      </div>
+                    </td>
+
+                    {/* Status Badge */}
+                    <td className="py-4 px-4 whitespace-nowrap">
+                      {getStatusBadge(apt.status)}
                     </td>
 
                     {/* Patient Name & Gmail */}
@@ -448,56 +509,6 @@ export default function Appointments() {
                     {/* Reason / Condition */}
                     <td className="py-4 px-4 font-semibold text-slate-800 min-w-[220px]">
                       {apt.problem}
-                    </td>
-
-                    {/* Status Badge */}
-                    <td className="py-4 px-4 whitespace-nowrap">
-                      {getStatusBadge(apt.status)}
-                    </td>
-
-                    {/* 4 Action Buttons in Soft Horizontal Bar */}
-                    <td className="py-3 px-4 text-center whitespace-nowrap min-w-[170px]">
-                      <div className="inline-flex items-center justify-center gap-1.5 p-1.5 bg-slate-50/80 rounded-2xl border border-slate-100/80">
-                        {/* 1. Pending Button (Amber Hourglass) */}
-                        <button
-                          type="button"
-                          onClick={() => handleStatusChange(apt.id, 'Pending')}
-                          title="Mark as Pending"
-                          className="w-8 h-8 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-600 border border-amber-100 flex items-center justify-center shadow-2xs hover:scale-105 transition-all cursor-pointer"
-                        >
-                          <Hourglass className="w-4 h-4 text-amber-600" strokeWidth={2} />
-                        </button>
-
-                        {/* 2. Confirmed Button (Emerald Checkmark) */}
-                        <button
-                          type="button"
-                          onClick={() => handleStatusChange(apt.id, 'Confirmed')}
-                          title="Mark as Confirmed"
-                          className="w-8 h-8 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-600 border border-emerald-100 flex items-center justify-center shadow-2xs hover:scale-105 transition-all cursor-pointer"
-                        >
-                          <CheckCircle2 className="w-4 h-4 text-emerald-600" strokeWidth={2} />
-                        </button>
-
-                        {/* 3. Missed Button (CalendarX) */}
-                        <button
-                          type="button"
-                          onClick={() => handleStatusChange(apt.id, 'Missed')}
-                          title="Mark as Missed"
-                          className="w-8 h-8 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-100 flex items-center justify-center shadow-2xs hover:scale-105 transition-all cursor-pointer"
-                        >
-                          <CalendarX className="w-4 h-4 text-rose-600" strokeWidth={2} />
-                        </button>
-
-                        {/* 4. Cancelled Button (Red X Circle) */}
-                        <button
-                          type="button"
-                          onClick={() => handleStatusChange(apt.id, 'Cancelled')}
-                          title="Mark as Cancelled"
-                          className="w-8 h-8 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-100 flex items-center justify-center shadow-2xs hover:scale-105 transition-all cursor-pointer"
-                        >
-                          <XCircle className="w-4 h-4 text-rose-600" strokeWidth={2} />
-                        </button>
-                      </div>
                     </td>
 
                     {/* Manage Column (View Details & Delete) */}
@@ -609,20 +620,20 @@ export default function Appointments() {
         </div>
 
         <div className="flex flex-wrap items-center gap-4 sm:gap-6">
-          {/* Pending Guide */}
-          <div className="inline-flex items-center gap-2">
-            <div className="w-7 h-7 rounded-xl bg-amber-50 border border-amber-200/60 text-amber-600 flex items-center justify-center">
-              <Hourglass className="w-3.5 h-3.5" strokeWidth={2} />
-            </div>
-            <span className="font-bold text-slate-800">Pending</span>
-          </div>
-
           {/* Confirmed Guide */}
           <div className="inline-flex items-center gap-2">
             <div className="w-7 h-7 rounded-xl bg-emerald-50 border border-emerald-200/60 text-emerald-600 flex items-center justify-center">
               <CheckCircle2 className="w-3.5 h-3.5" strokeWidth={2} />
             </div>
             <span className="font-bold text-slate-800">Confirmed</span>
+          </div>
+
+          {/* Visited Guide */}
+          <div className="inline-flex items-center gap-2">
+            <div className="w-7 h-7 rounded-xl bg-blue-50 border border-blue-200/60 text-blue-600 flex items-center justify-center">
+              <CalendarCheck className="w-3.5 h-3.5" strokeWidth={2} />
+            </div>
+            <span className="font-bold text-slate-800">Visited</span>
           </div>
 
           {/* Missed Guide */}
@@ -796,6 +807,7 @@ export default function Appointments() {
                   >
                     <option value="Confirmed">Confirmed</option>
                     <option value="Pending">Pending</option>
+                    <option value="Visited">Visited</option>
                     <option value="Missed">Missed</option>
                     <option value="Cancelled">Cancelled</option>
                   </select>
