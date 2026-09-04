@@ -298,7 +298,13 @@ export const AdminDataProvider = ({ children }) => {
 
     try {
       if (typeof id === 'string' && id.length === 24) {
-        await updateAppointmentStatusApi(id, newStatus, targetApt);
+        try {
+          await updateAppointmentStatusApi(id, newStatus, targetApt);
+        } catch (apiErr) {
+          if (targetApt) {
+            await notifyAppointmentEmailApi(targetApt, newStatus);
+          }
+        }
       } else if (targetApt) {
         await notifyAppointmentEmailApi(targetApt, newStatus);
       }
