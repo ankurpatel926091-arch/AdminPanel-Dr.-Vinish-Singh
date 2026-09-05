@@ -321,6 +321,7 @@ export const AdminDataProvider = ({ children }) => {
         const localApts = JSON.parse(localAptsStr);
         const updated = localApts.filter(a => String(a.id) !== String(id) && String(a._id) !== String(id));
         localStorage.setItem('dr_vinish_appointments', JSON.stringify(updated));
+        window.dispatchEvent(new Event('storage'));
       }
     } catch (e) {}
 
