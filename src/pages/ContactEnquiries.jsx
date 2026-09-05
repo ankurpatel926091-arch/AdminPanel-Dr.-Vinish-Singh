@@ -119,6 +119,7 @@ export default function ContactEnquiries() {
           <table className="w-full text-left border-collapse text-xs">
             <thead>
               <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-500 font-bold uppercase text-[10px]">
+                <th className="py-3.5 px-4 w-14">S.No.</th>
                 <th className="py-3.5 px-4">Patient Name</th>
                 <th className="py-3.5 px-4">Phone</th>
                 <th className="py-3.5 px-4">Subject</th>
@@ -130,22 +131,24 @@ export default function ContactEnquiries() {
             <tbody className="divide-y divide-slate-100 font-medium">
               {loadingEnquiries && filtered.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="py-12 text-center text-slate-400 font-medium">
+                  <td colSpan="7" className="py-12 text-center text-slate-400 font-medium">
                     <RefreshCw className="w-6 h-6 animate-spin mx-auto text-blue-600 mb-2" />
                     Loading contact enquiries...
                   </td>
                 </tr>
               ) : filtered.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="py-12 text-center text-slate-400 font-medium">
+                  <td colSpan="7" className="py-12 text-center text-slate-400 font-medium">
                     No contact enquiries found.
                   </td>
                 </tr>
               ) : (
-                paginatedEnquiries.map(enq => {
+                paginatedEnquiries.map((enq, index) => {
                   const itemId = enq._id || enq.id;
+                  const globalIdx = startIndex + index + 1;
                   return (
                     <tr key={itemId} className="hover:bg-slate-50/80 transition-colors">
+                      <td className="py-4 px-4 font-bold text-slate-400">{globalIdx}</td>
                       <td className="py-4 px-4 font-bold text-slate-800">{enq.name}</td>
                       <td className="py-4 px-4 text-slate-500">{enq.phone}</td>
                       <td className="py-4 px-4 text-slate-700 font-semibold">{enq.subject}</td>

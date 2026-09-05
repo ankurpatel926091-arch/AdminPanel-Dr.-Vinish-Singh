@@ -280,21 +280,30 @@ export const AdminDataProvider = ({ children }) => {
 
   const updateAppointmentStatus = async (id, newStatus) => {
     let targetApt = null;
+    let isAlreadyVisited = false;
 
     setAppointments(prev => {
       const updatedList = prev.map(item => {
         if (String(item.id) === String(id) || String(item._id) === String(id)) {
+          if ((item.status || '').toLowerCase() === 'visited') {
+            isAlreadyVisited = true;
+            return item;
+          }
           targetApt = { ...item, status: newStatus };
           return targetApt;
         }
         return item;
       });
-      try {
-        localStorage.setItem('dr_vinish_appointments', JSON.stringify(updatedList));
-        window.dispatchEvent(new Event('storage'));
-      } catch (e) {}
+      if (!isAlreadyVisited) {
+        try {
+          localStorage.setItem('dr_vinish_appointments', JSON.stringify(updatedList));
+          window.dispatchEvent(new Event('storage'));
+        } catch (e) {}
+      }
       return updatedList;
     });
+
+    if (isAlreadyVisited) return;
 
     try {
       if (typeof id === 'string' && id.length === 24) {

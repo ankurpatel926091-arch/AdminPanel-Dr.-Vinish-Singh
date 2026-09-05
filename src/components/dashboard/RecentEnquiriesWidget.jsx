@@ -24,7 +24,8 @@ export default function RecentEnquiriesWidget() {
         <table className="w-full text-left border-collapse text-xs">
           <thead>
             <tr className="border-b border-slate-200/60 text-slate-400 font-bold uppercase text-[10px] tracking-wider bg-slate-50/60">
-              <th className="py-2.5 px-3 rounded-l-lg">Name</th>
+              <th className="py-2.5 px-3 rounded-l-lg w-10"></th>
+              <th className="py-2.5 px-3">Name</th>
               <th className="py-2.5 px-3">Phone</th>
               <th className="py-2.5 px-3">Subject</th>
               <th className="py-2.5 px-3">Status</th>
@@ -32,8 +33,9 @@ export default function RecentEnquiriesWidget() {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 font-medium">
-            {enquiries.slice(0, 5).map((enq) => (
-              <tr key={enq.id} className="hover:bg-blue-50/30 transition-colors group cursor-pointer">
+            {enquiries.slice(0, 5).map((enq, index) => (
+              <tr key={enq.id || index} className="hover:bg-blue-50/30 transition-colors group cursor-pointer">
+                <td className="py-3 px-3 font-bold text-slate-400">{index + 1}</td>
                 <td className="py-3 px-3 font-bold text-slate-800 group-hover:text-blue-700 transition-colors">{enq.name}</td>
                 <td className="py-3 px-3 text-slate-500 font-medium">{enq.phone}</td>
                 <td className="py-3 px-3 text-slate-700 font-semibold max-w-xs truncate">{enq.subject}</td>

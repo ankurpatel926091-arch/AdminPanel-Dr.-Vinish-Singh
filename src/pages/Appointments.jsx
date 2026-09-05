@@ -114,6 +114,7 @@ export default function Appointments() {
   const [search, setSearch] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [viewAppointment, setViewAppointment] = useState(null);
+  const [confirmVisitedApt, setConfirmVisitedApt] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
@@ -206,14 +207,25 @@ export default function Appointments() {
     setShowAddModal(false);
   };
 
-  const handleStatusChange = (aptId, newStatus) => {
+  const handleStatusChange = (aptOrId, newStatus) => {
+    const aptObj = typeof aptOrId === 'object' ? aptOrId : appointments.find(a => String(a.id || a._id) === String(aptOrId));
+    const aptId = typeof aptOrId === 'object' ? (aptOrId.id || aptOrId._id) : aptOrId;
+
+    if (aptObj && (aptObj.status || '').toLowerCase() === 'visited') {
+      toast.warn('This appointment is already marked as Visited and cannot be modified.');
+      return;
+    }
+
+    if (newStatus === 'Visited') {
+      setConfirmVisitedApt(aptObj || { id: aptId, name: 'Patient' });
+      return;
+    }
+
     updateAppointmentStatus(aptId, newStatus);
     if (newStatus === 'Confirmed') {
       toast.success(`Appointment Confirmed! Confirmation email sent to patient.`);
     } else if (newStatus === 'Cancelled') {
       toast.info(`Appointment Cancelled! Cancellation email sent to patient.`);
-    } else if (newStatus === 'Visited') {
-      toast.success(`Appointment marked as Visited!`);
     } else {
       toast.info(`Appointment status changed to ${newStatus}`);
     }
@@ -388,7 +400,7 @@ export default function Appointments() {
           <table className="w-full text-left border-collapse min-w-[1280px]">
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50/50 text-[11px] font-extrabold uppercase tracking-wider text-slate-500">
-                <th className="py-3.5 pl-6 pr-3 text-center w-12">#</th>
+                <th className="py-3.5 pl-6 pr-3 text-center w-12">S.No.</th>
                 <th className="py-3.5 px-4 text-center min-w-[180px]">Action</th>
                 <th className="py-3.5 px-4 min-w-[110px]">Status</th>
                 <th className="py-3.5 px-4 min-w-[180px]">Patient Name</th>
@@ -405,6 +417,7 @@ export default function Appointments() {
               {paginatedAppointments.map((apt, index) => {
                 const clinic = formatClinicDisplay(apt.centre);
                 const globalIdx = startIndex + index + 1;
+                const isVisited = (apt.status || '').toLowerCase() === 'visited';
 
                 return (
                   <tr key={apt.id} className="hover:bg-slate-50/80 transition-colors">
@@ -415,13 +428,18 @@ export default function Appointments() {
 
                     {/* 4 Action Buttons in Soft Horizontal Bar */}
                     <td className="py-3 px-4 text-center whitespace-nowrap min-w-[180px]">
-                      <div className="inline-flex items-center justify-center gap-1.5 p-1.5 bg-slate-50/80 rounded-2xl border border-slate-100/80">
+                      <div className={`inline-flex items-center justify-center gap-1.5 p-1.5 rounded-2xl border ${
+                        isVisited ? 'bg-slate-100/60 border-slate-200/60' : 'bg-slate-50/80 border-slate-100/80'
+                      }`}>
                         {/* 1. Confirmed Button (Emerald Checkmark) */}
                         <button
                           type="button"
-                          onClick={() => handleStatusChange(apt.id, 'Confirmed')}
-                          title="Mark as Confirmed"
-                          className="w-8 h-8 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-600 border border-emerald-100 flex items-center justify-center shadow-2xs hover:scale-105 transition-all cursor-pointer"
+                          disabled={isVisited}
+                          onClick={() => handleStatusChange(apt, 'Confirmed')}
+                          title={isVisited ? "Appointment is Visited and status cannot be modified" : "Mark as Confirmed"}
+                          className={`w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center shadow-2xs transition-all ${
+                            isVisited ? 'cursor-not-allowed opacity-40 grayscale-[50%]' : 'hover:bg-emerald-100 hover:scale-105 cursor-pointer'
+                          }`}
                         >
                           <CheckCircle2 className="w-4 h-4 text-emerald-600" strokeWidth={2} />
                         </button>
@@ -429,9 +447,12 @@ export default function Appointments() {
                         {/* 2. Visited Button (Blue CalendarCheck) */}
                         <button
                           type="button"
-                          onClick={() => handleStatusChange(apt.id, 'Visited')}
-                          title="Mark as Visited"
-                          className="w-8 h-8 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-600 border border-blue-100 flex items-center justify-center shadow-2xs hover:scale-105 transition-all cursor-pointer"
+                          disabled={isVisited}
+                          onClick={() => handleStatusChange(apt, 'Visited')}
+                          title={isVisited ? "Appointment is Visited and status cannot be modified" : "Mark as Visited"}
+                          className={`w-8 h-8 rounded-xl bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center shadow-2xs transition-all ${
+                            isVisited ? 'cursor-not-allowed opacity-40 grayscale-[50%]' : 'hover:bg-blue-100 hover:scale-105 cursor-pointer'
+                          }`}
                         >
                           <CalendarCheck className="w-4 h-4 text-blue-600" strokeWidth={2} />
                         </button>
@@ -439,9 +460,12 @@ export default function Appointments() {
                         {/* 3. Missed Button (CalendarX) */}
                         <button
                           type="button"
-                          onClick={() => handleStatusChange(apt.id, 'Missed')}
-                          title="Mark as Missed"
-                          className="w-8 h-8 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-100 flex items-center justify-center shadow-2xs hover:scale-105 transition-all cursor-pointer"
+                          disabled={isVisited}
+                          onClick={() => handleStatusChange(apt, 'Missed')}
+                          title={isVisited ? "Appointment is Visited and status cannot be modified" : "Mark as Missed"}
+                          className={`w-8 h-8 rounded-xl bg-rose-50 text-rose-600 border border-rose-100 flex items-center justify-center shadow-2xs transition-all ${
+                            isVisited ? 'cursor-not-allowed opacity-40 grayscale-[50%]' : 'hover:bg-rose-100 hover:scale-105 cursor-pointer'
+                          }`}
                         >
                           <CalendarX className="w-4 h-4 text-rose-600" strokeWidth={2} />
                         </button>
@@ -449,9 +473,12 @@ export default function Appointments() {
                         {/* 4. Cancelled Button (Red X Circle) */}
                         <button
                           type="button"
-                          onClick={() => handleStatusChange(apt.id, 'Cancelled')}
-                          title="Mark as Cancelled"
-                          className="w-8 h-8 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-100 flex items-center justify-center shadow-2xs hover:scale-105 transition-all cursor-pointer"
+                          disabled={isVisited}
+                          onClick={() => handleStatusChange(apt, 'Cancelled')}
+                          title={isVisited ? "Appointment is Visited and status cannot be modified" : "Mark as Cancelled"}
+                          className={`w-8 h-8 rounded-xl bg-rose-50 text-rose-600 border border-rose-100 flex items-center justify-center shadow-2xs transition-all ${
+                            isVisited ? 'cursor-not-allowed opacity-40 grayscale-[50%]' : 'hover:bg-rose-100 hover:scale-105 cursor-pointer'
+                          }`}
                         >
                           <XCircle className="w-4 h-4 text-rose-600" strokeWidth={2} />
                         </button>
@@ -924,6 +951,59 @@ export default function Appointments() {
                 className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs transition-all cursor-pointer"
               >
                 Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ================= 6. CONFIRM VISITED MODAL ================= */}
+      {confirmVisitedApt && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl border border-slate-200 relative text-center animate-fadeIn">
+            <button
+              type="button"
+              onClick={() => setConfirmVisitedApt(null)}
+              className="absolute top-5 right-5 text-slate-400 hover:text-slate-600 p-1 rounded-full cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="w-14 h-14 rounded-2xl bg-blue-50 border border-blue-100 text-blue-600 flex items-center justify-center mx-auto mb-4">
+              <CalendarCheck className="w-7 h-7" strokeWidth={2} />
+            </div>
+
+            <h3 className="text-xl font-extrabold text-slate-900 tracking-tight">Mark as Visited?</h3>
+            <p className="text-xs sm:text-sm text-slate-600 font-medium mt-2 leading-relaxed">
+              Are you sure you want to mark the appointment for <strong className="text-slate-900 font-bold">{confirmVisitedApt.name || 'this patient'}</strong> as <span className="text-blue-600 font-bold">Visited</span>?
+            </p>
+
+            <div className="my-4 p-3.5 bg-amber-50 border border-amber-200/80 rounded-2xl text-left text-xs font-semibold text-amber-800 flex items-start gap-2.5">
+              <span className="text-amber-600 font-bold text-base leading-none shrink-0 mt-0.5">⚠️</span>
+              <span>Once marked as <strong>Visited</strong>, all action buttons will be disabled and no further status changes can be made.</span>
+            </div>
+
+            <div className="pt-2 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setConfirmVisitedApt(null)}
+                className="w-1/2 py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition-all cursor-pointer"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  const aptId = confirmVisitedApt.id || confirmVisitedApt._id;
+                  updateAppointmentStatus(aptId, 'Visited');
+                  toast.success(`Appointment for "${confirmVisitedApt.name || 'Patient'}" marked as Visited! No further changes allowed.`);
+                  setConfirmVisitedApt(null);
+                }}
+                className="w-1/2 py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs shadow-md transition-all cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                <CalendarCheck className="w-4 h-4" />
+                <span>Yes, Mark Visited</span>
               </button>
             </div>
           </div>
