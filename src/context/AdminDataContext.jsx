@@ -28,7 +28,7 @@ export const AdminDataProvider = ({ children }) => {
       badgeLabel: 'MORNING CONSULTATION CENTRE',
       city: 'Sharda Nagar, Lucknow',
       address: '1/795, Ratan Khand, Sharda Nagar, Lucknow, UP 226002',
-      phone: '+91 89600 68307',
+      phone: '+91 72759 81480',
       timings: '10:00 AM – 03:00 PM',
       image: 'https://images.unsplash.com/photo-1586773860418-d37222d8fce3?auto=format&fit=crop&q=80&w=800',
       mapUrl: 'https://www.google.com/maps?q=Rudraksh+IVF+And+Urology+Centre+Lucknow',
@@ -175,7 +175,7 @@ export const AdminDataProvider = ({ children }) => {
     }
   };
 
-  // Real-time synchronization of enquiries submitted from website
+  // Real-time synchronization of enquiries & appointments submitted from website
   const syncLocalStorageData = () => {
     try {
       // Contact Enquiries submitted from website
@@ -187,6 +187,23 @@ export const AdminDataProvider = ({ children }) => {
             const existingIds = new Set(prev.map(e => String(e.id || e._id)));
             const newItems = localEnq.filter(e => !existingIds.has(String(e.id || e._id)));
             return newItems.length > 0 ? [...newItems, ...prev] : prev;
+          });
+        }
+      }
+
+      // Appointments submitted from website or updated in local state
+      const localAptStr = localStorage.getItem('dr_vinish_appointments');
+      if (localAptStr) {
+        const localApts = JSON.parse(localAptStr);
+        if (Array.isArray(localApts) && localApts.length > 0) {
+          setAppointments(prev => {
+            const existingIds = new Set(prev.map(a => String(a.id || a._id)));
+            const newItems = localApts.filter(a => !existingIds.has(String(a.id || a._id)));
+            const updated = prev.map(item => {
+              const match = localApts.find(l => String(l.id || l._id) === String(item.id || item._id));
+              return match ? { ...item, ...match } : item;
+            });
+            return newItems.length > 0 ? [...newItems, ...updated] : updated;
           });
         }
       }

@@ -394,7 +394,7 @@ export default function Clinics() {
                     <label className="block text-slate-700 font-bold mb-1">Helpline Phone Number</label>
                     <input
                       type="text"
-                      placeholder="e.g. +91 89600 68307"
+                      placeholder="e.g. +91 72759 81480"
                       value={formData.phone}
                       onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                       className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"

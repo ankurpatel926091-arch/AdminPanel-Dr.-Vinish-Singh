@@ -2,11 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { useAdminData } from '../context/AdminDataContext';
 import StatusBadge from '../components/common/StatusBadge';
 import Modal from '../components/common/Modal';
-import { Mail, Search, Eye, Trash2, CheckCircle, Clock, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Mail, Search, Eye, CheckCircle, Clock, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'react-toastify';
 
 export default function ContactEnquiries() {
-  const { enquiries, fetchEnquiries, loadingEnquiries, updateEnquiryStatus, deleteEnquiry } = useAdminData();
+  const { enquiries, fetchEnquiries, loadingEnquiries, updateEnquiryStatus } = useAdminData();
   const [filter, setFilter] = useState('All');
   const [search, setSearch] = useState('');
   const [selectedEnquiry, setSelectedEnquiry] = useState(null);
@@ -48,13 +48,6 @@ export default function ContactEnquiries() {
       return [1, '...', total - 4, total - 3, total - 2, total - 1, total];
     }
     return [1, '...', current - 1, current, current + 1, '...', total];
-  };
-
-  const handleDelete = (id) => {
-    if (confirm('Are you sure you want to delete this contact enquiry?')) {
-      deleteEnquiry(id);
-      toast.success('Enquiry deleted successfully!');
-    }
   };
 
   const handleStatusToggle = (id, currentStatus) => {
@@ -166,13 +159,6 @@ export default function ContactEnquiries() {
                             className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg text-xs font-semibold inline-flex items-center gap-1 transition-colors cursor-pointer"
                           >
                             <Eye className="w-3.5 h-3.5" /> View Details
-                          </button>
-                          <button
-                            onClick={() => handleDelete(itemId)}
-                            className="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg transition-colors cursor-pointer"
-                            title="Delete enquiry"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>
                       </td>

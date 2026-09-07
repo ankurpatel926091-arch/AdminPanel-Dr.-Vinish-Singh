@@ -18,7 +18,6 @@ import {
   Mail,
   XCircle,
   Eye,
-  Trash2,
   ChevronLeft,
   ChevronRight,
   UserCheck,
@@ -108,7 +107,7 @@ const cleanNotesMessage = (msg) => {
 };
 
 export default function Appointments() {
-  const { appointments, addAppointment, updateAppointmentStatus, deleteAppointment } = useAdminData();
+  const { appointments, addAppointment, updateAppointmentStatus } = useAdminData();
   const [filter, setFilter] = useState('All');
   const [consultationTypeFilter, setConsultationTypeFilter] = useState('All');
   const [search, setSearch] = useState('');
@@ -117,16 +116,6 @@ export default function Appointments() {
   const [confirmVisitedApt, setConfirmVisitedApt] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
-
-  const handleDeleteAppointment = (apt) => {
-    if (window.confirm(`Are you sure you want to delete the appointment for "${apt.name}"?`)) {
-      deleteAppointment(apt.id);
-      toast.success(`Appointment for "${apt.name}" deleted successfully!`);
-      if (viewAppointment && (viewAppointment.id === apt.id || viewAppointment._id === apt.id)) {
-        setViewAppointment(null);
-      }
-    }
-  };
 
   // Add Appointment Form State
   const [formData, setFormData] = useState({
@@ -538,7 +527,7 @@ export default function Appointments() {
                       {apt.problem}
                     </td>
 
-                    {/* Manage Column (View Details & Delete) */}
+                    {/* Manage Column */}
                     <td className="py-3 px-4 text-center whitespace-nowrap min-w-[180px]">
                       <div className="inline-flex items-center justify-center gap-2">
                         {/* View Details Pill Button */}
@@ -549,16 +538,6 @@ export default function Appointments() {
                         >
                           <Eye className="w-3.5 h-3.5 text-blue-600" />
                           <span>View Details</span>
-                        </button>
-
-                        {/* Delete Button */}
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteAppointment(apt)}
-                          title="Delete Appointment"
-                          className="w-8 h-8 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-100 flex items-center justify-center transition-all cursor-pointer shadow-2xs hover:scale-105"
-                        >
-                          <Trash2 className="w-4 h-4 text-rose-600" />
                         </button>
                       </div>
                     </td>
@@ -935,16 +914,7 @@ export default function Appointments() {
             </div>
 
             {/* Modal Bottom Actions */}
-            <div className="pt-2 flex items-center justify-between gap-3">
-              <button
-                type="button"
-                onClick={() => handleDeleteAppointment(viewAppointment)}
-                className="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold rounded-xl text-xs border border-rose-100 transition-all flex items-center gap-1.5 cursor-pointer"
-              >
-                <Trash2 className="w-4 h-4" />
-                <span>Delete</span>
-              </button>
-
+            <div className="pt-2 flex items-center justify-end gap-3">
               <button
                 type="button"
                 onClick={() => setViewAppointment(null)}

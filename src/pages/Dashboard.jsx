@@ -1,5 +1,6 @@
 import React from 'react';
 import StatCard from '../components/dashboard/StatCard';
+import AppointmentStatusWidget from '../components/dashboard/AppointmentStatusWidget';
 import AppointmentsWidget from '../components/dashboard/AppointmentsWidget';
 import EnquiriesChartWidget from '../components/dashboard/EnquiriesChartWidget';
 import RecentEnquiriesWidget from '../components/dashboard/RecentEnquiriesWidget';
@@ -63,6 +64,11 @@ export default function Dashboard() {
           change={stats.blogs?.change || '+10%'}
           type="blogs"
         />
+      </div>
+
+      {/* Full-width Appointment Status Overview Chart (Directly below summary cards) */}
+      <div className="w-full">
+        <AppointmentStatusWidget />
       </div>
 
       {/* Middle Grid Row: Upcoming Appointments & Enquiries Overview Chart */}
