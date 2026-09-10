@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { useAuth } from '../context/AuthContext';
+import { loginAdmin } from '../services/authService';
+import { isLoggedIn, saveAuth } from '../utils/auth';
 import {
   Lock,
   User,
@@ -23,15 +24,14 @@ export default function Login() {
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
-  // Redirect authenticated user to dashboard
+  // Redirect if already logged in
   useEffect(() => {
-    if (isAuthenticated) {
-      navigate('/dashboard', { replace: true });
+    if (isLoggedIn()) {
+      navigate('/admin', { replace: true });
     }
-  }, [isAuthenticated, navigate]);
+  }, [navigate]);
 
   // Check for pending session expiration toasts
   useEffect(() => {
@@ -59,17 +59,19 @@ export default function Login() {
     setIsSubmitting(true);
 
     try {
-      const result = await login(email, password);
-      if (result.success) {
-        toast.success('Login Successful! Welcome to Dashboard.', { toastId: 'login-success' });
-        navigate('/dashboard', { replace: true });
+      const result = await loginAdmin(email, password);
+      if (result.success && result.token) {
+        // Save token + user directly to localStorage
+        saveAuth(result.token, result.admin);
+        toast.success('Login Successful! Welcome back.', { toastId: 'login-success' });
+        navigate('/admin', { replace: true });
       } else {
         const msg = result.message || 'Invalid email or password.';
         setError(msg);
         toast.error(msg, { toastId: 'login-failed' });
       }
     } catch (err) {
-      const msg = 'An unexpected error occurred. Please try again.';
+      const msg = err.response?.data?.message || 'An unexpected error occurred. Please try again.';
       setError(msg);
       toast.error(msg);
     } finally {
@@ -277,12 +279,10 @@ export default function Login() {
 
           {/* Footer */}
           <div className="mt-4 text-center text-xs text-slate-400 border-t border-slate-100 pt-3 flex flex-wrap items-center justify-center gap-2">
-           
-            
             <span>© 2026 Dr. Vinish Kumar Singh. All rights reserved.</span>
           </div>
         </div>
       </div>
     </div>
   );
-} 
+}

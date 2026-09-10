@@ -107,7 +107,7 @@ const cleanNotesMessage = (msg) => {
 };
 
 export default function Appointments() {
-  const { appointments, addAppointment, updateAppointmentStatus } = useAdminData();
+  const { appointments, clinics, addAppointment, updateAppointmentStatus } = useAdminData();
   const [filter, setFilter] = useState('All');
   const [consultationTypeFilter, setConsultationTypeFilter] = useState('All');
   const [search, setSearch] = useState('');
@@ -117,13 +117,15 @@ export default function Appointments() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
+  const defaultClinicId = clinics && clinics.length > 0 ? (clinics[0]._id || clinics[0].id) : '';
+
   // Add Appointment Form State
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
     email: '',
     consultationType: 'First Visit',
-    centre: HOSPITAL_CENTRES[0],
+    clinic: defaultClinicId,
     problem: SPECIALITY_CONDITIONS[0],
     date: new Date().toISOString().split('T')[0],
     time: '11:00 AM',
@@ -136,11 +138,12 @@ export default function Appointments() {
     const aptType = getAppointmentConsultationType(apt);
     const matchesType = consultationTypeFilter === 'All' || aptType.toLowerCase() === consultationTypeFilter.toLowerCase();
     const aptEmail = getAppointmentEmail(apt);
+    const clinicName = apt.clinic?.name || (typeof apt.clinic === 'string' ? apt.clinic : (apt.centre || ''));
     const matchesSearch = (apt.name || '').toLowerCase().includes(search.toLowerCase()) ||
                           (apt.phone || '').includes(search) ||
                           aptEmail.toLowerCase().includes(search.toLowerCase()) ||
                           (apt.problem || '').toLowerCase().includes(search.toLowerCase()) ||
-                          (apt.centre || '').toLowerCase().includes(search.toLowerCase());
+                          clinicName.toLowerCase().includes(search.toLowerCase());
     return matchesFilter && matchesType && matchesSearch;
   });
 
@@ -164,13 +167,14 @@ export default function Appointments() {
       formattedDate = formData.date;
     }
 
+    const selectedClinicId = formData.clinic || defaultClinicId;
     const newAptObj = {
       id: Date.now(),
       name: formData.name.trim(),
       phone: formData.phone.trim(),
       email: formData.email.trim(),
       consultationType: formData.consultationType || 'First Visit',
-      centre: formData.centre,
+      clinic: selectedClinicId,
       problem: formData.problem,
       date: formattedDate,
       time: formData.time,
@@ -186,7 +190,7 @@ export default function Appointments() {
       phone: '',
       email: '',
       consultationType: 'First Visit',
-      centre: HOSPITAL_CENTRES[0],
+      clinic: defaultClinicId,
       problem: SPECIALITY_CONDITIONS[0],
       date: new Date().toISOString().split('T')[0],
       time: '11:00 AM',
@@ -502,8 +506,14 @@ export default function Appointments() {
 
                     {/* Clinic / Hospital */}
                     <td className="py-4 px-4 whitespace-nowrap">
-                      <div className="font-semibold text-slate-800">{clinic.name}</div>
-                      {clinic.loc && <div className="text-[11px] text-slate-500">{clinic.loc}</div>}
+                      <div className="font-semibold text-slate-800">
+                        {apt.clinic?.name || (typeof apt.clinic === 'string' ? apt.clinic : clinic.name)}
+                      </div>
+                      {(apt.clinic?.address || clinic.loc) && (
+                        <div className="text-[11px] text-slate-500">
+                          {apt.clinic?.address || clinic.loc}
+                        </div>
+                      )}
                     </td>
 
                     {/* Date */}
@@ -739,16 +749,18 @@ export default function Appointments() {
 
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Preferred Hospital Centre <span className="text-rose-500">*</span>
+                    Preferred Clinic Centre <span className="text-rose-500">*</span>
                   </label>
                   <select
-                    value={formData.centre}
-                    onChange={(e) => setFormData({ ...formData, centre: e.target.value })}
+                    value={formData.clinic || defaultClinicId}
+                    onChange={(e) => setFormData({ ...formData, clinic: e.target.value })}
                     className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all cursor-pointer"
                     required
                   >
-                    {HOSPITAL_CENTRES.map((c, i) => (
-                      <option key={i} value={c}>{c}</option>
+                    {(clinics && clinics.length > 0 ? clinics : []).map((c) => (
+                      <option key={c._id || c.id} value={c._id || c.id}>
+                        {c.name}
+                      </option>
                     ))}
                   </select>
                 </div>

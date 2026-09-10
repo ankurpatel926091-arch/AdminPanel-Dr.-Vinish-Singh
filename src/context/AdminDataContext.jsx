@@ -10,12 +10,12 @@ import {
   toggleClinicStatusApi,
   deleteClinicApi
 } from '../services/clinicService';
-import { useAuth } from './AuthContext';
+import { isLoggedIn } from '../utils/auth';
 
 const AdminDataContext = createContext();
 
 export const AdminDataProvider = ({ children }) => {
-  const { isAuthenticated } = useAuth();
+  const authenticated = isLoggedIn();
   const [loadingEnquiries, setLoadingEnquiries] = useState(false);
   const [galleryItems, setGalleryItems] = useState([]);
   const [blogs, setBlogs] = useState([]);
@@ -223,7 +223,7 @@ export const AdminDataProvider = ({ children }) => {
   }, []);
 
   useEffect(() => {
-    if (isAuthenticated) {
+    if (authenticated) {
       fetchEnquiries();
     } else {
       setEnquiries([]);
@@ -232,7 +232,7 @@ export const AdminDataProvider = ({ children }) => {
         enquiries: { ...prev.enquiries, count: 0 }
       }));
     }
-  }, [isAuthenticated]);
+  }, []);
 
   const [testimonials, setTestimonials] = useState([
     { id: 1, name: 'Sandeep Gupta', rating: 5, text: 'Very good experience with Dr. Vinish Singh. He is very kind and treats patients with care.', status: 'Approved', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200' },
@@ -288,7 +288,12 @@ export const AdminDataProvider = ({ children }) => {
   ]);
 
   const addAppointment = (newApt) => {
-    setAppointments(prev => [newApt, ...prev]);
+    const foundClinic = clinics.find(c => String(c._id || c.id) === String(newApt.clinic)) || clinics[0];
+    const aptWithClinic = {
+      ...newApt,
+      clinic: foundClinic || newApt.clinic
+    };
+    setAppointments(prev => [aptWithClinic, ...prev]);
     setStats(prev => ({
       ...prev,
       appointments: { ...prev.appointments, count: prev.appointments.count + 1 }

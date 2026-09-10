@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
+import { getUser, clearAuth } from '../../utils/auth';
+import { logoutAdmin } from '../../services/authService';
 import { useAdminData } from '../../context/AdminDataContext';
+import { toast } from 'react-toastify';
 import {
   LayoutDashboard,
   Mail,
@@ -11,8 +13,13 @@ import {
   Image as ImageIcon,
   Star,
   User,
+  UserPlus,
+  CheckSquare,
+  Users,
   MapPin,
   FileText,
+  CreditCard,
+  BarChart2,
   BookOpen,
   Settings,
   LogOut,
@@ -21,30 +28,38 @@ import {
 import doctorPhoto from '../../assets/doctor.jpg';
 
 export default function Sidebar({ isOpen, isCollapsed, onClose }) {
-  const { logout } = useAuth();
+  const user = getUser();
   const { stats, appointments } = useAdminData();
   const navigate = useNavigate();
 
   const enquiryCount = stats?.enquiries?.count ?? 0;
   const appointmentCount = (appointments && appointments.length >= 0) ? appointments.length : (stats?.appointments?.count ?? 0);
 
-  const navItems = [
-    { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { path: '/enquiries', label: 'Contact Enquiries', icon: Mail, badge: enquiryCount },
-    { path: '/appointments', label: 'Appointments', icon: Calendar, badge: appointmentCount },
-    // { path: '/services', label: 'Services', icon: Layers }, 
-    // { path: '/treatments', label: 'Treatments', icon: Stethoscope },
-    { path: '/gallery', label: 'Gallery', icon: ImageIcon },
-    // { path: '/testimonials', label: 'Testimonials', icon: Star },
-    // { path: '/profile', label: 'Doctor Profile', icon: User },
-    { path: '/clinics', label: 'Clinics', icon: MapPin },
-    { path: '/blogs', label: 'Blogs', icon: BookOpen },
-    // { path: '/settings', label: 'Settings', icon: Settings },
+  const mainNavItems = [
+    { path: '/admin', label: 'Dashboard', icon: LayoutDashboard },
+    { path: '/admin/enquiries', label: 'Contact Enquiries', icon: Mail, badge: enquiryCount },
+    { path: '/admin/appointments', label: 'Appointments', icon: Calendar, badge: appointmentCount },
+    { path: '/admin/gallery', label: 'Gallery', icon: ImageIcon },
+    { path: '/admin/clinics', label: 'Clinics', icon: MapPin },
+    { path: '/admin/blogs', label: 'Blogs', icon: BookOpen },
   ];
 
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
+  const receptionNavItems = [
+    { path: '/admin/today-opd', label: "Today's OPD", icon: Stethoscope },
+    { path: '/admin/patient-registration', label: 'Patient Registration', icon: UserPlus },
+    { path: '/admin/check-in', label: 'Check-in', icon: CheckSquare },
+    { path: '/admin/billing', label: 'Billing', icon: FileText },
+    { path: '/admin/payments', label: 'Payments', icon: CreditCard },
+    { path: '/admin/doctor-queue', label: 'Doctor Queue', icon: Users },
+    { path: '/admin/patients', label: 'Patients', icon: User },
+    { path: '/admin/reports', label: 'Reports', icon: BarChart2 },
+  ];
+
+  const handleLogout = async () => {
+    try { await logoutAdmin(); } catch (_) {}
+    clearAuth();
+    toast.info('Logged out successfully');
+    navigate('/login', { replace: true });
   };
 
   return (
@@ -71,10 +86,10 @@ export default function Sidebar({ isOpen, isCollapsed, onClose }) {
               </div>
               <div className={isCollapsed ? 'lg:hidden' : 'block'}>
                 <h1 className="font-bold text-white text-sm sm:text-base tracking-tight leading-none truncate">
-                  Dr. Vinish Kumar Singh
+                  {user?.name || 'Dr. Vinish Kumar Singh'}
                 </h1>
-                <p className="text-[11px] text-blue-400 font-medium mt-1 truncate">
-                  Urologist & Andrologist
+                <p className="text-[11px] text-blue-400 font-semibold mt-1 truncate capitalize">
+                  {role === 'admin' ? 'Administrator Portal' : 'Doctor Portal'}
                 </p>
               </div>
             </div>
@@ -87,40 +102,77 @@ export default function Sidebar({ isOpen, isCollapsed, onClose }) {
           </div>
 
           {/* Navigation Menu */}
-          <div className="px-3 py-4 space-y-1 overflow-y-auto max-h-[calc(100vh-190px)] notification-scrollbar">
-            <div className={`px-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 ${isCollapsed ? 'lg:hidden' : ''}`}>
-              Main Menu
+          <div className="px-3 py-4 space-y-4 overflow-y-auto max-h-[calc(100vh-190px)] notification-scrollbar">
+            {/* MAIN MENU Section */}
+            <div>
+              <div className={`px-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 ${isCollapsed ? 'lg:hidden' : ''}`}>
+                Main Menu
+              </div>
+              <div className="space-y-1">
+                {mainNavItems.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <NavLink
+                      key={item.path}
+                      to={item.path}
+                      end={item.path === '/admin'}
+                      title={item.label}
+                      onClick={() => onClose && onClose()}
+                      className={({ isActive }) => `
+                        flex items-center ${isCollapsed ? 'lg:justify-center' : 'justify-between'} px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group relative
+                        ${isActive 
+                          ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30 font-semibold' 
+                          : 'text-slate-200 hover:text-white hover:bg-slate-800/80'}
+                      `}
+                    >
+                      <div className="flex items-center gap-3">
+                        <Icon className="w-5 h-5 text-slate-300 group-hover:text-white transition-transform group-hover:scale-110 flex-shrink-0" />
+                        <span className={isCollapsed ? 'lg:hidden' : 'block'}>{item.label}</span>
+                      </div>
+                      {item.badge !== undefined && item.badge !== null && (
+                        <span className={`px-2 py-0.5 text-xs font-bold rounded-full bg-blue-500/30 text-blue-300 border border-blue-400/20 ${isCollapsed ? 'lg:hidden' : ''}`}>
+                          {item.badge}
+                        </span>
+                      )}
+                      {item.badge !== undefined && item.badge !== null && isCollapsed && (
+                        <span className="hidden lg:block absolute top-2 right-2 w-2 h-2 rounded-full bg-blue-400"></span>
+                      )}
+                    </NavLink>
+                  );
+                })}
+              </div>
             </div>
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              return (
-                <NavLink
-                  key={item.path}
-                  to={item.path}
-                  title={item.label}
-                  onClick={() => onClose && onClose()}
-                  className={({ isActive }) => `
-                    flex items-center ${isCollapsed ? 'lg:justify-center' : 'justify-between'} px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group relative
-                    ${isActive 
-                      ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30 font-semibold' 
-                      : 'text-slate-200 hover:text-white hover:bg-slate-800/80'}
-                  `}
-                >
-                  <div className="flex items-center gap-3">
-                    <Icon className="w-5 h-5 text-slate-300 group-hover:text-white transition-transform group-hover:scale-110 flex-shrink-0" />
-                    <span className={isCollapsed ? 'lg:hidden' : 'block'}>{item.label}</span>
-                  </div>
-                  {item.badge !== undefined && item.badge !== null && (
-                    <span className={`px-2 py-0.5 text-xs font-bold rounded-full bg-blue-500/30 text-blue-300 border border-blue-400/20 ${isCollapsed ? 'lg:hidden' : ''}`}>
-                      {item.badge}
-                    </span>
-                  )}
-                  {item.badge !== undefined && item.badge !== null && isCollapsed && (
-                    <span className="hidden lg:block absolute top-2 right-2 w-2 h-2 rounded-full bg-blue-400"></span>
-                  )}
-                </NavLink>
-              );
-            })}
+
+            {/* RECEPTION SERVICES Section */}
+            <div>
+              <div className={`px-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 ${isCollapsed ? 'lg:hidden' : ''}`}>
+                Reception Services
+              </div>
+              <div className="space-y-1">
+                {receptionNavItems.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <NavLink
+                      key={item.path}
+                      to={item.path}
+                      title={item.label}
+                      onClick={() => onClose && onClose()}
+                      className={({ isActive }) => `
+                        flex items-center ${isCollapsed ? 'lg:justify-center' : 'justify-between'} px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group relative
+                        ${isActive 
+                          ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30 font-semibold' 
+                          : 'text-slate-200 hover:text-white hover:bg-slate-800/80'}
+                      `}
+                    >
+                      <div className="flex items-center gap-3">
+                        <Icon className="w-5 h-5 text-slate-300 group-hover:text-white transition-transform group-hover:scale-110 flex-shrink-0" />
+                        <span className={isCollapsed ? 'lg:hidden' : 'block'}>{item.label}</span>
+                      </div>
+                    </NavLink>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         </div>
 

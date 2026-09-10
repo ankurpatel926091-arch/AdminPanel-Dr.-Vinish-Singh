@@ -1,11 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Menu, ChevronDown, User, LogOut, Settings } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import doctorPhoto from '../../assets/doctor.jpg';
+import { getUser, clearAuth } from '../../utils/auth';
+import { logoutAdmin } from '../../services/authService';
+import { toast } from 'react-toastify';
 
 export default function Header({ onToggleSidebar, onOpenSearch }) {
-  const { logout } = useAuth();
+  const user = getUser();
   const navigate = useNavigate();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
 
@@ -23,6 +25,15 @@ export default function Header({ onToggleSidebar, onOpenSearch }) {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
+
+  const roleLabel = 'Administrator';
+
+  const handleLogout = async () => {
+    try { await logoutAdmin(); } catch (_) {}
+    clearAuth();
+    toast.info('Logged out successfully');
+    navigate('/login', { replace: true });
+  };
 
   return (
     <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-3 sm:px-6 lg:px-8 py-2.5 flex items-center justify-between shadow-2xs">
@@ -49,7 +60,7 @@ export default function Header({ onToggleSidebar, onOpenSearch }) {
               <div className="w-9 h-9 rounded-full p-0.5 bg-gradient-to-tr from-blue-600 to-indigo-600 shadow-md">
                 <img
                   src={doctorPhoto}
-                  alt="Dr. Vinish Singh"
+                  alt={user?.name || "Dr. Vinish Singh"}
                   className="w-full h-full rounded-full object-cover"
                 />
               </div>
@@ -57,10 +68,10 @@ export default function Header({ onToggleSidebar, onOpenSearch }) {
             </div>
             <div className="hidden sm:block text-left">
               <div className="text-xs font-extrabold text-slate-800 leading-tight tracking-tight group-hover:text-blue-600 transition-colors">
-                Dr. Vinish Singh
+                {user?.name || "Dr. Vinish Singh"}
               </div>
               <div className="text-[10px] text-blue-600 font-bold tracking-wider uppercase flex items-center gap-1 mt-0.5">
-                <span>Administrator</span>
+                <span>{roleLabel}</span>
               </div>
             </div>
             <ChevronDown className="w-4 h-4 text-slate-400 group-hover:text-slate-600 transition-transform group-hover:translate-y-0.5 hidden sm:block" />
@@ -70,8 +81,8 @@ export default function Header({ onToggleSidebar, onOpenSearch }) {
           {showProfileMenu && (
             <div className="fixed sm:absolute top-16 sm:top-full right-3 sm:right-0 mt-1 sm:mt-3 w-56 bg-white rounded-2xl shadow-xl border border-slate-100 py-2 z-50">
               <div className="px-4 py-3 border-b border-slate-100">
-                <p className="text-xs font-bold text-slate-800">Dr. Vinish Kumar Singh</p>
-                <p className="text-[11px] text-slate-400 mt-0.5">admin@drvinish.com</p>
+                <p className="text-xs font-bold text-slate-800">{user?.name || "Dr. Vinish Kumar Singh"}</p>
+                <p className="text-[11px] text-slate-400 mt-0.5">{user?.email || "admin@drvinish.com"}</p>
               </div>
               {/* <div className="py-1">
                 <button
@@ -89,7 +100,7 @@ export default function Header({ onToggleSidebar, onOpenSearch }) {
               </div> */}
               <div className="border-t border-slate-100 pt-1">
                 <button
-                  onClick={() => { logout(); navigate('/login'); }}
+                  onClick={handleLogout}
                   className="w-full text-left px-4 py-2 text-xs font-medium text-rose-600 hover:bg-rose-50 flex items-center gap-2"
                 >
                   <LogOut className="w-4 h-4" /> Logout

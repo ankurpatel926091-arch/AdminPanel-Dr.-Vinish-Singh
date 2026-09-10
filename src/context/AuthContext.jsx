@@ -5,10 +5,32 @@ import { loginAdmin, getAdminProfile, logoutAdmin } from '../services/authServic
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(() => {
+    try {
+      const savedUser = localStorage.getItem('dr_vinish_admin_user');
+      if (!savedUser) return null;
+      const parsed = JSON.parse(savedUser);
+      if (parsed) {
+        parsed.role = (parsed.role === 'Administrator' || parsed.role === 'admin') ? 'admin' : null;
+      }
+      return parsed;
+    } catch (e) {
+      return null;
+    }
+  });
   const [token, setToken] = useState(() => localStorage.getItem('dr_vinish_admin_token') || null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(() => Boolean(localStorage.getItem('dr_vinish_admin_token')));
   const [loading, setLoading] = useState(true);
+
+  // Helper to normalize user object
+  const normalizeUserData = (rawUser) => {
+    if (!rawUser) return null;
+    const role = (rawUser.role === 'Administrator' || rawUser.role === 'admin') ? 'admin' : null;
+    return {
+      ...rawUser,
+      role
+    };
+  };
 
   // Check auth status on initial load or browser refresh
   useEffect(() => {
@@ -18,9 +40,11 @@ export const AuthProvider = ({ children }) => {
         try {
           const res = await getAdminProfile();
           if (res.success && res.admin) {
-            setUser(res.admin);
+            const normalizedUser = normalizeUserData(res.admin);
+            setUser(normalizedUser);
             setIsAuthenticated(true);
             setToken(storedToken);
+            localStorage.setItem('dr_vinish_admin_user', JSON.stringify(normalizedUser));
           } else {
             handleLocalLogout();
             sessionStorage.setItem(
@@ -56,13 +80,13 @@ export const AuthProvider = ({ children }) => {
     try {
       const res = await loginAdmin(email, password);
       if (res.success && res.token) {
-        const adminData = res.admin;
-        setUser(adminData);
+        const normalizedUser = normalizeUserData(res.admin);
+        setUser(normalizedUser);
         setToken(res.token);
         setIsAuthenticated(true);
         localStorage.setItem('dr_vinish_admin_token', res.token);
-        localStorage.setItem('dr_vinish_admin_user', JSON.stringify(adminData));
-        return { success: true };
+        localStorage.setItem('dr_vinish_admin_user', JSON.stringify(normalizedUser));
+        return { success: true, user: normalizedUser };
       } else {
         return { success: false, message: res.message || 'Invalid credentials' };
       }
@@ -84,11 +108,16 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const role = user?.role || null;
+  const isAdmin = role === 'admin';
+  const isDoctor = role === 'doctor';
+
   return (
-    <AuthContext.Provider value={{ user, token, isAuthenticated, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, token, isAuthenticated, loading, role, isAdmin, isDoctor, login, logout }}>
       {children}
     </AuthContext.Provider>
   );
 };
 
 export const useAuth = () => useContext(AuthContext);
+

@@ -1,8 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Header from './Header';
 import SearchModal from '../common/SearchModal';
+import { Loader2 } from 'lucide-react';
+
+const PageLoader = () => (
+  <div className="min-h-[60vh] flex flex-col items-center justify-center p-6 text-slate-500">
+    <Loader2 className="w-8 h-8 text-blue-600 animate-spin mb-3" />
+    <span className="text-xs font-bold tracking-wider uppercase text-slate-400">Loading Page...</span>
+  </div>
+);
 
 export default function AdminLayout() {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
@@ -47,7 +55,9 @@ export default function AdminLayout() {
         />
         
         <main className="flex-1 p-4 lg:p-8 max-w-7xl w-full mx-auto">
-          <Outlet />
+          <Suspense fallback={<PageLoader />}>
+            <Outlet />
+          </Suspense>
         </main>
       </div>
 
