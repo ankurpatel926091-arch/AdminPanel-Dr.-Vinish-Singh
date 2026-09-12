@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { toast } from 'react-toastify';
-import { loginAdmin } from '../services/authService';
-import { isLoggedIn, saveAuth } from '../utils/auth';
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
+import { loginAdmin } from "../services/authService";
+import { isLoggedIn, saveAuth } from "../utils/auth";
 import {
   Lock,
   User,
@@ -12,16 +12,17 @@ import {
   Shield,
   Stethoscope,
   ArrowRight,
-  Loader2
-} from 'lucide-react';
-import doctorPhoto from '../assets/doctor.jpg';
+  Loader2,
+} from "lucide-react";
+import doctorPhoto from "../assets/doctor.jpg";
+import { getUser } from '../utils/auth';
 
 export default function Login() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const navigate = useNavigate();
@@ -29,33 +30,34 @@ export default function Login() {
   // Redirect if already logged in
   useEffect(() => {
     if (isLoggedIn()) {
-      navigate('/admin', { replace: true });
+      navigate("/admin", { replace: true });
     }
   }, [navigate]);
 
   // Check for pending session expiration toasts
   useEffect(() => {
-    const pendingToast = sessionStorage.getItem('admin_toast');
+    const pendingToast = sessionStorage.getItem("admin_toast");
     if (pendingToast) {
       try {
         const { type, message } = JSON.parse(pendingToast);
-        if (type === 'error') toast.error(message, { toastId: 'session-expired' });
-        else if (type === 'success') toast.success(message);
-        else if (type === 'info') toast.info(message);
+        if (type === "error")
+          toast.error(message, { toastId: "session-expired" });
+        else if (type === "success") toast.success(message);
+        else if (type === "info") toast.info(message);
       } catch (e) {}
-      sessionStorage.removeItem('admin_toast');
+      sessionStorage.removeItem("admin_toast");
     }
   }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!email || !password) {
-      setError('Please enter both email and password.');
-      toast.warning('Please enter both email and password.');
+      setError("Please enter both email and password.");
+      toast.warning("Please enter both email and password.");
       return;
     }
 
-    setError('');
+    setError("");
     setIsSubmitting(true);
 
     try {
@@ -63,15 +65,24 @@ export default function Login() {
       if (result.success && result.token) {
         // Save token + user directly to localStorage
         saveAuth(result.token, result.admin);
-        toast.success('Login Successful! Welcome back.', { toastId: 'login-success' });
-        navigate('/admin', { replace: true });
+        toast.success("Login Successful! Welcome back.", {
+          toastId: "login-success",
+        });
+        const role = result.admin?.role?.toLowerCase();
+        if (role === "doctor") {
+          navigate("/doctor", { replace: true });
+        } else {
+          navigate("/admin", { replace: true });
+        }
       } else {
-        const msg = result.message || 'Invalid email or password.';
+        const msg = result.message || "Invalid email or password.";
         setError(msg);
-        toast.error(msg, { toastId: 'login-failed' });
+        toast.error(msg, { toastId: "login-failed" });
       }
     } catch (err) {
-      const msg = err.response?.data?.message || 'An unexpected error occurred. Please try again.';
+      const msg =
+        err.response?.data?.message ||
+        "An unexpected error occurred. Please try again.";
       setError(msg);
       toast.error(msg);
     } finally {
@@ -84,18 +95,23 @@ export default function Login() {
       {/* Decorative Ambient Glowing Orbs */}
       <div className="absolute -top-32 -left-32 w-96 h-96 bg-blue-600/20 rounded-full blur-[120px] pointer-events-none" />
       <div className="absolute -bottom-32 -right-32 w-96 h-96 bg-indigo-600/20 rounded-full blur-[120px] pointer-events-none" />
-      
+
       {/* Background Micro Grid Watermark */}
       <div className="absolute inset-0 bg-[radial-gradient(#38bdf8_1px,transparent_1px)] [background-size:28px_28px] opacity-[0.03] pointer-events-none" />
 
       {/* Main Container Box */}
       <div className="w-full max-w-5xl bg-white rounded-3xl shadow-[0_25px_60px_-15px_rgba(0,0,0,0.5)] overflow-hidden grid grid-cols-1 lg:grid-cols-12 border border-slate-800/40 my-auto relative z-10 backdrop-blur-xl">
-        
         {/* Left Dark Blue Executive Panel */}
         <div className="lg:col-span-5 bg-gradient-to-b from-[#0B1E3B] via-[#07152B] to-[#040C19] p-6 sm:p-8 text-white flex flex-col justify-between relative overflow-hidden">
           {/* Subtle Watermark Graphic */}
           <div className="absolute inset-0 opacity-[0.04] pointer-events-none flex items-center justify-center">
-            <svg className="w-96 h-96 text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
+            <svg
+              className="w-96 h-96 text-blue-400"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1"
+            >
               <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z" />
               <path d="M12 6v12M6 12h12" />
             </svg>
@@ -133,7 +149,8 @@ export default function Login() {
             {/* Doctor Quote Card */}
             <div className="mt-4 p-3.5 rounded-2xl bg-white/[0.04] backdrop-blur-md border border-white/10 shadow-inner max-w-xs mx-auto">
               <p className="text-xs text-slate-300 italic leading-relaxed">
-                "Dedicated to providing advanced urological care with compassion and excellence."
+                "Dedicated to providing advanced urological care with compassion
+                and excellence."
               </p>
             </div>
           </div>
@@ -144,21 +161,27 @@ export default function Login() {
               <div className="w-9 h-9 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-400 mb-1.5 border border-blue-500/20 group-hover:bg-blue-600 group-hover:text-white group-hover:border-blue-500 transition-all duration-300 shadow-sm">
                 <ShieldCheck className="w-4 h-4" />
               </div>
-              <span className="text-[10px] sm:text-[11px] font-semibold text-slate-300">Secure Access</span>
+              <span className="text-[10px] sm:text-[11px] font-semibold text-slate-300">
+                Secure Access
+              </span>
             </div>
 
             <div className="flex flex-col items-center group cursor-default">
               <div className="w-9 h-9 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-400 mb-1.5 border border-blue-500/20 group-hover:bg-blue-600 group-hover:text-white group-hover:border-blue-500 transition-all duration-300 shadow-sm">
                 <Lock className="w-4 h-4" />
               </div>
-              <span className="text-[10px] sm:text-[11px] font-semibold text-slate-300">Protected Data</span>
+              <span className="text-[10px] sm:text-[11px] font-semibold text-slate-300">
+                Protected Data
+              </span>
             </div>
 
             <div className="flex flex-col items-center group cursor-default">
               <div className="w-9 h-9 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-400 mb-1.5 border border-blue-500/20 group-hover:bg-blue-600 group-hover:text-white group-hover:border-blue-500 transition-all duration-300 shadow-sm">
                 <User className="w-4 h-4" />
               </div>
-              <span className="text-[10px] sm:text-[11px] font-semibold text-slate-300">Admin Portal</span>
+              <span className="text-[10px] sm:text-[11px] font-semibold text-slate-300">
+                Admin Portal
+              </span>
             </div>
           </div>
         </div>
@@ -187,7 +210,11 @@ export default function Login() {
             )}
 
             {/* Login Form */}
-            <form onSubmit={handleSubmit} autoComplete="off" className="space-y-3.5 max-w-md mx-auto">
+            <form
+              onSubmit={handleSubmit}
+              autoComplete="off"
+              className="space-y-3.5 max-w-md mx-auto"
+            >
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
                   Email Address
@@ -218,7 +245,7 @@ export default function Login() {
                     <Lock className="w-4 h-4" />
                   </div>
                   <input
-                    type={showPassword ? 'text' : 'password'}
+                    type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Enter your password"
@@ -232,7 +259,11 @@ export default function Login() {
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
                   >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    {showPassword ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
                   </button>
                 </div>
               </div>
@@ -247,9 +278,12 @@ export default function Login() {
                   />
                   Remember me
                 </label>
-                <a 
-                  href="#forgot" 
-                  onClick={(e) => { e.preventDefault(); alert('Default credentials: admin@drvinish.com / admin123'); }} 
+                <a
+                  href="#forgot"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    alert("Default credentials: admin@drvinish.com / admin123");
+                  }}
                   className="text-blue-600 font-semibold hover:text-indigo-600 transition-colors hover:underline"
                 >
                   Forgot password?

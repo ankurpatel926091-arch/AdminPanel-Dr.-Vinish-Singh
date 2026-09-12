@@ -66,19 +66,19 @@ export default function Dashboard() {
         />
       </div>
 
-      {/* Full-width Appointment Status Overview Chart (Directly below summary cards) */}
-      <div className="w-full">
-        <AppointmentStatusWidget />
-      </div>
-
-      {/* Middle Grid Row: Upcoming Appointments & Enquiries Overview Chart */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-        <div className="lg:col-span-6">
-          <AppointmentsWidget />
+      {/* Top Row: Appointment Status Overview & Enquiries Overview side by side */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+        <div>
+          <AppointmentStatusWidget />
         </div>
-        <div className="lg:col-span-6">
+        <div>
           <EnquiriesChartWidget />
         </div>
+      </div>
+
+      {/* Full-width Upcoming Appointments */}
+      <div className="w-full">
+        <AppointmentsWidget />
       </div>
 
       {/* Bottom Grid Row: Recent Enquiries Table (Full Width) */}
