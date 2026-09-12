@@ -13,7 +13,7 @@ import TodaysAppointments from "./pages/DoctorDashboard/TodaysAppointments";
 import MedicalRecords from "./pages/DoctorDashboard/MedicalRecords";
 import Prescriptions from "./pages/DoctorDashboard/Prescriptions";
 import DoctorReports from "./pages/DoctorDashboard/DoctorReports";
-import DoctorDash from "./pages/DoctorDashboard/doctorDash";
+import DoctorDash from "./pages/DoctorDashboard/DoctorDash";
 import Consultation from "./pages/DoctorDashboard/Consultation";
 
 // Lazy Loaded Route Components for Admin Panel
