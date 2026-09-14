@@ -17,6 +17,9 @@ import {
   Clock,
   Hash,
   Users,
+  Printer,
+  Copy,
+  Building2,
 } from "lucide-react";
 
 /* =====================================================
@@ -118,10 +121,15 @@ export default function PatientRegistration() {
 
   const [formData, setFormData] = useState(emptyForm);
 
+  const [editingPatientId, setEditingPatientId] = useState(null);
+
   const [formError, setFormError] = useState("");
 
   const [successMessage, setSuccessMessage] =
     useState("");
+
+  const [registeredSuccessData, setRegisteredSuccessData] =
+    useState(null);
 
   /* =====================================================
      Search Patients
@@ -169,7 +177,31 @@ export default function PatientRegistration() {
   ===================================================== */
 
   const openRegistration = () => {
+    setEditingPatientId(null);
     setFormData(emptyForm);
+    setFormError("");
+    setSuccessMessage("");
+    setRegisteredSuccessData(null);
+    setShowForm(true);
+  };
+
+  /* =====================================================
+     Open Edit Patient Form
+  ===================================================== */
+
+  const openEditPatient = (patient) => {
+    setEditingPatientId(patient.patientId);
+    setFormData({
+      firstName: patient.firstName || "",
+      lastName: patient.lastName || "",
+      dateOfBirth: patient.dateOfBirth || "",
+      age: patient.age || "",
+      gender: patient.gender || "",
+      mobile: patient.mobile || "",
+      email: patient.email || "",
+      address: patient.address || "",
+      emergencyContact: patient.emergencyContact || "",
+    });
     setFormError("");
     setSuccessMessage("");
     setShowForm(true);
@@ -219,85 +251,155 @@ export default function PatientRegistration() {
   };
 
   /* =====================================================
-     Submit Registration
+     Submit Registration / Edit
   ===================================================== */
 
   const handleSubmit = (e) => {
     e.preventDefault();
 
     /* Required Fields */
-
-    if (
-      !formData.firstName.trim() ||
-      !formData.lastName.trim() ||
-      !formData.gender ||
-      !formData.mobile.trim()
-    ) {
-      setFormError(
-        "Please fill all required patient details."
-      );
+    if (!formData.firstName.trim()) {
+      setFormError("Please enter Patient First Name.");
+      return;
+    }
+    if (!formData.lastName.trim()) {
+      setFormError("Please enter Patient Last Name.");
+      return;
+    }
+    if (!formData.gender) {
+      setFormError("Please select Gender (Male, Female, or Other).");
+      return;
+    }
+    if (!formData.mobile.trim()) {
+      setFormError("Please enter Mobile Number.");
       return;
     }
 
-    /* Mobile Validation */
+    /* Mobile Validation & Sanitization */
+    const cleanMobile = formData.mobile.trim().replace(/^(\+91|0)+/, "");
 
-    if (!/^[0-9]{10}$/.test(formData.mobile)) {
+    if (!/^[0-9]{10}$/.test(cleanMobile)) {
       setFormError(
-        "Please enter a valid 10-digit mobile number."
+        "Please enter a valid 10-digit mobile number (without leading 0 or +91)."
       );
       return;
     }
 
     /* Duplicate Mobile Check */
-
     const duplicatePatient = patients.find(
       (patient) =>
-        patient.mobile === formData.mobile
+        patient.mobile === cleanMobile &&
+        patient.patientId !== editingPatientId
     );
 
     if (duplicatePatient) {
       setFormError(
-        `Patient already exists with ${duplicatePatient.patientId}. Please verify existing patient instead of creating a duplicate profile.`
+        `Another patient already exists with mobile number ${cleanMobile} (${duplicatePatient.patientId}). Please check patient details.`
       );
       return;
     }
 
-    /* Generate Mock UHID */
+    if (editingPatientId) {
+      /* Update existing patient */
 
-    const nextNumber =
-      10245 + patients.length + 1;
+      setPatients((prev) =>
+        prev.map((patient) =>
+          patient.patientId === editingPatientId
+            ? {
+                ...patient,
+                firstName: formData.firstName.trim(),
+                lastName: formData.lastName.trim(),
+                dateOfBirth: formData.dateOfBirth,
+                age: formData.age,
+                gender: formData.gender,
+                mobile: cleanMobile,
+                email: formData.email.trim(),
+                address: formData.address.trim(),
+                emergencyContact:
+                  formData.emergencyContact.trim(),
+              }
+            : patient
+        )
+      );
 
-    const newPatient = {
-      patientId: `UHID-${nextNumber}`,
-      firstName: formData.firstName.trim(),
-      lastName: formData.lastName.trim(),
-      dateOfBirth: formData.dateOfBirth,
-      age: formData.age,
-      gender: formData.gender,
-      mobile: formData.mobile,
-      email: formData.email.trim(),
-      address: formData.address.trim(),
-      emergencyContact:
-        formData.emergencyContact.trim(),
-      status: "Active",
-      createdAt: "12 Sep 2026",
-    };
+      /* Also update selectedPatient if currently open in View modal */
+      if (selectedPatient && selectedPatient.patientId === editingPatientId) {
+        setSelectedPatient((prev) => ({
+          ...prev,
+          firstName: formData.firstName.trim(),
+          lastName: formData.lastName.trim(),
+          dateOfBirth: formData.dateOfBirth,
+          age: formData.age,
+          gender: formData.gender,
+          mobile: cleanMobile,
+          email: formData.email.trim(),
+          address: formData.address.trim(),
+          emergencyContact: formData.emergencyContact.trim(),
+        }));
+      }
 
-    setPatients((prev) => [
-      newPatient,
-      ...prev,
-    ]);
+      setSuccessMessage(
+        `Patient profile updated successfully (${editingPatientId}).`
+      );
 
-    setSuccessMessage(
-      `Patient registered successfully. UHID: ${newPatient.patientId}`
-    );
+      setFormData(emptyForm);
 
-    setFormData(emptyForm);
+      setTimeout(() => {
+        setShowForm(false);
+        setEditingPatientId(null);
+        setSuccessMessage("");
+      }, 1500);
 
-    setTimeout(() => {
+    } else {
+
+      /* Generate Mock UHID */
+
+      const nextNumber =
+        10245 + patients.length + 1;
+
+      const now = new Date();
+      const formattedDate = now.toLocaleDateString("en-IN", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      });
+      const formattedTime = now.toLocaleTimeString("en-IN", {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
+      });
+
+      const calculatedAgeValue = formData.age || calculateAge(formData.dateOfBirth) || "-";
+
+      const newPatient = {
+        patientId: `UHID-${nextNumber}`,
+        firstName: formData.firstName.trim(),
+        lastName: formData.lastName.trim(),
+        dateOfBirth: formData.dateOfBirth,
+        age: calculatedAgeValue,
+        gender: formData.gender,
+        mobile: cleanMobile,
+        email: formData.email.trim(),
+        address: formData.address.trim() || "-",
+        emergencyContact:
+          formData.emergencyContact.trim() || "-",
+        status: "Active",
+        createdAt: formattedDate,
+        registrationDateTime: `${formattedDate}, ${formattedTime}`,
+        patientType: "New Patient",
+      };
+
+      setPatients((prev) => [
+        newPatient,
+        ...prev,
+      ]);
+
+      setFormData(emptyForm);
       setShowForm(false);
+      setEditingPatientId(null);
       setSuccessMessage("");
-    }, 1800);
+      setRegisteredSuccessData(newPatient);
+    }
   };
 
   return (
@@ -659,7 +761,7 @@ export default function PatientRegistration() {
                     {/* Action */}
                     <td className="px-5 py-4">
 
-                      <div className="flex justify-center">
+                      <div className="flex justify-center gap-1.5">
 
                         <button
                           onClick={() =>
@@ -667,10 +769,22 @@ export default function PatientRegistration() {
                               patient
                             )
                           }
-                          title="View Patient"
+                          title="View Patient Details"
                           className="rounded-lg border border-slate-200 bg-white p-2 text-slate-600 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600"
                         >
                           <Eye size={17} />
+                        </button>
+
+                        <button
+                          onClick={() =>
+                            openEditPatient(
+                              patient
+                            )
+                          }
+                          title="Edit Patient Demographics"
+                          className="rounded-lg border border-slate-200 bg-white p-2 text-amber-600 transition hover:border-amber-200 hover:bg-amber-50 hover:text-amber-700"
+                        >
+                          <Edit size={17} />
                         </button>
 
                       </div>
@@ -735,16 +849,20 @@ export default function PatientRegistration() {
               <div className="flex items-center gap-3">
 
                 <div className="rounded-lg bg-blue-50 p-2 text-blue-600">
-                  <UserPlus size={20} />
+                  {editingPatientId ? <Edit size={20} /> : <UserPlus size={20} />}
                 </div>
 
                 <div>
                   <h2 className="font-bold text-slate-900">
-                    Register New Patient
+                    {editingPatientId
+                      ? `Edit Patient Demographics (${editingPatientId})`
+                      : "Register New Patient"}
                   </h2>
 
                   <p className="text-xs text-slate-500">
-                    Create a permanent patient profile
+                    {editingPatientId
+                      ? "Update demographic and contact details"
+                      : "Create a permanent patient profile"}
                   </p>
                 </div>
 
@@ -1074,8 +1192,17 @@ export default function PatientRegistration() {
                   type="submit"
                   className="flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700"
                 >
-                  <UserPlus size={17} />
-                  Register Patient
+                  {editingPatientId ? (
+                    <>
+                      <Edit size={17} />
+                      Save Changes
+                    </>
+                  ) : (
+                    <>
+                      <UserPlus size={17} />
+                      Register Patient
+                    </>
+                  )}
                 </button>
 
               </div>
@@ -1248,7 +1375,19 @@ export default function PatientRegistration() {
 
             {/* Footer */}
 
-            <div className="flex justify-end border-t border-slate-200 bg-slate-50 px-5 py-4">
+            <div className="flex items-center justify-between border-t border-slate-200 bg-slate-50 px-5 py-4">
+
+              <button
+                onClick={() => {
+                  const patientToEdit = selectedPatient;
+                  setSelectedPatient(null);
+                  openEditPatient(patientToEdit);
+                }}
+                className="flex items-center gap-1.5 rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-amber-600 shadow-xs"
+              >
+                <Edit size={16} />
+                Edit Demographics
+              </button>
 
               <button
                 onClick={() =>
@@ -1266,6 +1405,179 @@ export default function PatientRegistration() {
         </div>
 
       )}
+
+      {/* =====================================================
+          SUCCESS CONFIRMATION & REGISTRATION SLIP MODAL
+      ===================================================== */}
+
+      {registeredSuccessData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+          <div className="flex max-h-[95vh] w-full max-w-xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl animate-in fade-in zoom-in duration-200">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4 bg-emerald-50/50">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 shadow-xs">
+                  <CheckCircle2 size={22} />
+                </div>
+                <div>
+                  <h2 className="font-bold text-emerald-950 text-base">
+                    Patient Registered Successfully
+                  </h2>
+                  <p className="text-xs text-emerald-700 font-medium">
+                    Permanent UHID generated: <span className="font-bold font-mono">{registeredSuccessData.patientId}</span>
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setRegisteredSuccessData(null)}
+                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Printable Registration Slip Area */}
+            <div className="p-6 overflow-y-auto" id="printable-registration-slip">
+              {/* Slip Card */}
+              <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
+                {/* Clinic Branding Header */}
+                <div className="flex items-start justify-between border-b border-slate-200 pb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-600 text-white font-bold shadow-md">
+                      <Building2 size={24} />
+                    </div>
+                    <div>
+                      <h3 className="font-extrabold text-slate-900 text-base leading-tight">
+                        Rudraksh IVF & Urology Centre
+                      </h3>
+                      <p className="text-xs font-bold text-blue-600">
+                        Dr. Vinish Kumar Singh
+                      </p>
+                      <p className="text-[11px] text-slate-500">
+                        M.S., M.Ch. (Urology) • Senior Consultant Urologist & Andrologist
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className="inline-block px-3 py-1 bg-blue-50 text-blue-700 border border-blue-200 rounded-md font-bold text-xs">
+                      PATIENT REGISTRATION SLIP
+                    </span>
+                  </div>
+                </div>
+
+                {/* UHID Highlight Box */}
+                <div className="flex items-center justify-between rounded-xl bg-slate-900 text-white p-4 shadow-inner">
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">
+                      Patient ID / UHID Number
+                    </span>
+                    <span className="text-xl font-black font-mono tracking-wide text-blue-400">
+                      {registeredSuccessData.patientId}
+                    </span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">
+                      Patient Category
+                    </span>
+                    <span className="inline-block px-2.5 py-0.5 rounded text-xs font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 uppercase">
+                      {registeredSuccessData.patientType || "New Patient"}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Patient Information Grid */}
+                <div className="grid grid-cols-2 gap-4 text-xs text-slate-700 pt-2">
+                  <div className="p-3 bg-slate-50 rounded-lg border border-slate-100">
+                    <span className="text-slate-400 block text-[10px] uppercase font-bold">Patient Name</span>
+                    <span className="font-bold text-slate-900 text-sm">{registeredSuccessData.firstName} {registeredSuccessData.lastName}</span>
+                  </div>
+
+                  <div className="p-3 bg-slate-50 rounded-lg border border-slate-100">
+                    <span className="text-slate-400 block text-[10px] uppercase font-bold">Age / Gender</span>
+                    <span className="font-semibold text-slate-900">{registeredSuccessData.age} years / {registeredSuccessData.gender}</span>
+                  </div>
+
+                  <div className="p-3 bg-slate-50 rounded-lg border border-slate-100">
+                    <span className="text-slate-400 block text-[10px] uppercase font-bold">Mobile Number</span>
+                    <span className="font-semibold text-slate-900">{registeredSuccessData.mobile}</span>
+                  </div>
+
+                  <div className="p-3 bg-slate-50 rounded-lg border border-slate-100">
+                    <span className="text-slate-400 block text-[10px] uppercase font-bold">Registration Date & Time</span>
+                    <span className="font-semibold text-slate-900">{registeredSuccessData.registrationDateTime || registeredSuccessData.createdAt}</span>
+                  </div>
+
+                  <div className="col-span-2 p-3 bg-slate-50 rounded-lg border border-slate-100">
+                    <span className="text-slate-400 block text-[10px] uppercase font-bold">Patient Address</span>
+                    <span className="font-semibold text-slate-900">{registeredSuccessData.address || "-"}</span>
+                  </div>
+                </div>
+
+                {/* Slip Footnote */}
+                <div className="border-t border-slate-200 pt-3 text-[11px] text-slate-500 flex justify-between items-center">
+                  <span>Please present this UHID slip during all future OPD consultations & billing.</span>
+                  <span className="font-mono text-slate-400">Reception Desk</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Actions Footer */}
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 bg-slate-50 px-6 py-4">
+              <button
+                type="button"
+                onClick={() => {
+                  setRegisteredSuccessData(null);
+                  openRegistration();
+                }}
+                className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition"
+              >
+                <UserPlus size={16} />
+                Register Another Patient
+              </button>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-xs font-bold text-white shadow-md transition hover:bg-blue-700"
+                >
+                  <Printer size={16} />
+                  Print Registration Slip
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setRegisteredSuccessData(null)}
+                  className="rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-xs font-medium text-slate-600 hover:bg-slate-100 transition"
+                >
+                  Done
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Print Stylesheet */}
+      <style>{`
+        @media print {
+          body * {
+            visibility: hidden !important;
+          }
+          #printable-registration-slip, #printable-registration-slip * {
+            visibility: visible !important;
+          }
+          #printable-registration-slip {
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100% !important;
+            padding: 20px !important;
+            background: white !important;
+            box-shadow: none !important;
+          }
+        }
+      `}</style>
 
     </div>
   );

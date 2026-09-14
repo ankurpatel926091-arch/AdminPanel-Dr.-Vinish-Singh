@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Menu, ChevronDown, User, LogOut, Settings } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import doctorPhoto from '../../assets/doctor.jpg';
 import { getUser, clearAuth } from '../../utils/auth';
 import { logoutAdmin } from '../../services/authService';
@@ -9,7 +9,11 @@ import { toast } from 'react-toastify';
 export default function Header({ onToggleSidebar, onOpenSearch }) {
   const user = getUser();
   const navigate = useNavigate();
+  const location = useLocation();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+
+  const isDoctorPortal = location.pathname.startsWith('/doctor');
+  const roleLabel = isDoctorPortal ? 'DOCTOR' : 'ADMINISTRATOR';
 
   const profileRef = useRef(null);
 
@@ -26,8 +30,6 @@ export default function Header({ onToggleSidebar, onOpenSearch }) {
     };
   }, []);
 
-  const roleLabel = 'Administrator';
-
   const handleLogout = async () => {
     try { await logoutAdmin(); } catch (_) {}
     clearAuth();
@@ -35,17 +37,43 @@ export default function Header({ onToggleSidebar, onOpenSearch }) {
     navigate('/login', { replace: true });
   };
 
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Good Morning";
+    if (hour < 17) return "Good Afternoon";
+    return "Good Evening";
+  };
+
   return (
     <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-3 sm:px-6 lg:px-8 py-2.5 flex items-center justify-between shadow-2xs">
-      {/* Left: Mobile Sidebar Toggle */}
-      <div className="flex items-center gap-2 sm:gap-4">
+      {/* Left: Mobile Sidebar Toggle + Greeting Header */}
+      <div className="flex items-center gap-2.5 sm:gap-4">
         <button
           onClick={onToggleSidebar}
-          className="p-2 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors"
+          className="p-2 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors shrink-0"
           aria-label="Toggle Navigation"
         >
           <Menu className="w-5 h-5" />
         </button>
+
+        <div className="text-left">
+          <h2 className="text-sm sm:text-base md:text-lg font-bold text-slate-900 tracking-tight flex items-center gap-1.5 leading-tight">
+            {isDoctorPortal ? (
+              <>
+                {getGreeting()}, Dr. Vinish Kumar Singh <span className="inline-block">👋</span>
+              </>
+            ) : (
+              <>
+                {getGreeting()}, Administrator <span className="inline-block">👋</span>
+              </>
+            )}
+          </h2>
+          <p className="text-[10px] sm:text-xs text-slate-500 font-medium hidden sm:block">
+            {isDoctorPortal
+              ? "Here's your OPD and patient overview for today."
+              : "Here's your hospital operations overview for today."}
+          </p>
+        </div>
       </div>
 
       {/* Right: Doctor Profile Badge */}

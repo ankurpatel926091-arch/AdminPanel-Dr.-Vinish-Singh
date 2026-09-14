@@ -1,1002 +1,1006 @@
-import React, { useMemo, useState } from "react";
+import React, { useState } from 'react';
+import { useAdminData } from '../../context/AdminDataContext';
+import { toast } from 'react-toastify';
 import {
+  Calendar as CalendarIcon,
+  CalendarX,
+  CalendarCheck,
   Search,
-  Calendar,
-  Filter,
+  Plus,
   Clock,
-  User,
-  Phone,
+  Building2,
   Stethoscope,
-  CheckCircle2,
-  CircleDollarSign,
-  Users,
-  Eye,
-  UserCheck,
   X,
-  MapPin,
-  AlertCircle,
-} from "lucide-react";
+  Send,
+  Hourglass,
+  CheckCircle2,
+  Phone,
+  Mail,
+  XCircle,
+  Eye,
+  ChevronLeft,
+  ChevronRight,
+  UserCheck,
+  RotateCw,
+  Layers
+} from 'lucide-react';
 
-/* =========================
-   Mock Today's OPD Data
-========================= */
-
-const opdData = [
-  {
-    id: "A-10025",
-    visitId: "V-20052",
-    token: 1,
-    patientName: "Rahul Sharma",
-    patientId: "UHID-10245",
-    age: 42,
-    gender: "Male",
-    phone: "+91 9876543210",
-    doctor: "Dr. Vinish Kumar Singh",
-    department: "Urology",
-    hospital: "SKD Hospital",
-    appointmentTime: "10:00 AM",
-    checkInTime: "09:48 AM",
-    status: "Checked-in",
-    priority: false,
-  },
-  {
-    id: "A-10026",
-    visitId: "V-20053",
-    token: 2,
-    patientName: "Amit Verma",
-    patientId: "UHID-10246",
-    age: 36,
-    gender: "Male",
-    phone: "+91 9123456780",
-    doctor: "Dr. Vinish Kumar Singh",
-    department: "Urology",
-    hospital: "SKD Hospital",
-    appointmentTime: "10:30 AM",
-    checkInTime: "10:12 AM",
-    status: "Waiting for Doctor",
-    priority: true,
-  },
-  {
-    id: "A-10027",
-    visitId: "V-20054",
-    token: 3,
-    patientName: "Suresh Kumar",
-    patientId: "UHID-10247",
-    age: 58,
-    gender: "Male",
-    phone: "+91 9988776655",
-    doctor: "Dr. Vinish Kumar Singh",
-    department: "Urology",
-    hospital: "Ajanta Hospital",
-    appointmentTime: "11:00 AM",
-    checkInTime: "10:42 AM",
-    status: "In Consultation",
-    priority: false,
-  },
-  {
-    id: "A-10028",
-    visitId: null,
-    token: null,
-    patientName: "Mohit Singh",
-    patientId: "UHID-10248",
-    age: 29,
-    gender: "Male",
-    phone: "+91 9001122334",
-    doctor: "Dr. Vinish Kumar Singh",
-    department: "Andrology",
-    hospital: "Ajanta Hospital",
-    appointmentTime: "11:30 AM",
-    checkInTime: null,
-    status: "Confirmed",
-    priority: false,
-  },
-  {
-    id: "A-10029",
-    visitId: null,
-    token: null,
-    patientName: "Neha Gupta",
-    patientId: "UHID-10249",
-    age: 34,
-    gender: "Female",
-    phone: "+91 9011223344",
-    doctor: "Dr. Vinish Kumar Singh",
-    department: "Urology",
-    hospital: "SKD Hospital",
-    appointmentTime: "12:00 PM",
-    checkInTime: null,
-    status: "Pending Confirmation",
-    priority: false,
-  },
-  {
-    id: "A-10030",
-    visitId: "V-20055",
-    token: 4,
-    patientName: "Rakesh Yadav",
-    patientId: "UHID-10250",
-    age: 47,
-    gender: "Male",
-    phone: "+91 9887766554",
-    doctor: "Dr. Vinish Kumar Singh",
-    department: "Urology",
-    hospital: "SKD Hospital",
-    appointmentTime: "12:30 PM",
-    checkInTime: "12:10 PM",
-    status: "Completed",
-    priority: false,
-  },
-  {
-    id: "A-10031",
-    visitId: null,
-    token: null,
-    patientName: "Vikas Singh",
-    patientId: "UHID-10251",
-    age: 40,
-    gender: "Male",
-    phone: "+91 9877654321",
-    doctor: "Dr. Vinish Kumar Singh",
-    department: "Urology",
-    hospital: "Ajanta Hospital",
-    appointmentTime: "01:00 PM",
-    checkInTime: null,
-    status: "No-show",
-    priority: false,
-  },
+const HOSPITAL_CENTRES = [
+  '🌅 Morning OPD: Rudraksh IVF & Urology Centre (Sharda Nagar, 10 AM - 03 PM)',
+  '🌆 Evening OPD: Dr. Shilpi Maternity & Urology Centre (Pakkabag, 03 PM - 07 PM)'
 ];
 
-/* =========================
-   Status Styles
-========================= */
+const SPECIALITY_CONDITIONS = [
+  'Laser Kidney Stones (RIRS / PCNL)',
+  'Prostate Care & Enlargement (BPH / TURP)',
+  'Urine Leakage & UTI Infection',
+  'Kidney Health Followup',
+  'General Urology Consultation',
+  'Kidney Stone Consultation',
+  'Male Infertility Consultation'
+];
 
-const statusStyles = {
-  "Pending Confirmation":
-    "bg-amber-50 text-amber-700 border-amber-200",
-
-  Confirmed:
-    "bg-blue-50 text-blue-700 border-blue-200",
-
-  "Checked-in":
-    "bg-indigo-50 text-indigo-700 border-indigo-200",
-
-  "Waiting for Doctor":
-    "bg-purple-50 text-purple-700 border-purple-200",
-
-  "In Consultation":
-    "bg-orange-50 text-orange-700 border-orange-200",
-
-  Completed:
-    "bg-green-50 text-green-700 border-green-200",
-
-  "No-show":
-    "bg-red-50 text-red-700 border-red-200",
+const formatClinicDisplay = (fullString) => {
+  if (!fullString) return { name: 'Rudraksh IVF & Urology', loc: '(Sharda Nagar)' };
+  if (fullString.includes('Rudraksh')) {
+    return { name: 'Rudraksh IVF & Urology', loc: '(Sharda Nagar)' };
+  }
+  if (fullString.includes('Shilpi')) {
+    return { name: 'Dr. Shilpi Maternity & Urology', loc: '(Pakkabag)' };
+  }
+  if (fullString.includes('Apollomedics')) {
+    return { name: 'Apollomedics Hospital', loc: '(LDA Colony)' };
+  }
+  if (fullString.includes('Chandan')) {
+    return { name: 'Chandan Hospital', loc: '(Faizabad Road)' };
+  }
+  const clean = fullString.replace(/^[🌅🌇🌆]\s*/, '').trim();
+  const parts = clean.split('(');
+  return {
+    name: parts[0]?.trim() || clean,
+    loc: parts[1] ? `(${parts[1]}` : ''
+  };
 };
 
-/* =========================
-   Main Component
-========================= */
+const getAppointmentConsultationType = (apt) => {
+  if (!apt) return 'First Visit';
+
+  const msg = (apt.message || '').toLowerCase();
+  if (msg.includes('type: follow') || msg.includes('follow-up') || msg.includes('followup')) {
+    return 'Follow-up';
+  }
+  if (msg.includes('type: first') || msg.includes('first visit')) {
+    return 'First Visit';
+  }
+
+  const typeStr = (apt.consultationType || '').toLowerCase();
+  if (typeStr.includes('follow')) {
+    return 'Follow-up';
+  }
+
+  return 'First Visit';
+};
+
+const getAppointmentEmail = (apt) => {
+  if (!apt) return '';
+  if (apt.email && apt.email.trim()) return apt.email.trim();
+  const msg = apt.message || '';
+  const match = msg.match(/Email:\s*([^\s|]+)/i);
+  if (match && match[1] && match[1] !== 'N/A') {
+    return match[1].trim();
+  }
+  return '';
+};
+
+const cleanNotesMessage = (msg) => {
+  if (!msg) return '';
+  if (msg.includes('Notes:')) {
+    const parts = msg.split('Notes:');
+    const realNotes = parts[parts.length - 1].trim();
+    if (realNotes && realNotes !== 'N/A' && realNotes !== 'Appointment booking request from website') {
+      return realNotes;
+    }
+    return '';
+  }
+  if (!msg.includes('|')) return msg.trim();
+  return '';
+};
 
 export default function TodayOPD() {
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("All");
-  const [doctorFilter, setDoctorFilter] = useState("All");
-  const [departmentFilter, setDepartmentFilter] = useState("All");
-  const [selectedPatient, setSelectedPatient] = useState(null);
+  const { appointments, clinics, addAppointment, updateAppointmentStatus } = useAdminData();
+  const [filter, setFilter] = useState('All');
+  const [consultationTypeFilter, setConsultationTypeFilter] = useState('All');
+  const [search, setSearch] = useState('');
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [viewAppointment, setViewAppointment] = useState(null);
+  const [confirmVisitedApt, setConfirmVisitedApt] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
-  /* =========================
-     Filter Data
-  ========================= */
+  const defaultClinicId = clinics && clinics.length > 0 ? (clinics[0]._id || clinics[0].id) : '';
 
-  const filteredData = useMemo(() => {
-    return opdData.filter((patient) => {
-      const searchText = search.toLowerCase();
+  // Add Appointment Form State
+  const [formData, setFormData] = useState({
+    name: '',
+    phone: '',
+    email: '',
+    consultationType: 'First Visit',
+    clinic: defaultClinicId,
+    problem: SPECIALITY_CONDITIONS[0],
+    date: new Date().toISOString().split('T')[0],
+    time: '11:00 AM',
+    message: '',
+    status: 'Confirmed'
+  });
 
-      const matchesSearch =
-        patient.patientName.toLowerCase().includes(searchText) ||
-        patient.patientId.toLowerCase().includes(searchText) ||
-        patient.id.toLowerCase().includes(searchText) ||
-        patient.phone.includes(searchText);
+  const filtered = appointments.filter(apt => {
+    const matchesFilter = filter === 'All' || (apt.status || '').toLowerCase() === filter.toLowerCase();
+    const aptType = getAppointmentConsultationType(apt);
+    const matchesType = consultationTypeFilter === 'All' || aptType.toLowerCase() === consultationTypeFilter.toLowerCase();
+    const aptEmail = getAppointmentEmail(apt);
+    const clinicName = apt.clinic?.name || (typeof apt.clinic === 'string' ? apt.clinic : (apt.centre || ''));
+    const matchesSearch = (apt.name || '').toLowerCase().includes(search.toLowerCase()) ||
+                          (apt.phone || '').includes(search) ||
+                          aptEmail.toLowerCase().includes(search.toLowerCase()) ||
+                          (apt.problem || '').toLowerCase().includes(search.toLowerCase()) ||
+                          clinicName.toLowerCase().includes(search.toLowerCase());
+    return matchesFilter && matchesType && matchesSearch;
+  });
 
-      const matchesStatus =
-        statusFilter === "All" ||
-        patient.status === statusFilter;
+  // Pagination logic
+  const totalPages = Math.ceil(filtered.length / itemsPerPage) || 1;
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedAppointments = filtered.slice(startIndex, startIndex + itemsPerPage);
 
-      const matchesDoctor =
-        doctorFilter === "All" ||
-        patient.doctor === doctorFilter;
+  const handleFormSubmit = (e) => {
+    e.preventDefault();
+    if (!formData.name.trim() || !formData.phone.trim()) {
+      alert('Please fill in patient name and phone number.');
+      return;
+    }
 
-      const matchesDepartment =
-        departmentFilter === "All" ||
-        patient.department === departmentFilter;
+    let formattedDate = formData.date;
+    try {
+      const d = new Date(formData.date);
+      formattedDate = d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    } catch {
+      formattedDate = formData.date;
+    }
 
-      return (
-        matchesSearch &&
-        matchesStatus &&
-        matchesDoctor &&
-        matchesDepartment
-      );
+    const selectedClinicId = formData.clinic || defaultClinicId;
+    const newAptObj = {
+      id: Date.now(),
+      name: formData.name.trim(),
+      phone: formData.phone.trim(),
+      email: formData.email.trim(),
+      consultationType: formData.consultationType || 'First Visit',
+      clinic: selectedClinicId,
+      problem: formData.problem,
+      date: formattedDate,
+      time: formData.time,
+      message: formData.message.trim() ? `Type: ${formData.consultationType} | Email: ${formData.email.trim() || 'N/A'} | ${formData.message.trim()}` : `Type: ${formData.consultationType} | Email: ${formData.email.trim() || 'N/A'}`,
+      status: formData.status
+    };
+
+    addAppointment(newAptObj);
+    toast.success('Appointment created successfully!');
+
+    setFormData({
+      name: '',
+      phone: '',
+      email: '',
+      consultationType: 'First Visit',
+      clinic: defaultClinicId,
+      problem: SPECIALITY_CONDITIONS[0],
+      date: new Date().toISOString().split('T')[0],
+      time: '11:00 AM',
+      message: '',
+      status: 'Confirmed'
     });
-  }, [
-    search,
-    statusFilter,
-    doctorFilter,
-    departmentFilter,
-  ]);
+    setShowAddModal(false);
+  };
 
-  /* =========================
-     Stats
-  ========================= */
+  const handleStatusChange = (aptOrId, newStatus) => {
+    const aptObj = typeof aptOrId === 'object' ? aptOrId : appointments.find(a => String(a.id || a._id) === String(aptOrId));
+    const aptId = typeof aptOrId === 'object' ? (aptOrId.id || aptOrId._id) : aptOrId;
 
-  const totalPatients = opdData.length;
+    if (aptObj && (aptObj.status || '').toLowerCase() === 'visited') {
+      toast.warn('This appointment is already marked as Visited and cannot be modified.');
+      return;
+    }
 
-  const checkedIn = opdData.filter(
-    (item) =>
-      item.status === "Checked-in" ||
-      item.status === "Waiting for Doctor" ||
-      item.status === "In Consultation"
-  ).length;
+    if (newStatus === 'Visited') {
+      setConfirmVisitedApt(aptObj || { id: aptId, name: 'Patient' });
+      return;
+    }
 
-  const waiting = opdData.filter(
-    (item) => item.status === "Waiting for Doctor"
-  ).length;
+    updateAppointmentStatus(aptId, newStatus);
+    if (newStatus === 'Confirmed') {
+      toast.success(`Appointment Confirmed! Confirmation email sent to patient.`);
+    } else if (newStatus === 'Cancelled') {
+      toast.info(`Appointment Cancelled! Cancellation email sent to patient.`);
+    } else {
+      toast.info(`Appointment status changed to ${newStatus}`);
+    }
+  };
 
-  const completed = opdData.filter(
-    (item) => item.status === "Completed"
-  ).length;
+  const getStatusBadge = (status) => {
+    const s = (status || 'Pending').toLowerCase();
+    if (s === 'confirmed') {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/80 text-xs font-bold">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+          <span>Confirmed</span>
+        </span>
+      );
+    }
+    if (s === 'visited') {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200/80 text-xs font-bold">
+          <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+          <span>Visited</span>
+        </span>
+      );
+    }
+    if (s === 'cancelled') {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-50 text-rose-700 border border-rose-200/80 text-xs font-bold">
+          <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+          <span>Cancelled</span>
+        </span>
+      );
+    }
+    if (s === 'missed') {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-50 text-rose-700 border border-rose-200/80 text-xs font-bold">
+          <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+          <span>Missed</span>
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200/80 text-xs font-bold">
+        <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+        <span>Pending</span>
+      </span>
+    );
+  };
+
+  const getConsultationTypeBadge = (apt) => {
+    const type = getAppointmentConsultationType(apt);
+    if (type === 'Follow-up') {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-50 text-purple-700 border border-purple-200/80 text-xs font-extrabold whitespace-nowrap shadow-2xs">
+          <RotateCw className="w-3.5 h-3.5 text-purple-600 shrink-0" />
+          <span>Follow-up</span>
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/80 text-xs font-extrabold whitespace-nowrap shadow-2xs">
+        <UserCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+        <span>First Visit</span>
+      </span>
+    );
+  };
 
   return (
-    <div className="min-h-screen bg-slate-50 p-4 md:p-6">
-
-      {/* =========================
-          Header
-      ========================= */}
-
-      <div className="mb-6 flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
-
+    <div className="space-y-6 font-sans">
+      {/* ================= 1. PAGE HEADER ================= */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">
-            Today's OPD
-          </h1>
-
-          <p className="mt-1 text-sm text-slate-500">
-            Manage today's appointments, check-ins and OPD queue.
-          </p>
+          <h1 className="text-2xl lg:text-3xl font-black text-slate-900 tracking-tight">Today's OPD</h1>
+          <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1">Schedule and manage hospital &amp; clinic consultations</p>
         </div>
 
-        <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 shadow-sm">
-          <Calendar
-            size={18}
-            className="text-blue-600"
-          />
-
-          <span className="text-sm font-medium text-slate-700">
-            {new Date().toLocaleDateString("en-IN", {
-              day: "2-digit",
-              month: "short",
-              year: "numeric",
-            })}
-          </span>
-        </div>
-      </div>
-
-      {/* =========================
-          Stats Cards
-      ========================= */}
-
-      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-
-        {/* Total */}
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="flex items-center justify-between">
-
-            <div>
-              <p className="text-sm text-slate-500">
-                Today's Appointments
-              </p>
-
-              <h2 className="mt-1 text-2xl font-bold text-slate-900">
-                {totalPatients}
-              </h2>
-            </div>
-
-            <div className="rounded-xl bg-blue-50 p-3 text-blue-600">
-              <Users size={22} />
-            </div>
-
-          </div>
-        </div>
-
-        {/* Checked In */}
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="flex items-center justify-between">
-
-            <div>
-              <p className="text-sm text-slate-500">
-                Checked-in
-              </p>
-
-              <h2 className="mt-1 text-2xl font-bold text-slate-900">
-                {checkedIn}
-              </h2>
-            </div>
-
-            <div className="rounded-xl bg-indigo-50 p-3 text-indigo-600">
-              <UserCheck size={22} />
-            </div>
-
-          </div>
-        </div>
-
-        {/* Waiting */}
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="flex items-center justify-between">
-
-            <div>
-              <p className="text-sm text-slate-500">
-                Waiting for Doctor
-              </p>
-
-              <h2 className="mt-1 text-2xl font-bold text-slate-900">
-                {waiting}
-              </h2>
-            </div>
-
-            <div className="rounded-xl bg-purple-50 p-3 text-purple-600">
-              <Clock size={22} />
-            </div>
-
-          </div>
-        </div>
-
-        {/* Completed */}
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="flex items-center justify-between">
-
-            <div>
-              <p className="text-sm text-slate-500">
-                Completed
-              </p>
-
-              <h2 className="mt-1 text-2xl font-bold text-slate-900">
-                {completed}
-              </h2>
-            </div>
-
-            <div className="rounded-xl bg-green-50 p-3 text-green-600">
-              <CheckCircle2 size={22} />
-            </div>
-
-          </div>
-        </div>
-
-      </div>
-
-      {/* =========================
-          Search & Filters
-      ========================= */}
-
-      <div className="mb-5 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-
-        <div className="mb-4 flex items-center gap-2">
-          <Filter
-            size={18}
-            className="text-blue-600"
-          />
-
-          <h2 className="font-semibold text-slate-800">
-            Search & Filters
-          </h2>
-        </div>
-
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
-
-          {/* Search */}
-          <div className="relative lg:col-span-1">
-
-            <Search
-              size={18}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-            />
-
+        <div className="flex items-center gap-3 flex-wrap sm:flex-nowrap">
+          {/* Search Input Box */}
+          <div className="relative w-full sm:w-72">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
             <input
               type="text"
+              placeholder="Search patient, phone, condition..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Patient name, UHID, phone..."
-              className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-3 text-sm outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100"
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-2xl text-xs font-medium focus:ring-2 focus:ring-blue-600 focus:outline-none shadow-2xs text-slate-800"
             />
-
           </div>
 
-          {/* Doctor */}
-          <select
-            value={doctorFilter}
-            onChange={(e) =>
-              setDoctorFilter(e.target.value)
-            }
-            className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+          {/* Add Appointment Button */}
+          <button
+            type="button"
+            onClick={() => setShowAddModal(true)}
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-2xl shadow-md shadow-blue-600/20 transition-all cursor-pointer whitespace-nowrap"
           >
-            <option value="All">All Doctors</option>
-            <option value="Dr. Vinish Kumar Singh">
-              Dr. Vinish Kumar Singh
-            </option>
-          </select>
-
-          {/* Department */}
-          <select
-            value={departmentFilter}
-            onChange={(e) =>
-              setDepartmentFilter(e.target.value)
-            }
-            className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-          >
-            <option value="All">All Departments</option>
-            <option value="Urology">Urology</option>
-            <option value="Andrology">Andrology</option>
-            <option value="Nephrology">Nephrology</option>
-          </select>
-
-          {/* Status */}
-          <select
-            value={statusFilter}
-            onChange={(e) =>
-              setStatusFilter(e.target.value)
-            }
-            className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-          >
-            <option value="All">All Status</option>
-            <option value="Pending Confirmation">
-              Pending Confirmation
-            </option>
-            <option value="Confirmed">Confirmed</option>
-            <option value="Checked-in">Checked-in</option>
-            <option value="Waiting for Doctor">
-              Waiting for Doctor
-            </option>
-            <option value="In Consultation">
-              In Consultation
-            </option>
-            <option value="Completed">Completed</option>
-            <option value="No-show">No-show</option>
-          </select>
-
+            <Plus className="w-4 h-4" />
+            <span>Add Appointment</span>
+          </button>
         </div>
       </div>
 
-      {/* =========================
-          OPD Table
-      ========================= */}
-
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-
-        <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
-
-          <div>
-            <h2 className="font-semibold text-slate-800">
-              Today's OPD Queue
-            </h2>
-
-            <p className="mt-1 text-xs text-slate-500">
-              {filteredData.length} patient
-              {filteredData.length !== 1 ? "s" : ""} found
-            </p>
-          </div>
-
-          <div className="hidden items-center gap-2 text-xs text-slate-500 sm:flex">
-            <span className="h-2 w-2 rounded-full bg-green-500" />
-            Live Queue
-          </div>
-
+      {/* ================= 2. FILTER PILLS BAR ================= */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        {/* Status Filters (Left) */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+          {['All', 'Pending', 'Confirmed', 'Visited', 'Missed', 'Cancelled'].map(tab => {
+            const isActive = filter === tab;
+            return (
+              <button
+                key={tab}
+                onClick={() => {
+                  setFilter(tab);
+                  setCurrentPage(1);
+                }}
+                className={`px-5 py-2 text-xs font-extrabold rounded-xl whitespace-nowrap transition-all cursor-pointer ${
+                  isActive
+                    ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
+                    : 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-200/90 shadow-2xs'
+                }`}
+              >
+                {tab}
+              </button>
+            );
+          })}
         </div>
 
+        {/* Consultation Type Filter (Right) */}
+        <div className="flex items-center gap-2 flex-wrap shrink-0">
+          <span className="text-xs font-bold text-slate-500 whitespace-nowrap">Consultation Type:</span>
+          <button
+            type="button"
+            onClick={() => {
+              setConsultationTypeFilter('All');
+              setCurrentPage(1);
+            }}
+            className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-black transition-all cursor-pointer ${
+              consultationTypeFilter === 'All'
+                ? 'bg-white border-2 border-slate-900 text-blue-700 shadow-xs'
+                : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 font-bold'
+            }`}
+          >
+            <Layers className="w-3.5 h-3.5 text-blue-600" />
+            <span>All Types</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setConsultationTypeFilter('First Visit');
+              setCurrentPage(1);
+            }}
+            className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-black transition-all cursor-pointer ${
+              consultationTypeFilter === 'First Visit'
+                ? 'bg-emerald-50 border-2 border-slate-900 text-emerald-800 shadow-xs'
+                : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 font-bold'
+            }`}
+          >
+            <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
+            <span>First Visit</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setConsultationTypeFilter('Follow-up');
+              setCurrentPage(1);
+            }}
+            className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-black transition-all cursor-pointer ${
+              consultationTypeFilter === 'Follow-up'
+                ? 'bg-purple-50 border-2 border-slate-900 text-purple-800 shadow-xs'
+                : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 font-bold'
+            }`}
+          >
+            <RotateCw className="w-3.5 h-3.5 text-purple-600" />
+            <span>Follow-up</span>
+          </button>
+        </div>
+      </div>
+
+      {/* ================= 3. APPOINTMENTS TABLE CARD ================= */}
+      <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-
-          <table className="w-full min-w-[1100px]">
-
+          <table className="w-full text-left border-collapse min-w-[1280px]">
             <thead>
-              <tr className="border-b border-slate-200 bg-slate-50">
-
-                <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Token
-                </th>
-
-                <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Patient
-                </th>
-
-                <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Appointment
-                </th>
-
-                <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Doctor / Department
-                </th>
-
-                <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Check-in
-                </th>
-
-                <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Status
-                </th>
-
-                <th className="px-5 py-3 text-center text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Action
-                </th>
-
+              <tr className="border-b border-slate-100 bg-slate-50/50 text-[11px] font-extrabold uppercase tracking-wider text-slate-500">
+                <th className="py-3.5 pl-6 pr-3 text-center w-12">S.No.</th>
+                <th className="py-3.5 px-4 text-center min-w-[180px]">Action</th>
+                <th className="py-3.5 px-4 min-w-[110px]">Status</th>
+                <th className="py-3.5 px-4 min-w-[180px]">Patient Name</th>
+                <th className="py-3.5 px-4 min-w-[130px]">Phone</th>
+                <th className="py-3.5 px-4 min-w-[135px]">Consultation Type</th>
+                <th className="py-3.5 px-4 min-w-[220px]">Clinic / Hospital</th>
+                <th className="py-3.5 px-4 min-w-[120px]">Date</th>
+                <th className="py-3.5 px-4 min-w-[100px]">Time</th>
+                <th className="py-3.5 px-4 min-w-[220px]">Reason / Condition</th>
+                <th className="py-3.5 px-4 text-center min-w-[180px]">Manage</th>
               </tr>
             </thead>
+            <tbody className="divide-y divide-slate-100 text-xs font-medium text-slate-700">
+              {paginatedAppointments.map((apt, index) => {
+                const clinic = formatClinicDisplay(apt.centre);
+                const globalIdx = startIndex + index + 1;
+                const isVisited = (apt.status || '').toLowerCase() === 'visited';
 
-            <tbody className="divide-y divide-slate-100">
-
-              {filteredData.length > 0 ? (
-                filteredData.map((patient) => (
-
-                  <tr
-                    key={patient.id}
-                    className="transition hover:bg-slate-50"
-                  >
-
-                    {/* Token */}
-                    <td className="px-5 py-4">
-
-                      {patient.token ? (
-                        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 font-bold text-blue-600">
-                          {patient.token}
-                        </div>
-                      ) : (
-                        <span className="text-slate-400">
-                          —
-                        </span>
-                      )}
-
+                return (
+                  <tr key={apt.id} className="hover:bg-slate-50/80 transition-colors">
+                    {/* Index */}
+                    <td className="py-4 pl-6 pr-3 text-center font-bold text-slate-400">
+                      {globalIdx}
                     </td>
 
-                    {/* Patient */}
-                    <td className="px-5 py-4">
-
-                      <div className="flex items-center gap-3">
-
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-600">
-                          <User size={18} />
-                        </div>
-
-                        <div>
-                          <div className="flex items-center gap-2">
-
-                            <p className="font-semibold text-slate-800">
-                              {patient.patientName}
-                            </p>
-
-                            {patient.priority && (
-                              <span className="rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-semibold text-red-600">
-                                Priority
-                              </span>
-                            )}
-
-                          </div>
-
-                          <p className="mt-1 text-xs text-slate-500">
-                            {patient.patientId} •{" "}
-                            {patient.age} yrs •{" "}
-                            {patient.gender}
-                          </p>
-
-                        </div>
-
-                      </div>
-
-                    </td>
-
-                    {/* Appointment */}
-                    <td className="px-5 py-4">
-
-                      <div className="flex items-center gap-2 text-sm font-medium text-slate-700">
-                        <Clock
-                          size={16}
-                          className="text-blue-500"
-                        />
-
-                        {patient.appointmentTime}
-                      </div>
-
-                      <p className="mt-1 text-xs text-slate-400">
-                        {patient.id}
-                      </p>
-
-                    </td>
-
-                    {/* Doctor */}
-                    <td className="px-5 py-4">
-
-                      <div className="flex items-start gap-2">
-
-                        <Stethoscope
-                          size={17}
-                          className="mt-0.5 text-blue-500"
-                        />
-
-                        <div>
-                          <p className="text-sm font-medium text-slate-700">
-                            {patient.doctor}
-                          </p>
-
-                          <p className="mt-1 text-xs text-slate-500">
-                            {patient.department}
-                          </p>
-
-                          <p className="mt-1 flex items-center gap-1 text-xs text-slate-400">
-                            <MapPin size={12} />
-                            {patient.hospital}
-                          </p>
-                        </div>
-
-                      </div>
-
-                    </td>
-
-                    {/* Check In */}
-                    <td className="px-5 py-4">
-
-                      {patient.checkInTime ? (
-                        <div className="flex items-center gap-2 text-sm text-slate-600">
-                          <CheckCircle2
-                            size={16}
-                            className="text-green-500"
-                          />
-
-                          {patient.checkInTime}
-                        </div>
-                      ) : (
-                        <span className="text-sm text-slate-400">
-                          Not checked-in
-                        </span>
-                      )}
-
-                    </td>
-
-                    {/* Status */}
-                    <td className="px-5 py-4">
-
-                      <span
-                        className={`inline-flex rounded-full border px-3 py-1.5 text-xs font-medium ${
-                          statusStyles[patient.status]
-                        }`}
-                      >
-                        {patient.status}
-                      </span>
-
-                    </td>
-
-                    {/* Actions */}
-                    <td className="px-5 py-4">
-
-                      <div className="flex items-center justify-center gap-2">
-
-                        {/* View */}
+                    {/* 4 Action Buttons in Soft Horizontal Bar */}
+                    <td className="py-3 px-4 text-center whitespace-nowrap min-w-[180px]">
+                      <div className={`inline-flex items-center justify-center gap-1.5 p-1.5 rounded-2xl border ${
+                        isVisited ? 'bg-slate-100/60 border-slate-200/60' : 'bg-slate-50/80 border-slate-100/80'
+                      }`}>
+                        {/* 1. Confirmed Button (Emerald Checkmark) */}
                         <button
-                          onClick={() =>
-                            setSelectedPatient(patient)
-                          }
-                          title="View Patient"
-                          className="rounded-lg border border-slate-200 bg-white p-2 text-slate-600 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600"
+                          type="button"
+                          disabled={isVisited}
+                          onClick={() => handleStatusChange(apt, 'Confirmed')}
+                          title={isVisited ? "Appointment is Visited and status cannot be modified" : "Mark as Confirmed"}
+                          className={`w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center shadow-2xs transition-all ${
+                            isVisited ? 'cursor-not-allowed opacity-40 grayscale-[50%]' : 'hover:bg-emerald-100 hover:scale-105 cursor-pointer'
+                          }`}
                         >
-                          <Eye size={17} />
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600" strokeWidth={2} />
                         </button>
 
-                        {/* Check-in */}
-                        {patient.status === "Confirmed" && (
-                          <button
-                            title="Check-in Patient"
-                            className="rounded-lg border border-green-200 bg-green-50 p-2 text-green-600 transition hover:bg-green-100"
-                          >
-                            <UserCheck size={17} />
-                          </button>
-                        )}
+                        {/* 2. Visited Button (Blue CalendarCheck) */}
+                        <button
+                          type="button"
+                          disabled={isVisited}
+                          onClick={() => handleStatusChange(apt, 'Visited')}
+                          title={isVisited ? "Appointment is Visited and status cannot be modified" : "Mark as Visited"}
+                          className={`w-8 h-8 rounded-xl bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center shadow-2xs transition-all ${
+                            isVisited ? 'cursor-not-allowed opacity-40 grayscale-[50%]' : 'hover:bg-blue-100 hover:scale-105 cursor-pointer'
+                          }`}
+                        >
+                          <CalendarCheck className="w-4 h-4 text-blue-600" strokeWidth={2} />
+                        </button>
 
+                        {/* 3. Missed Button (CalendarX) */}
+                        <button
+                          type="button"
+                          disabled={isVisited}
+                          onClick={() => handleStatusChange(apt, 'Missed')}
+                          title={isVisited ? "Appointment is Visited and status cannot be modified" : "Mark as Missed"}
+                          className={`w-8 h-8 rounded-xl bg-rose-50 text-rose-600 border border-rose-100 flex items-center justify-center shadow-2xs transition-all ${
+                            isVisited ? 'cursor-not-allowed opacity-40 grayscale-[50%]' : 'hover:bg-rose-100 hover:scale-105 cursor-pointer'
+                          }`}
+                        >
+                          <CalendarX className="w-4 h-4 text-rose-600" strokeWidth={2} />
+                        </button>
+
+                        {/* 4. Cancelled Button (Red X Circle) */}
+                        <button
+                          type="button"
+                          disabled={isVisited}
+                          onClick={() => handleStatusChange(apt, 'Cancelled')}
+                          title={isVisited ? "Appointment is Visited and status cannot be modified" : "Mark as Cancelled"}
+                          className={`w-8 h-8 rounded-xl bg-rose-50 text-rose-600 border border-rose-100 flex items-center justify-center shadow-2xs transition-all ${
+                            isVisited ? 'cursor-not-allowed opacity-40 grayscale-[50%]' : 'hover:bg-rose-100 hover:scale-105 cursor-pointer'
+                          }`}
+                        >
+                          <XCircle className="w-4 h-4 text-rose-600" strokeWidth={2} />
+                        </button>
                       </div>
-
                     </td>
 
+                    {/* Status Badge */}
+                    <td className="py-4 px-4 whitespace-nowrap">
+                      {getStatusBadge(apt.status)}
+                    </td>
+
+                    {/* Patient Name & Gmail */}
+                    <td className="py-4 px-4 whitespace-nowrap">
+                      <div className="font-bold text-slate-900">{apt.name}</div>
+                      {getAppointmentEmail(apt) && (
+                        <div className="text-[11px] text-blue-600 font-medium flex items-center gap-1 mt-0.5">
+                          <Mail className="w-3 h-3 text-blue-500 shrink-0" />
+                          <span>{getAppointmentEmail(apt)}</span>
+                        </div>
+                      )}
+                    </td>
+
+                    {/* Phone */}
+                    <td className="py-4 px-4 text-slate-600 font-semibold whitespace-nowrap">
+                      {apt.phone}
+                    </td>
+
+                    {/* Consultation Type Badge */}
+                    <td className="py-4 px-4 whitespace-nowrap">
+                      {getConsultationTypeBadge(apt)}
+                    </td>
+
+                    {/* Clinic / Hospital */}
+                    <td className="py-4 px-4 whitespace-nowrap">
+                      <div className="font-semibold text-slate-800">
+                        {apt.clinic?.name || (typeof apt.clinic === 'string' ? apt.clinic : clinic.name)}
+                      </div>
+                      {(apt.clinic?.address || clinic.loc) && (
+                        <div className="text-[11px] text-slate-500">
+                          {apt.clinic?.address || clinic.loc}
+                        </div>
+                      )}
+                    </td>
+
+                    {/* Date */}
+                    <td className="py-4 px-4 whitespace-nowrap">
+                      <div className="inline-flex items-center gap-1.5 text-slate-700 font-semibold">
+                        <CalendarIcon className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                        <span>{apt.date}</span>
+                      </div>
+                    </td>
+
+                    {/* Time */}
+                    <td className="py-4 px-4 whitespace-nowrap">
+                      <div className="inline-flex items-center gap-1.5 text-slate-700 font-semibold">
+                        <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                        <span>{apt.time}</span>
+                      </div>
+                    </td>
+
+                    {/* Reason / Condition */}
+                    <td className="py-4 px-4 font-semibold text-slate-800 min-w-[220px]">
+                      {apt.problem}
+                    </td>
+
+                    {/* Manage Column */}
+                    <td className="py-3 px-4 text-center whitespace-nowrap min-w-[180px]">
+                      <div className="inline-flex items-center justify-center gap-2">
+                        {/* View Details Pill Button */}
+                        <button
+                          type="button"
+                          onClick={() => setViewAppointment(apt)}
+                          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 font-bold rounded-xl text-xs border border-blue-100/80 transition-all cursor-pointer shadow-2xs hover:scale-102"
+                        >
+                          <Eye className="w-3.5 h-3.5 text-blue-600" />
+                          <span>View Details</span>
+                        </button>
+                      </div>
+                    </td>
                   </tr>
+                );
+              })}
 
-                ))
-              ) : (
-
+              {filtered.length === 0 && (
                 <tr>
-                  <td
-                    colSpan="7"
-                    className="px-5 py-14 text-center"
-                  >
-
-                    <Users
-                      size={40}
-                      className="mx-auto text-slate-300"
-                    />
-
-                    <p className="mt-3 font-medium text-slate-600">
-                      No OPD patients found
-                    </p>
-
-                    <p className="mt-1 text-sm text-slate-400">
-                      Try changing your search or filters.
-                    </p>
-
+                  <td colSpan={11} className="py-12 text-center text-slate-500">
+                    <CalendarIcon className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+                    <p className="text-sm font-bold text-slate-600">No appointments found</p>
+                    <p className="text-xs text-slate-400 mt-1">Try adjusting your filter or search query</p>
                   </td>
                 </tr>
-
               )}
-
             </tbody>
-
           </table>
+        </div>
 
+        {/* Table Footer Pagination */}
+        {filtered.length > 0 && (
+          <div className="px-5 py-3.5 bg-slate-50/50 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500 font-medium">
+            <div>
+              Showing {startIndex + 1} to {Math.min(startIndex + itemsPerPage, filtered.length)} of {filtered.length} appointments
+            </div>
+
+            <div className="flex items-center gap-3">
+              <div className="inline-flex items-center gap-1">
+                <button
+                  type="button"
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  className="w-7 h-7 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center transition-all"
+                >
+                  <ChevronLeft className="w-4 h-4 text-slate-600" />
+                </button>
+
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                  <button
+                    key={page}
+                    type="button"
+                    onClick={() => setCurrentPage(page)}
+                    className={`w-7 h-7 rounded-lg font-extrabold text-xs flex items-center justify-center transition-all ${
+                      currentPage === page
+                        ? 'bg-blue-600 text-white shadow-xs'
+                        : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
+                    }`}
+                  >
+                    {page}
+                  </button>
+                ))}
+
+                <button
+                  type="button"
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  className="w-7 h-7 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center transition-all"
+                >
+                  <ChevronRight className="w-4 h-4 text-slate-600" />
+                </button>
+              </div>
+
+              <select
+                value={itemsPerPage}
+                onChange={(e) => {
+                  setItemsPerPage(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:outline-none cursor-pointer"
+              >
+                <option value={10}>10 / page</option>
+                <option value={20}>20 / page</option>
+                <option value={50}>50 / page</option>
+              </select>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ================= 4. ACTION ICONS GUIDE BOTTOM BANNER ================= */}
+      <div className="bg-white rounded-2xl p-4 border border-slate-200/90 shadow-xs flex flex-wrap items-center justify-between gap-4 text-xs font-semibold text-slate-700">
+        <div className="flex items-center gap-2 text-slate-500 font-extrabold">
+          <span className="text-slate-400">↔</span>
+          <span>Action Icons Guide:</span>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-4 sm:gap-6">
+          {/* Confirmed Guide */}
+          <div className="inline-flex items-center gap-2">
+            <div className="w-7 h-7 rounded-xl bg-emerald-50 border border-emerald-200/60 text-emerald-600 flex items-center justify-center">
+              <CheckCircle2 className="w-3.5 h-3.5" strokeWidth={2} />
+            </div>
+            <span className="font-bold text-slate-800">Confirmed</span>
+          </div>
+
+          {/* Visited Guide */}
+          <div className="inline-flex items-center gap-2">
+            <div className="w-7 h-7 rounded-xl bg-blue-50 border border-blue-200/60 text-blue-600 flex items-center justify-center">
+              <CalendarCheck className="w-3.5 h-3.5" strokeWidth={2} />
+            </div>
+            <span className="font-bold text-slate-800">Visited</span>
+          </div>
+
+          {/* Missed Guide */}
+          <div className="inline-flex items-center gap-2">
+            <div className="w-7 h-7 rounded-xl bg-rose-50 border border-rose-200/60 text-rose-600 flex items-center justify-center">
+              <CalendarX className="w-3.5 h-3.5" strokeWidth={2} />
+            </div>
+            <span className="font-bold text-slate-800">Missed</span>
+          </div>
+
+          {/* Cancelled Guide */}
+          <div className="inline-flex items-center gap-2">
+            <div className="w-7 h-7 rounded-xl bg-rose-50 border border-rose-200/60 text-rose-600 flex items-center justify-center">
+              <XCircle className="w-3.5 h-3.5" strokeWidth={2} />
+            </div>
+            <span className="font-bold text-slate-800">Cancelled</span>
+          </div>
         </div>
       </div>
 
-      {/* =========================
-          Patient Details Modal
-      ========================= */}
+      {/* ================= 5. ADD APPOINTMENT MODAL ================= */}
+      {showAddModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-7 shadow-2xl border border-slate-200 relative">
+            <button
+              onClick={() => setShowAddModal(false)}
+              className="absolute top-5 right-5 text-slate-400 hover:text-slate-600 p-1 rounded-full cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
 
-      {selectedPatient && (
-
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-
-          <div className="flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-slate-50 shadow-2xl">
-
-            {/* Modal Header */}
-            <div className="flex items-center justify-between border-b border-slate-200 bg-white px-5 py-4">
-
-              <div>
-                <h2 className="text-lg font-bold text-slate-900">
-                  Patient Details
-                </h2>
-
-                <p className="mt-1 text-xs text-slate-500">
-                  {selectedPatient.id}
-                </p>
-              </div>
-
-              <button
-                onClick={() => setSelectedPatient(null)}
-                className="rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-800"
-              >
-                <X size={20} />
-              </button>
-
+            <div className="mb-5">
+              <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">Book Appointment</h2>
+              <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1 leading-relaxed">
+                Select hospital centre and submit request for direct OPD confirmation.
+              </p>
             </div>
 
-            {/* Modal Content */}
-            <div className="overflow-y-auto p-5">
-
-              {/* Patient Basic Info */}
-              <div className="rounded-xl border border-slate-200 bg-white p-5">
-
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-
-                  <div className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-50 text-blue-600">
-                    <User size={27} />
-                  </div>
-
-                  <div className="flex-1">
-
-                    <div className="flex flex-wrap items-center gap-2">
-
-                      <h3 className="text-lg font-bold text-slate-900">
-                        {selectedPatient.patientName}
-                      </h3>
-
-                      {selectedPatient.priority && (
-                        <span className="rounded-full bg-red-50 px-2.5 py-1 text-xs font-medium text-red-600">
-                          Priority Patient
-                        </span>
-                      )}
-
-                    </div>
-
-                    <p className="mt-1 text-sm text-slate-500">
-                      {selectedPatient.patientId} •{" "}
-                      {selectedPatient.age} years •{" "}
-                      {selectedPatient.gender}
-                    </p>
-
-                  </div>
-
-                  <span
-                    className={`w-fit rounded-full border px-3 py-1.5 text-xs font-medium ${
-                      statusStyles[selectedPatient.status]
-                    }`}
-                  >
-                    {selectedPatient.status}
-                  </span>
-
-                </div>
-
-                {/* Details Grid */}
-                <div className="mt-5 grid grid-cols-1 gap-4 border-t border-slate-100 pt-5 sm:grid-cols-2">
-
-                  <div className="flex items-center gap-3">
-                    <Phone
-                      size={17}
-                      className="text-blue-500"
-                    />
-
-                    <div>
-                      <p className="text-xs text-slate-400">
-                        Mobile
-                      </p>
-
-                      <p className="text-sm font-medium text-slate-700">
-                        {selectedPatient.phone}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    <Calendar
-                      size={17}
-                      className="text-blue-500"
-                    />
-
-                    <div>
-                      <p className="text-xs text-slate-400">
-                        Appointment
-                      </p>
-
-                      <p className="text-sm font-medium text-slate-700">
-                        {selectedPatient.appointmentTime}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    <Stethoscope
-                      size={17}
-                      className="text-blue-500"
-                    />
-
-                    <div>
-                      <p className="text-xs text-slate-400">
-                        Doctor
-                      </p>
-
-                      <p className="text-sm font-medium text-slate-700">
-                        {selectedPatient.doctor}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    <MapPin
-                      size={17}
-                      className="text-blue-500"
-                    />
-
-                    <div>
-                      <p className="text-xs text-slate-400">
-                        Hospital
-                      </p>
-
-                      <p className="text-sm font-medium text-slate-700">
-                        {selectedPatient.hospital}
-                      </p>
-                    </div>
-                  </div>
-
-                </div>
-
-              </div>
-
-              {/* OPD Information */}
-              <div className="mt-5 rounded-xl border border-slate-200 bg-white p-5">
-
-                <div className="mb-4 flex items-center gap-2">
-                  <Clock
-                    size={18}
-                    className="text-blue-600"
+            <form onSubmit={handleFormSubmit} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Patient Name <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    placeholder="Full Patient Name"
+                    className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all"
+                    required
                   />
-
-                  <h3 className="font-semibold text-slate-800">
-                    OPD Information
-                  </h3>
                 </div>
-
-                <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-
-                  <div className="rounded-lg bg-slate-50 p-3">
-                    <p className="text-xs text-slate-400">
-                      Token
-                    </p>
-
-                    <p className="mt-1 text-lg font-bold text-slate-800">
-                      {selectedPatient.token || "—"}
-                    </p>
-                  </div>
-
-                  <div className="rounded-lg bg-slate-50 p-3">
-                    <p className="text-xs text-slate-400">
-                      Appointment
-                    </p>
-
-                    <p className="mt-1 text-sm font-semibold text-slate-800">
-                      {selectedPatient.appointmentTime}
-                    </p>
-                  </div>
-
-                  <div className="rounded-lg bg-slate-50 p-3">
-                    <p className="text-xs text-slate-400">
-                      Check-in
-                    </p>
-
-                    <p className="mt-1 text-sm font-semibold text-slate-800">
-                      {selectedPatient.checkInTime || "—"}
-                    </p>
-                  </div>
-
-                  <div className="rounded-lg bg-slate-50 p-3">
-                    <p className="text-xs text-slate-400">
-                      Visit ID
-                    </p>
-
-                    <p className="mt-1 text-sm font-semibold text-slate-800">
-                      {selectedPatient.visitId || "Not created"}
-                    </p>
-                  </div>
-
-                </div>
-
-              </div>
-
-              {/* Operational Note */}
-              <div className="mt-5 flex gap-3 rounded-xl border border-blue-100 bg-blue-50 p-4">
-
-                <AlertCircle
-                  size={20}
-                  className="mt-0.5 shrink-0 text-blue-600"
-                />
 
                 <div>
-                  <p className="text-sm font-semibold text-blue-800">
-                    Receptionist Access
-                  </p>
-
-                  <p className="mt-1 text-xs leading-5 text-blue-700">
-                    Receptionist can manage appointment,
-                    check-in and queue operations. Clinical
-                    diagnosis and prescription should be handled
-                    by the doctor.
-                  </p>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Phone Number <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    placeholder="Phone Number"
+                    className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all"
+                    required
+                  />
                 </div>
 
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Gmail / Email
+                  </label>
+                  <input
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    placeholder="Gmail / Email Address"
+                    className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all"
+                  />
+                </div>
               </div>
 
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Consultation Type <span className="text-rose-500">*</span>
+                  </label>
+                  <select
+                    value={formData.consultationType}
+                    onChange={(e) => setFormData({ ...formData, consultationType: e.target.value })}
+                    className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all cursor-pointer"
+                  >
+                    <option value="First Visit">First Visit</option>
+                    <option value="Follow-up">Follow-up</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Preferred Clinic Centre <span className="text-rose-500">*</span>
+                  </label>
+                  <select
+                    value={formData.clinic || defaultClinicId}
+                    onChange={(e) => setFormData({ ...formData, clinic: e.target.value })}
+                    className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all cursor-pointer"
+                    required
+                  >
+                    {(clinics && clinics.length > 0 ? clinics : []).map((c) => (
+                      <option key={c._id || c.id} value={c._id || c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Select Speciality / Condition
+                </label>
+                <select
+                  value={formData.problem}
+                  onChange={(e) => setFormData({ ...formData, problem: e.target.value })}
+                  className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all cursor-pointer"
+                >
+                  {SPECIALITY_CONDITIONS.map((s, i) => (
+                    <option key={i} value={s}>{s}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Date <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.date}
+                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                    className="w-full px-2.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Time
+                  </label>
+                  <select
+                    value={formData.time}
+                    onChange={(e) => setFormData({ ...formData, time: e.target.value })}
+                    className="w-full px-2 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white cursor-pointer"
+                  >
+                    <option value="10:30 AM">10:30 AM</option>
+                    <option value="11:20 AM">11:20 AM</option>
+                    <option value="12:15 PM">12:15 PM</option>
+                    <option value="01:45 PM">01:45 PM</option>
+                    <option value="02:00 PM">02:00 PM</option>
+                    <option value="03:00 PM">03:00 PM</option>
+                    <option value="04:30 PM">04:30 PM</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Status
+                  </label>
+                  <select
+                    value={formData.status}
+                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                    className="w-full px-2 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white cursor-pointer"
+                  >
+                    <option value="Confirmed">Confirmed</option>
+                    <option value="Pending">Pending</option>
+                    <option value="Visited">Visited</option>
+                    <option value="Missed">Missed</option>
+                    <option value="Cancelled">Cancelled</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Message / Notes (Optional)
+                </label>
+                <textarea
+                  rows={2}
+                  value={formData.message}
+                  onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+                  placeholder="Describe symptoms or query..."
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white resize-none"
+                />
+              </div>
+
+              <div className="pt-2">
+                <button
+                  type="submit"
+                  className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white font-bold text-xs rounded-xl shadow-md flex items-center justify-center gap-2 transition-all cursor-pointer"
+                >
+                  <Send className="w-4 h-4" />
+                  <span>Submit Appointment Request</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ================= 6. VIEW APPOINTMENT DETAILS MODAL ================= */}
+      {viewAppointment && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-7 shadow-2xl border border-slate-200 relative animate-fadeIn">
+            <button
+              onClick={() => setViewAppointment(null)}
+              className="absolute top-5 right-5 text-slate-400 hover:text-slate-600 p-1 rounded-full cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {/* Clean Light Card */}
+            <div className="p-5 sm:p-6 rounded-3xl bg-slate-50/70 border border-slate-200/80 mb-5 mt-2">
+              <div className="grid grid-cols-2 gap-y-4 gap-x-6 text-left">
+                {/* Patient Name */}
+                <div>
+                  <div className="text-xs font-semibold text-slate-400 mb-1">Patient Name:</div>
+                  <div className="text-sm font-extrabold text-slate-900">{viewAppointment.name}</div>
+                </div>
+
+                {/* Phone */}
+                <div>
+                  <div className="text-xs font-semibold text-slate-400 mb-1">Phone:</div>
+                  <div className="text-sm font-extrabold text-slate-900">{viewAppointment.phone}</div>
+                </div>
+
+                {/* Gmail / Email */}
+                {getAppointmentEmail(viewAppointment) ? (
+                  <div className="col-span-2 sm:col-span-1">
+                    <div className="text-xs font-semibold text-slate-400 mb-1">Gmail / Email:</div>
+                    <div className="text-xs sm:text-sm font-bold text-blue-600 break-all">{getAppointmentEmail(viewAppointment)}</div>
+                  </div>
+                ) : null}
+
+                {/* Subject / Treatment */}
+                <div>
+                  <div className="text-xs font-semibold text-slate-400 mb-1">Subject / Treatment:</div>
+                  <div className="text-xs sm:text-sm font-extrabold text-blue-600">{viewAppointment.problem}</div>
+                </div>
+
+                {/* Date & Time */}
+                <div>
+                  <div className="text-xs font-semibold text-slate-400 mb-1">Date &amp; Time:</div>
+                  <div className="text-xs sm:text-sm font-extrabold text-slate-800">
+                    {viewAppointment.date} {viewAppointment.time ? `• ${viewAppointment.time}` : ''}
+                  </div>
+                </div>
+
+                {/* Consultation Type */}
+                <div>
+                  <div className="text-xs font-semibold text-slate-400 mb-1">Consultation Type:</div>
+                  <div className="text-xs font-extrabold text-slate-800">{getAppointmentConsultationType(viewAppointment)}</div>
+                </div>
+              </div>
             </div>
 
-            {/* Modal Footer */}
-            <div className="flex justify-end gap-2 border-t border-slate-200 bg-white px-5 py-4">
+            {/* Message Content Box */}
+            <div className="space-y-2 mb-6 text-left">
+              <div className="text-xs font-bold text-slate-700">Message Content:</div>
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 text-xs sm:text-sm font-medium text-slate-700 leading-relaxed min-h-[60px]">
+                {cleanNotesMessage(viewAppointment.message) || (
+                  <span className="text-slate-400 italic">No additional message provided.</span>
+                )}
+              </div>
+            </div>
 
+            {/* Modal Bottom Actions */}
+            <div className="pt-2 flex items-center justify-end gap-3">
               <button
-                onClick={() => setSelectedPatient(null)}
-                className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50"
+                type="button"
+                onClick={() => setViewAppointment(null)}
+                className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs transition-all cursor-pointer"
               >
                 Close
               </button>
-
-              {selectedPatient.status === "Confirmed" && (
-                <button
-                  className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
-                >
-                  <UserCheck size={16} />
-                  Check-in Patient
-                </button>
-              )}
-
             </div>
-
           </div>
-
         </div>
-
       )}
 
+      {/* ================= 7. CONFIRM VISITED MODAL ================= */}
+      {confirmVisitedApt && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl border border-slate-200 relative text-center animate-fadeIn">
+            <button
+              type="button"
+              onClick={() => setConfirmVisitedApt(null)}
+              className="absolute top-5 right-5 text-slate-400 hover:text-slate-600 p-1 rounded-full cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="w-14 h-14 rounded-2xl bg-blue-50 border border-blue-100 text-blue-600 flex items-center justify-center mx-auto mb-4">
+              <CalendarCheck className="w-7 h-7" strokeWidth={2} />
+            </div>
+
+            <h3 className="text-xl font-extrabold text-slate-900 tracking-tight">Mark as Visited?</h3>
+            <p className="text-xs sm:text-sm text-slate-600 font-medium mt-2 leading-relaxed">
+              Are you sure you want to mark the appointment for <strong className="text-slate-900 font-bold">{confirmVisitedApt.name || 'this patient'}</strong> as <span className="text-blue-600 font-bold">Visited</span>?
+            </p>
+
+            <div className="my-4 p-3.5 bg-amber-50 border border-amber-200/80 rounded-2xl text-left text-xs font-semibold text-amber-800 flex items-start gap-2.5">
+              <span className="text-amber-600 font-bold text-base leading-none shrink-0 mt-0.5">⚠️</span>
+              <span>Once marked as <strong>Visited</strong>, all action buttons will be disabled and no further status changes can be made.</span>
+            </div>
+
+            <div className="pt-2 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setConfirmVisitedApt(null)}
+                className="w-1/2 py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition-all cursor-pointer"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  const aptId = confirmVisitedApt.id || confirmVisitedApt._id;
+                  updateAppointmentStatus(aptId, 'Visited');
+                  toast.success(`Appointment for "${confirmVisitedApt.name || 'Patient'}" marked as Visited! No further changes allowed.`);
+                  setConfirmVisitedApt(null);
+                }}
+                className="w-1/2 py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs shadow-md transition-all cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                <CalendarCheck className="w-4 h-4" />
+                <span>Yes, Mark Visited</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

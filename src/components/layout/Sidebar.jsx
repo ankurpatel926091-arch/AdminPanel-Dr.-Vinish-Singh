@@ -25,6 +25,7 @@ import {
   LogOut,
   X,
   MessageSquare,
+  CalendarCheck,
 } from "lucide-react";
 import doctorPhoto from "../../assets/doctor.jpg";
 
@@ -73,16 +74,16 @@ export default function Sidebar({ isOpen, isCollapsed, onClose }) {
   const receptionNavItems =
     role === "admin"
       ? [
-          { path: "/admin/today-opd", label: "Today's OPD", icon: Stethoscope },
+          { path: "/admin/today-opd", label: "Appointments", icon: Stethoscope },
           {
             path: "/admin/patient-registration",
             label: "Patient Registration",
             icon: UserPlus,
           },
           { path: "/admin/check-in", label: "Check-in", icon: CheckSquare },
+          { path: "/admin/doctor-queue", label: "Doctor Queue", icon: Users },
           { path: "/admin/billing", label: "Billing", icon: FileText },
           { path: "/admin/payments", label: "Payments", icon: CreditCard },
-          { path: "/admin/doctor-queue", label: "Doctor Queue", icon: Users },
           { path: "/admin/patients", label: "Patients", icon: User },
           { path: "/admin/reports", label: "Reports", icon: BarChart2 },
         ]
@@ -92,6 +93,7 @@ export default function Sidebar({ isOpen, isCollapsed, onClose }) {
     role === "doctor"
       ? [
           { path: "/doctor", label: "Doctor Dashboard", icon: LayoutDashboard },
+          { path: "/doctor/my-queue", label: "My Queue", icon: Users },
           {
             path: "/doctor/todays-appointments",
             label: "Today's Appointments",
@@ -113,6 +115,7 @@ export default function Sidebar({ isOpen, isCollapsed, onClose }) {
             label: "Prescriptions",
             icon: FileText,
           },
+          { path: "/doctor/follow-ups", label: "Follow-ups", icon: CalendarCheck },
           { path: "/doctor/reports", label: "Reports", icon: BarChart2 },
           
 
@@ -176,7 +179,7 @@ export default function Sidebar({ isOpen, isCollapsed, onClose }) {
           </div>
 
           {/* Navigation Menu */}
-          <div className="px-3 pt-2 pb-4 space-y-2 overflow-y-auto max-h-[calc(100vh-190px)] notification-scrollbar">
+          <div className="px-3 pt-2 pb-4 space-y-2 overflow-y-auto max-h-[calc(100vh-130px)] notification-scrollbar">
             {/* MAIN MENU Section */}
             <div>
               {role == "admin" && (

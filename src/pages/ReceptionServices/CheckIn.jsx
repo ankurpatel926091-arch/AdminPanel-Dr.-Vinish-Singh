@@ -119,6 +119,7 @@ const initialAppointments = [
     visitId: "VIS-5001",
     tokenNumber: 1,
     checkInAt: "09:42 AM",
+    checkedInBy: "REC-101 (Front Desk)",
   },
 
   {
@@ -143,6 +144,7 @@ const initialAppointments = [
     visitId: null,
     tokenNumber: null,
     checkInAt: null,
+    checkedInBy: null,
   },
 
   {
@@ -167,6 +169,7 @@ const initialAppointments = [
     visitId: null,
     tokenNumber: null,
     checkInAt: null,
+    checkedInBy: null,
   },
 ];
 
@@ -339,6 +342,7 @@ export default function CheckIn() {
     const visitId = generateVisitId();
     const tokenNumber = generateToken();
     const checkInAt = getCurrentTime();
+    const checkedInBy = "REC-101 (Front Desk)";
 
     setAppointments((prev) =>
       prev.map((appointment) =>
@@ -350,6 +354,7 @@ export default function CheckIn() {
               visitId,
               tokenNumber,
               checkInAt,
+              checkedInBy,
             }
           : appointment
       )
@@ -360,6 +365,8 @@ export default function CheckIn() {
       tokenNumber,
       patientName:
         selectedAppointment.patientName,
+      checkedInBy,
+      checkInAt,
     });
 
     setSelectedAppointment((prev) => ({
@@ -368,6 +375,7 @@ export default function CheckIn() {
       visitId,
       tokenNumber,
       checkInAt,
+      checkedInBy,
     }));
   };
 
@@ -932,15 +940,15 @@ export default function CheckIn() {
                         successfully.
                       </p>
 
-                      <div className="mt-5 grid grid-cols-2 gap-3">
+                      <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
 
-                        <div className="rounded-lg border border-green-200 bg-white p-4">
+                        <div className="rounded-lg border border-green-200 bg-white p-3 text-left">
 
                           <p className="text-xs text-slate-400">
                             Visit ID
                           </p>
 
-                          <p className="mt-1 text-lg font-bold text-slate-900">
+                          <p className="mt-1 text-base font-bold text-slate-900">
                             {
                               checkInSuccess.visitId
                             }
@@ -948,16 +956,44 @@ export default function CheckIn() {
 
                         </div>
 
-                        <div className="rounded-lg border border-green-200 bg-white p-4">
+                        <div className="rounded-lg border border-green-200 bg-white p-3 text-left">
 
                           <p className="text-xs text-slate-400">
                             Token Number
                           </p>
 
-                          <p className="mt-1 text-lg font-bold text-slate-900">
+                          <p className="mt-1 text-base font-bold text-slate-900">
                             #
                             {
                               checkInSuccess.tokenNumber
+                            }
+                          </p>
+
+                        </div>
+
+                        <div className="rounded-lg border border-green-200 bg-white p-3 text-left">
+
+                          <p className="text-xs text-slate-400">
+                            Check-in Time
+                          </p>
+
+                          <p className="mt-1 text-sm font-bold text-slate-800">
+                            {
+                              checkInSuccess.checkInAt
+                            }
+                          </p>
+
+                        </div>
+
+                        <div className="rounded-lg border border-green-200 bg-white p-3 text-left">
+
+                          <p className="text-xs text-slate-400">
+                            Receptionist / User ID
+                          </p>
+
+                          <p className="mt-1 text-xs font-bold text-slate-800">
+                            {
+                              checkInSuccess.checkedInBy
                             }
                           </p>
 
@@ -1179,6 +1215,12 @@ export default function CheckIn() {
                               {
                                 selectedAppointment.tokenNumber
                               }
+                              {selectedAppointment.checkInAt && (
+                                <> • Time: {selectedAppointment.checkInAt}</>
+                              )}
+                              {selectedAppointment.checkedInBy && (
+                                <> • By: {selectedAppointment.checkedInBy}</>
+                              )}
                             </p>
 
                           </div>

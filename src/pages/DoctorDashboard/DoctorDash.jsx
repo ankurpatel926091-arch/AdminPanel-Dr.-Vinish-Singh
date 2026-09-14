@@ -104,6 +104,40 @@ const DoctorDash = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 p-4 sm:p-6 lg:p-8">
+      {/* Doctor Portal Welcome Banner */}
+      <div className="mb-6 bg-gradient-to-r from-[#03234b] via-[#073b75] to-[#1e2a78] rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden flex items-center justify-between">
+        {/* Subtle Decorative Backdrop Elements */}
+        <div className="absolute -top-24 -right-24 w-72 h-72 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-24 -left-24 w-72 h-72 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="flex items-center gap-5 relative z-10">
+          {/* Left Stethoscope Icon Box */}
+          <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-blue-500/20 border border-blue-400/30 flex items-center justify-center text-blue-400 shrink-0 shadow-inner">
+            <Stethoscope className="w-8 h-8 text-blue-400" />
+          </div>
+
+          <div>
+            <span className="text-[11px] font-bold text-blue-300 uppercase tracking-wider block mb-1">
+              DOCTOR PORTAL
+            </span>
+            <h2 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-white tracking-tight flex items-center gap-2">
+              Welcome back, Dr. Vinish Kumar Singh <span className="inline-block">👋</span>
+            </h2>
+            <p className="text-xs sm:text-sm text-blue-200/80 font-medium mt-1">
+              Here's your OPD and patient overview for today.
+            </p>
+          </div>
+        </div>
+
+        {/* Right Doctor Vector Illustration */}
+        <div className="hidden md:block relative z-10 shrink-0 opacity-90">
+          <svg className="w-24 h-24 sm:w-28 sm:h-28 text-cyan-400/70" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.2">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 11v3m-1.5-1.5h3" strokeWidth="1.5" />
+          </svg>
+        </div>
+      </div>
+
       {/* Header */}
       <div className="mb-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">

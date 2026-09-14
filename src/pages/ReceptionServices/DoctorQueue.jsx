@@ -1,742 +1,680 @@
-import React, { useMemo, useState } from "react";
+import React, { useState, useMemo, useEffect } from "react";
+import { toast } from "react-toastify";
 import {
-  Search,
-  Filter,
   Users,
   Clock,
-  UserCheck,
-  Stethoscope,
-  RefreshCw,
-  ChevronDown,
-  Eye,
-  ArrowUp,
+  Play,
   CheckCircle2,
-  PlayCircle,
+  Search,
+  RotateCw,
+  Stethoscope,
+  Phone,
+  Eye,
+  X,
+  XCircle,
+  User,
+  AlertCircle,
+  CheckSquare,
 } from "lucide-react";
 
-const DoctorQueue = () => {
-  const [search, setSearch] = useState("");
-  const [doctorFilter, setDoctorFilter] = useState("All Doctors");
-  const [statusFilter, setStatusFilter] = useState("All Status");
-  const [departmentFilter, setDepartmentFilter] = useState("All Departments");
-  const [selectedPatient, setSelectedPatient] = useState(null);
+// Default Initial Queue Data (Receptionist Flow)
+const DEFAULT_QUEUE = [
+  {
+    id: "Q-101",
+    tokenNumber: "T-001",
+    patientId: "UHID-10245",
+    patientName: "Rahul Sharma",
+    age: 34,
+    gender: "Male",
+    mobile: "9876543210",
+    doctorName: "Dr. Vinish Kumar Singh",
+    department: "Urology",
+    clinic: "Rudraksh IVF & Urology Centre",
+    checkInTime: "09:30 AM",
+    status: "Consulting",
+    priority: "Normal",
+    startTime: "09:55 AM",
+  },
+  {
+    id: "Q-102",
+    tokenNumber: "T-002",
+    patientId: "UHID-10246",
+    patientName: "Priya Verma",
+    age: 31,
+    gender: "Female",
+    mobile: "9123456780",
+    doctorName: "Dr. Vinish Kumar Singh",
+    department: "Urology",
+    clinic: "Rudraksh IVF & Urology Centre",
+    checkInTime: "09:45 AM",
+    status: "Waiting",
+    priority: "Urgent",
+    startTime: null,
+  },
+  {
+    id: "Q-103",
+    tokenNumber: "T-003",
+    patientId: "UHID-10247",
+    patientName: "Suresh Kumar",
+    age: 52,
+    gender: "Male",
+    mobile: "9988776655",
+    doctorName: "Dr. Vinish Kumar Singh",
+    department: "Urology",
+    clinic: "Rudraksh IVF & Urology Centre",
+    checkInTime: "10:00 AM",
+    status: "Waiting",
+    priority: "Normal",
+    startTime: null,
+  },
+  {
+    id: "Q-104",
+    tokenNumber: "T-004",
+    patientId: "UHID-10248",
+    patientName: "Mohit Singh",
+    age: 28,
+    gender: "Male",
+    mobile: "9123456789",
+    doctorName: "Dr. Vinish Kumar Singh",
+    department: "Urology",
+    clinic: "Rudraksh IVF & Urology Centre",
+    checkInTime: "10:12 AM",
+    status: "Waiting",
+    priority: "Normal",
+    startTime: null,
+  },
+  {
+    id: "Q-105",
+    tokenNumber: "T-005",
+    patientId: "UHID-10240",
+    patientName: "Rajesh Chandra",
+    age: 60,
+    gender: "Male",
+    mobile: "9765432109",
+    doctorName: "Dr. Vinish Kumar Singh",
+    department: "Urology",
+    clinic: "Rudraksh IVF & Urology Centre",
+    checkInTime: "09:00 AM",
+    status: "Completed",
+    priority: "Normal",
+    startTime: "09:30 AM",
+    endTime: "09:52 AM",
+  },
+];
 
-  // Mock queue data
-  // Replace this with API data later
-  const [queueData, setQueueData] = useState([
-    {
-      id: 1,
-      token: "T-001",
-      patientName: "Rahul Kumar",
-      uhid: "UHID1021",
-      age: 32,
-      gender: "Male",
-      mobile: "9876543210",
-      doctor: "Dr. Vinish Kumar",
-      department: "Urology",
-      appointmentTime: "10:00 AM",
-      checkInTime: "09:48 AM",
-      queueStatus: "Waiting",
-      priority: false,
-      paymentStatus: "Paid",
-    },
-    {
-      id: 2,
-      token: "T-002",
-      patientName: "Amit Singh",
-      uhid: "UHID1022",
-      age: 45,
-      gender: "Male",
-      mobile: "9123456780",
-      doctor: "Dr. Vinish Kumar",
-      department: "Urology",
-      appointmentTime: "10:15 AM",
-      checkInTime: "10:02 AM",
-      queueStatus: "Waiting",
-      priority: true,
-      paymentStatus: "Paid",
-    },
-    {
-      id: 3,
-      token: "T-003",
-      patientName: "Neha Sharma",
-      uhid: "UHID1023",
-      age: 28,
-      gender: "Female",
-      mobile: "9988776655",
-      doctor: "Dr. Vinish Kumar",
-      department: "Andrology",
-      appointmentTime: "10:30 AM",
-      checkInTime: "10:18 AM",
-      queueStatus: "In Consultation",
-      priority: false,
-      paymentStatus: "Paid",
-    },
-    {
-      id: 4,
-      token: "T-004",
-      patientName: "Suresh Yadav",
-      uhid: "UHID1024",
-      age: 51,
-      gender: "Male",
-      mobile: "9876501234",
-      doctor: "Dr. Anjali Verma",
-      department: "Nephrology",
-      appointmentTime: "10:45 AM",
-      checkInTime: "10:31 AM",
-      queueStatus: "Waiting",
-      priority: false,
-      paymentStatus: "Paid",
-    },
-    {
-      id: 5,
-      token: "T-005",
-      patientName: "Priya Gupta",
-      uhid: "UHID1025",
-      age: 36,
-      gender: "Female",
-      mobile: "9001122334",
-      doctor: "Dr. Anjali Verma",
-      department: "Nephrology",
-      appointmentTime: "11:00 AM",
-      checkInTime: "10:42 AM",
-      queueStatus: "Completed",
-      priority: false,
-      paymentStatus: "Paid",
-    },
-    {
-      id: 6,
-      token: "T-006",
-      patientName: "Mohit Verma",
-      uhid: "UHID1026",
-      age: 40,
-      gender: "Male",
-      mobile: "9112233445",
-      doctor: "Dr. Vinish Kumar",
-      department: "Urology",
-      appointmentTime: "11:15 AM",
-      checkInTime: "10:55 AM",
-      queueStatus: "Waiting",
-      priority: false,
-      paymentStatus: "Paid",
-    },
-  ]);
+export default function DoctorQueue() {
+  const [queue, setQueue] = useState(() => {
+    try {
+      const saved = localStorage.getItem("dr_vinish_doctor_queue");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        // Normalize status names if coming from older schema
+        return parsed.map((item) => {
+          let st = item.status;
+          if (st === "IN_CONSULTATION") st = "Consulting";
+          else if (st === "WAITING") st = "Waiting";
+          else if (st === "COMPLETED") st = "Completed";
+          else if (st === "SKIPPED" || st === "CANCELLED") st = "Cancelled";
+          return { ...item, status: st };
+        });
+      }
+    } catch (e) {
+      console.warn("Failed to load queue from storage", e);
+    }
+    return DEFAULT_QUEUE;
+  });
 
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [doctorFilter, setDoctorFilter] = useState("ALL");
+  const [selectedPatientModal, setSelectedPatientModal] = useState(null);
+
+  // Sync state with LocalStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem("dr_vinish_doctor_queue", JSON.stringify(queue));
+    } catch (e) {
+      console.warn("Failed to save queue state", e);
+    }
+  }, [queue]);
+
+  // Basic Queue Summary (Total, Waiting, Completed)
+  const summary = useMemo(() => {
+    const total = queue.length;
+    const waiting = queue.filter((q) => q.status === "Waiting").length;
+    const completed = queue.filter((q) => q.status === "Completed").length;
+    return { total, waiting, completed };
+  }, [queue]);
+
+  // Currently Consulting Patient
+  const currentConsulting = useMemo(() => {
+    return queue.find((q) => q.status === "Consulting") || null;
+  }, [queue]);
+
+  // Next Waiting Patient (Urgent patients first, then token order)
+  const nextWaitingPatient = useMemo(() => {
+    const waitingList = queue.filter((q) => q.status === "Waiting");
+    if (waitingList.length === 0) return null;
+
+    const urgent = waitingList.find((q) => q.priority === "Urgent");
+    return urgent || waitingList[0];
+  }, [queue]);
+
+  // Unique doctors list
+  const doctorList = useMemo(() => {
+    const list = Array.from(new Set(queue.map((q) => q.doctorName).filter(Boolean)));
+    return list.length > 0 ? list : ["Dr. Vinish Kumar Singh"];
+  }, [queue]);
+
+  // Filtered Queue List
   const filteredQueue = useMemo(() => {
-    return queueData.filter((patient) => {
-      const searchText = search.toLowerCase();
-
+    return queue.filter((item) => {
+      const query = searchQuery.toLowerCase().trim();
       const matchesSearch =
-        patient.patientName.toLowerCase().includes(searchText) ||
-        patient.uhid.toLowerCase().includes(searchText) ||
-        patient.token.toLowerCase().includes(searchText) ||
-        patient.mobile.includes(search);
+        !query ||
+        item.patientName.toLowerCase().includes(query) ||
+        item.patientId.toLowerCase().includes(query) ||
+        item.tokenNumber.toLowerCase().includes(query) ||
+        item.mobile.includes(query);
 
-      const matchesDoctor =
-        doctorFilter === "All Doctors" ||
-        patient.doctor === doctorFilter;
+      const matchesStatus = statusFilter === "ALL" || item.status === statusFilter;
+      const matchesDoctor = doctorFilter === "ALL" || item.doctorName === doctorFilter;
 
-      const matchesStatus =
-        statusFilter === "All Status" ||
-        patient.queueStatus === statusFilter;
-
-      const matchesDepartment =
-        departmentFilter === "All Departments" ||
-        patient.department === departmentFilter;
-
-      return (
-        matchesSearch &&
-        matchesDoctor &&
-        matchesStatus &&
-        matchesDepartment
-      );
+      return matchesSearch && matchesStatus && matchesDoctor;
     });
-  }, [
-    queueData,
-    search,
-    doctorFilter,
-    statusFilter,
-    departmentFilter,
-  ]);
+  }, [queue, searchQuery, statusFilter, doctorFilter]);
 
-  const waitingCount = queueData.filter(
-    (item) => item.queueStatus === "Waiting"
-  ).length;
+  // Operational Actions
+  const handleCallNextPatient = () => {
+    if (!nextWaitingPatient) {
+      toast.info("No waiting patients in queue!");
+      return;
+    }
 
-  const consultationCount = queueData.filter(
-    (item) => item.queueStatus === "In Consultation"
-  ).length;
+    const nowStr = new Date().toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
 
-  const completedCount = queueData.filter(
-    (item) => item.queueStatus === "Completed"
-  ).length;
+    setQueue((prev) =>
+      prev.map((item) => {
+        if (item.status === "Consulting") {
+          return { ...item, status: "Completed", endTime: nowStr };
+        }
+        if (item.id === nextWaitingPatient.id) {
+          return { ...item, status: "Consulting", startTime: nowStr };
+        }
+        return item;
+      })
+    );
 
-  const priorityCount = queueData.filter(
-    (item) => item.priority
-  ).length;
-
-  const updateQueueStatus = (id, status) => {
-    setQueueData((prev) =>
-      prev.map((patient) =>
-        patient.id === id
-          ? { ...patient, queueStatus: status }
-          : patient
-      )
+    toast.success(
+      `Called Token ${nextWaitingPatient.tokenNumber} (${nextWaitingPatient.patientName}) to Doctor Consultation.`
     );
   };
 
-  const moveToTop = (id) => {
-    setQueueData((prev) => {
-      const patient = prev.find((item) => item.id === id);
-      const remaining = prev.filter((item) => item.id !== id);
-
-      return patient ? [patient, ...remaining] : prev;
+  const handleCallSpecificPatient = (id) => {
+    const nowStr = new Date().toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
     });
+
+    setQueue((prev) =>
+      prev.map((item) => {
+        if (item.status === "Consulting" && item.id !== id) {
+          return { ...item, status: "Completed", endTime: nowStr };
+        }
+        if (item.id === id) {
+          return { ...item, status: "Consulting", startTime: nowStr };
+        }
+        return item;
+      })
+    );
+
+    const pt = queue.find((q) => q.id === id);
+    toast.success(`Token ${pt?.tokenNumber || ""} (${pt?.patientName || ""}) is now Consulting.`);
   };
 
-  const resetFilters = () => {
-    setSearch("");
-    setDoctorFilter("All Doctors");
-    setStatusFilter("All Status");
-    setDepartmentFilter("All Departments");
+  const handleFinishConsultation = (id) => {
+    const nowStr = new Date().toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+    setQueue((prev) =>
+      prev.map((item) =>
+        item.id === id ? { ...item, status: "Completed", endTime: nowStr } : item
+      )
+    );
+
+    const pt = queue.find((q) => q.id === id);
+    toast.success(`Consultation finished for Token ${pt?.tokenNumber || id}`);
   };
 
-  const statusStyle = {
-    Waiting: "bg-amber-50 text-amber-700 border-amber-200",
-    "In Consultation":
-      "bg-blue-50 text-blue-700 border-blue-200",
-    Completed:
-      "bg-emerald-50 text-emerald-700 border-emerald-200",
+  const handleRefresh = () => {
+    toast.info("Queue refreshed");
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 p-4 md:p-6">
-      {/* Header */}
-      <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+    <div className="space-y-6 pb-12">
+      {/* 1. Page Header */}
+      <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">
-            Doctor Queue
+          <div className="flex items-center gap-2 text-xs font-semibold text-blue-600">
+            <Clock className="w-4 h-4" />
+            <span>
+              {new Date().toLocaleDateString("en-IN", {
+                weekday: "long",
+                day: "numeric",
+                month: "short",
+                year: "numeric",
+              })}
+            </span>
+          </div>
+          <h1 className="text-2xl font-bold text-slate-900 mt-1 tracking-tight flex items-center gap-2.5">
+            <Users className="w-7 h-7 text-blue-600" />
+            Doctor Queue Management
           </h1>
-
-          <p className="mt-1 text-sm text-slate-500">
-            Manage checked-in patients waiting for doctor consultation
+          <p className="text-xs sm:text-sm text-slate-500 mt-1">
+            Operationally monitor patients eligible for the doctor's queue and manage token flow.
           </p>
         </div>
 
-        <button
-          onClick={() => window.location.reload()}
-          className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50"
-        >
-          <RefreshCw size={17} />
-          Refresh Queue
-        </button>
+        <div className="flex items-center gap-3">
+          {/* 3. Call Next Patient Button */}
+          <button
+            onClick={handleCallNextPatient}
+            disabled={!nextWaitingPatient}
+            className={`px-5 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 shadow transition ${
+              nextWaitingPatient
+                ? "bg-blue-600 hover:bg-blue-700 text-white shadow-blue-600/30"
+                : "bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200"
+            }`}
+          >
+            <Play className="w-4 h-4 fill-current" />
+            Call Next Patient
+          </button>
+
+          {/* Refresh Button */}
+          <button
+            onClick={handleRefresh}
+            className="p-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition"
+            title="Refresh Queue"
+          >
+            <RotateCw className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
-      {/* Stats */}
-      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-slate-500">Waiting</p>
-              <h2 className="mt-1 text-2xl font-bold text-slate-800">
-                {waitingCount}
-              </h2>
+      {/* 2. Current Consultation Banner */}
+      {currentConsulting ? (
+        <div className="bg-gradient-to-r from-blue-900 to-slate-900 rounded-2xl p-5 text-white shadow-md border border-blue-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-xl bg-blue-600 text-white font-extrabold text-xl flex items-center justify-center shadow">
+              {currentConsulting.tokenNumber}
             </div>
-
-            <div className="rounded-lg bg-amber-50 p-3 text-amber-600">
-              <Clock size={22} />
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-slate-500">
-                In Consultation
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/20 text-blue-300 border border-blue-400/30 uppercase">
+                  Currently Consulting
+                </span>
+                <span className="text-xs text-slate-300 font-mono">
+                  Started: {currentConsulting.startTime}
+                </span>
+              </div>
+              <h3 className="text-lg font-bold text-white mt-0.5">
+                {currentConsulting.patientName}{" "}
+                <span className="text-xs font-normal text-slate-300">
+                  ({currentConsulting.gender}, {currentConsulting.age} yrs)
+                </span>
+              </h3>
+              <p className="text-xs text-slate-300">
+                {currentConsulting.patientId} • Doctor: {currentConsulting.doctorName}
               </p>
-              <h2 className="mt-1 text-2xl font-bold text-slate-800">
-                {consultationCount}
-              </h2>
             </div>
+          </div>
 
-            <div className="rounded-lg bg-blue-50 p-3 text-blue-600">
-              <Stethoscope size={22} />
-            </div>
+          <div className="flex items-center gap-2.5 self-end sm:self-center">
+            <button
+              onClick={() => setSelectedPatientModal(currentConsulting)}
+              className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold flex items-center gap-1.5 border border-slate-700"
+            >
+              <Eye className="w-4 h-4 text-blue-400" />
+              View Details
+            </button>
+            <button
+              onClick={() => handleFinishConsultation(currentConsulting.id)}
+              className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 shadow"
+            >
+              <CheckCircle2 className="w-4 h-4" />
+              Finish Consultation
+            </button>
           </div>
         </div>
-
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-slate-500">Completed</p>
-              <h2 className="mt-1 text-2xl font-bold text-slate-800">
-                {completedCount}
-              </h2>
-            </div>
-
-            <div className="rounded-lg bg-emerald-50 p-3 text-emerald-600">
-              <CheckCircle2 size={22} />
-            </div>
-          </div>
+      ) : (
+        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-xs text-slate-500 flex items-center gap-2">
+          <Clock className="w-4 h-4 text-amber-500 shrink-0" />
+          <span>
+            No patient currently consulting. Click <strong className="text-blue-600">Call Next Patient</strong> to invite the next token.
+          </span>
         </div>
+      )}
 
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-slate-500">Priority Patients</p>
-              <h2 className="mt-1 text-2xl font-bold text-slate-800">
-                {priorityCount}
-              </h2>
-            </div>
-
-            <div className="rounded-lg bg-purple-50 p-3 text-purple-600">
-              <UserCheck size={22} />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Queue Information */}
-      <div className="mb-6 rounded-xl border border-blue-100 bg-blue-50 p-4">
-        <div className="flex gap-3">
-          <div className="mt-0.5 text-blue-600">
-            <Users size={20} />
-          </div>
-
+      {/* 4. Basic Queue Summary (Only 3 cards: Total Patients, Waiting, Completed) */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {/* Card 1: Total Patients */}
+        <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex items-center justify-between">
           <div>
-            <h3 className="text-sm font-semibold text-blue-800">
-              Queue Eligibility
-            </h3>
-
-            <p className="mt-1 text-sm text-blue-700">
-              Only patients who are checked-in and have completed
-              the required OPD payment are eligible for the doctor
-              queue.
-            </p>
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
+              Total Patients
+            </span>
+            <span className="text-3xl font-black text-slate-800 mt-1 block">
+              {summary.total}
+            </span>
           </div>
-        </div>
-      </div>
-
-      {/* Filters */}
-      <div className="mb-5 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-        <div className="mb-4 flex items-center gap-2">
-          <Filter size={18} className="text-slate-500" />
-
-          <h2 className="font-semibold text-slate-800">
-            Search & Filters
-          </h2>
-        </div>
-
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-5">
-          {/* Search */}
-          <div className="relative xl:col-span-2">
-            <Search
-              size={18}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-            />
-
-            <input
-              type="text"
-              placeholder="Search patient, UHID, token or mobile..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full rounded-lg border border-slate-200 bg-white py-2.5 pl-10 pr-3 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-            />
-          </div>
-
-          {/* Doctor */}
-          <div className="relative">
-            <select
-              value={doctorFilter}
-              onChange={(e) => setDoctorFilter(e.target.value)}
-              className="w-full appearance-none rounded-lg border border-slate-200 bg-white px-3 py-2.5 pr-9 text-sm text-slate-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-            >
-              <option>All Doctors</option>
-              <option>Dr. Vinish Kumar</option>
-              <option>Dr. Anjali Verma</option>
-            </select>
-
-            <ChevronDown
-              size={17}
-              className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
-            />
-          </div>
-
-          {/* Department */}
-          <div className="relative">
-            <select
-              value={departmentFilter}
-              onChange={(e) =>
-                setDepartmentFilter(e.target.value)
-              }
-              className="w-full appearance-none rounded-lg border border-slate-200 bg-white px-3 py-2.5 pr-9 text-sm text-slate-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-            >
-              <option>All Departments</option>
-              <option>Urology</option>
-              <option>Andrology</option>
-              <option>Nephrology</option>
-            </select>
-
-            <ChevronDown
-              size={17}
-              className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
-            />
-          </div>
-
-          {/* Status */}
-          <div className="relative">
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full appearance-none rounded-lg border border-slate-200 bg-white px-3 py-2.5 pr-9 text-sm text-slate-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-            >
-              <option>All Status</option>
-              <option>Waiting</option>
-              <option>In Consultation</option>
-              <option>Completed</option>
-            </select>
-
-            <ChevronDown
-              size={17}
-              className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
-            />
+          <div className="p-3 rounded-xl bg-slate-100 text-slate-600">
+            <Users className="w-6 h-6" />
           </div>
         </div>
 
-        <button
-          onClick={resetFilters}
-          className="mt-3 text-sm font-medium text-blue-600 hover:text-blue-700"
-        >
-          Reset Filters
-        </button>
-      </div>
-
-      {/* Queue Table */}
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-        <div className="flex flex-col gap-2 border-b border-slate-200 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+        {/* Card 2: Waiting */}
+        <div className="bg-white rounded-2xl p-5 border border-amber-200 bg-amber-50/20 shadow-sm flex items-center justify-between">
           <div>
-            <h2 className="font-semibold text-slate-800">
-              Today's Doctor Queue
-            </h2>
-
-            <p className="mt-1 text-xs text-slate-500">
-              {filteredQueue.length} patient
-              {filteredQueue.length !== 1 ? "s" : ""} found
-            </p>
+            <span className="text-xs font-bold text-amber-700 uppercase tracking-wider block">
+              Waiting Patients
+            </span>
+            <span className="text-3xl font-black text-amber-700 mt-1 block">
+              {summary.waiting}
+            </span>
           </div>
-
-          <div className="text-xs text-slate-500">
-            Queue order: Appointment → Check-in → Token
+          <div className="p-3 rounded-xl bg-amber-100 text-amber-700">
+            <Clock className="w-6 h-6" />
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[1100px]">
-            <thead className="bg-slate-50">
-              <tr className="border-b border-slate-200">
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Token
-                </th>
+        {/* Card 3: Completed */}
+        <div className="bg-white rounded-2xl p-5 border border-emerald-200 bg-emerald-50/20 shadow-sm flex items-center justify-between">
+          <div>
+            <span className="text-xs font-bold text-emerald-700 uppercase tracking-wider block">
+              Completed
+            </span>
+            <span className="text-3xl font-black text-emerald-700 mt-1 block">
+              {summary.completed}
+            </span>
+          </div>
+          <div className="p-3 rounded-xl bg-emerald-100 text-emerald-700">
+            <CheckCircle2 className="w-6 h-6" />
+          </div>
+        </div>
+      </div>
 
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Patient
-                </th>
+      {/* 5. Search & Filters */}
+      <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm flex flex-col md:flex-row items-center justify-between gap-3">
+        {/* Search */}
+        <div className="relative w-full md:w-96">
+          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search Patient Name, UHID, Token #, Mobile..."
+            className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
 
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  UHID
-                </th>
+        {/* Filters */}
+        <div className="flex items-center gap-2 w-full md:w-auto">
+          {/* Status Filter */}
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+          >
+            <option value="ALL">All Status</option>
+            <option value="Waiting">Waiting</option>
+            <option value="Consulting">Consulting</option>
+            <option value="Completed">Completed</option>
+            <option value="Cancelled">Cancelled</option>
+          </select>
 
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Doctor
-                </th>
+          {/* Doctor Filter */}
+          <select
+            value={doctorFilter}
+            onChange={(e) => setDoctorFilter(e.target.value)}
+            className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+          >
+            <option value="ALL">All Doctors</option>
+            {doctorList.map((doc) => (
+              <option key={doc} value={doc}>
+                {doc}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
 
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Appointment
-                </th>
+      {/* 6. Patient Queue Table */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="p-4 border-b border-slate-100 bg-slate-50/70 flex items-center justify-between">
+          <h2 className="font-bold text-slate-800 text-sm">Patient Queue List</h2>
+          <span className="text-xs font-semibold text-slate-500">
+            {filteredQueue.length} Patients listed
+          </span>
+        </div>
 
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Check-in
-                </th>
-
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Status
-                </th>
-
-                <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Action
-                </th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {filteredQueue.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan="8"
-                    className="px-4 py-12 text-center"
-                  >
-                    <Users
-                      size={35}
-                      className="mx-auto mb-3 text-slate-300"
-                    />
-
-                    <p className="font-medium text-slate-600">
-                      No patients found
-                    </p>
-
-                    <p className="mt-1 text-sm text-slate-400">
-                      Try changing your search or filters.
-                    </p>
-                  </td>
+        {filteredQueue.length === 0 ? (
+          <div className="p-12 text-center text-slate-400 space-y-2">
+            <Users className="w-10 h-10 mx-auto text-slate-300" />
+            <p className="text-xs font-semibold text-slate-500">No patients found in queue.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-100/80 border-b border-slate-200 text-[11px] font-bold text-slate-600 uppercase tracking-wider">
+                  <th className="py-3 px-4">Token #</th>
+                  <th className="py-3 px-4">Patient Name</th>
+                  <th className="py-3 px-4">UHID / ID</th>
+                  <th className="py-3 px-4">Age / Gender</th>
+                  <th className="py-3 px-4">Doctor</th>
+                  <th className="py-3 px-4">Check-in Time</th>
+                  <th className="py-3 px-4">Queue Status</th>
+                  <th className="py-3 px-4 text-right">Actions</th>
                 </tr>
-              ) : (
-                filteredQueue.map((patient) => (
-                  <tr
-                    key={patient.id}
-                    className="border-b border-slate-100 transition hover:bg-slate-50"
-                  >
-                    {/* Token */}
-                    <td className="px-4 py-4">
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-slate-800">
-                          {patient.token}
-                        </span>
+              </thead>
 
-                        {patient.priority && (
-                          <span className="rounded-full bg-purple-50 px-2 py-0.5 text-[10px] font-semibold text-purple-700">
-                            Priority
+              <tbody className="divide-y divide-slate-100 text-xs">
+                {filteredQueue.map((item) => {
+                  const isConsulting = item.status === "Consulting";
+
+                  return (
+                    <tr
+                      key={item.id}
+                      className={`hover:bg-slate-50 transition-colors ${
+                        isConsulting ? "bg-blue-50/50 font-medium" : ""
+                      }`}
+                    >
+                      {/* Token # */}
+                      <td className="py-3 px-4">
+                        <span
+                          className={`inline-flex items-center justify-center px-2.5 py-1 rounded-lg font-extrabold text-xs ${
+                            isConsulting
+                              ? "bg-blue-600 text-white"
+                              : item.priority === "Urgent"
+                              ? "bg-amber-500 text-white"
+                              : "bg-slate-800 text-white"
+                          }`}
+                        >
+                          {item.tokenNumber}
+                        </span>
+                      </td>
+
+                      {/* Patient Name */}
+                      <td className="py-3 px-4 font-bold text-slate-900">
+                        {item.patientName}
+                        {item.priority === "Urgent" && (
+                          <span className="ml-2 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                            Urgent
                           </span>
                         )}
-                      </div>
-                    </td>
+                      </td>
 
-                    {/* Patient */}
-                    <td className="px-4 py-4">
-                      <div>
-                        <p className="font-medium text-slate-800">
-                          {patient.patientName}
-                        </p>
+                      {/* UHID */}
+                      <td className="py-3 px-4 text-slate-600 font-mono">
+                        {item.patientId}
+                      </td>
 
-                        <p className="mt-1 text-xs text-slate-500">
-                          {patient.age} yrs • {patient.gender}
-                        </p>
-                      </div>
-                    </td>
+                      {/* Age / Gender */}
+                      <td className="py-3 px-4 text-slate-600">
+                        {item.age} yrs / {item.gender}
+                      </td>
 
-                    {/* UHID */}
-                    <td className="px-4 py-4">
-                      <p className="text-sm font-medium text-slate-700">
-                        {patient.uhid}
-                      </p>
+                      {/* Doctor */}
+                      <td className="py-3 px-4 font-medium text-slate-800">
+                        {item.doctorName}
+                      </td>
 
-                      <p className="mt-1 text-xs text-slate-400">
-                        {patient.mobile}
-                      </p>
-                    </td>
+                      {/* Check-in Time */}
+                      <td className="py-3 px-4 text-slate-600">
+                        {item.checkInTime}
+                      </td>
 
-                    {/* Doctor */}
-                    <td className="px-4 py-4">
-                      <p className="text-sm font-medium text-slate-700">
-                        {patient.doctor}
-                      </p>
+                      {/* Queue Status */}
+                      <td className="py-3 px-4">
+                        {item.status === "Consulting" && (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-700 border border-blue-200">
+                            <span className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse"></span>
+                            Consulting
+                          </span>
+                        )}
+                        {item.status === "Waiting" && (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                            Waiting
+                          </span>
+                        )}
+                        {item.status === "Completed" && (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            Completed
+                          </span>
+                        )}
+                        {item.status === "Cancelled" && (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-500 border border-slate-200">
+                            Cancelled
+                          </span>
+                        )}
+                      </td>
 
-                      <p className="mt-1 text-xs text-slate-500">
-                        {patient.department}
-                      </p>
-                    </td>
-
-                    {/* Appointment */}
-                    <td className="px-4 py-4">
-                      <p className="text-sm text-slate-700">
-                        {patient.appointmentTime}
-                      </p>
-                    </td>
-
-                    {/* Check-in */}
-                    <td className="px-4 py-4">
-                      <p className="text-sm text-slate-700">
-                        {patient.checkInTime}
-                      </p>
-                    </td>
-
-                    {/* Status */}
-                    <td className="px-4 py-4">
-                      <span
-                        className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${
-                          statusStyle[patient.queueStatus]
-                        }`}
-                      >
-                        {patient.queueStatus}
-                      </span>
-                    </td>
-
-                    {/* Actions */}
-                    <td className="px-4 py-4">
-                      <div className="flex items-center justify-center gap-2">
-                        <button
-                          onClick={() =>
-                            setSelectedPatient(patient)
-                          }
-                          title="View Patient"
-                          className="rounded-lg border border-slate-200 p-2 text-slate-600 transition hover:bg-slate-100"
-                        >
-                          <Eye size={16} />
-                        </button>
-
-                        {patient.queueStatus === "Waiting" && (
-                          <>
+                      {/* 7. Actions (Receptionist Level) */}
+                      <td className="py-3 px-4 text-right">
+                        <div className="flex items-center justify-end gap-1.5">
+                          {/* Call Patient */}
+                          {item.status === "Waiting" && (
                             <button
-                              onClick={() =>
-                                updateQueueStatus(
-                                  patient.id,
-                                  "In Consultation"
-                                )
-                              }
-                              title="Start Consultation"
-                              className="rounded-lg border border-blue-200 bg-blue-50 p-2 text-blue-600 transition hover:bg-blue-100"
+                              onClick={() => handleCallSpecificPatient(item.id)}
+                              className="px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold flex items-center gap-1 transition"
+                              title="Call Patient into Consultation"
                             >
-                              <PlayCircle size={16} />
+                              <Play className="w-3 h-3 fill-current" />
+                              Call Patient
                             </button>
+                          )}
 
-                            {patient.priority && (
-                              <button
-                                onClick={() =>
-                                  moveToTop(patient.id)
-                                }
-                                title="Move to Top"
-                                className="rounded-lg border border-purple-200 bg-purple-50 p-2 text-purple-600 transition hover:bg-purple-100"
-                              >
-                                <ArrowUp size={16} />
-                              </button>
-                            )}
-                          </>
-                        )}
+                          {/* Finish Consultation */}
+                          {item.status === "Consulting" && (
+                            <button
+                              onClick={() => handleFinishConsultation(item.id)}
+                              className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold flex items-center gap-1 transition"
+                              title="Finish Consultation"
+                            >
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              Finish
+                            </button>
+                          )}
 
-                        {patient.queueStatus ===
-                          "In Consultation" && (
+                          {/* View Details Modal */}
                           <button
-                            onClick={() =>
-                              updateQueueStatus(
-                                patient.id,
-                                "Completed"
-                              )
-                            }
-                            title="Mark Completed"
-                            className="rounded-lg border border-emerald-200 bg-emerald-50 p-2 text-emerald-600 transition hover:bg-emerald-100"
+                            onClick={() => setSelectedPatientModal(item)}
+                            className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 transition"
+                            title="View Patient Details"
                           >
-                            <CheckCircle2 size={16} />
+                            <Eye className="w-4 h-4" />
                           </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Patient Details Modal */}
-      {selectedPatient && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-          onClick={() => setSelectedPatient(null)}
-        >
-          <div
-            className="w-full max-w-lg rounded-2xl bg-white shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Modal Header */}
-            <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
-              <div>
-                <h2 className="text-lg font-semibold text-slate-800">
-                  Patient Queue Details
-                </h2>
-
-                <p className="text-xs text-slate-500">
-                  Token {selectedPatient.token}
-                </p>
+      {selectedPatientModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-5 shadow-2xl border border-slate-100 animate-in fade-in duration-150">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2.5">
+                <span className="w-9 h-9 rounded-xl bg-blue-600 text-white font-extrabold flex items-center justify-center text-xs">
+                  {selectedPatientModal.tokenNumber}
+                </span>
+                <div>
+                  <h3 className="font-bold text-slate-900 text-sm">
+                    {selectedPatientModal.patientName}
+                  </h3>
+                  <p className="text-[11px] text-slate-500">
+                    {selectedPatientModal.patientId}
+                  </p>
+                </div>
               </div>
-
               <button
-                onClick={() => setSelectedPatient(null)}
-                className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"
+                onClick={() => setSelectedPatientModal(null)}
+                className="text-slate-400 hover:text-slate-600 p-1"
               >
-                ✕
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            {/* Modal Body */}
-            <div className="p-5">
-              <div className="mb-5 rounded-xl bg-slate-50 p-4">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 text-blue-600">
-                    <UserCheck size={22} />
-                  </div>
-
-                  <div>
-                    <h3 className="font-semibold text-slate-800">
-                      {selectedPatient.patientName}
-                    </h3>
-
-                    <p className="text-sm text-slate-500">
-                      {selectedPatient.age} years •{" "}
-                      {selectedPatient.gender}
-                    </p>
-                  </div>
-                </div>
+            <div className="py-4 space-y-2.5 text-xs text-slate-700">
+              <div className="flex justify-between py-1 border-b border-slate-50">
+                <span className="text-slate-500">Age / Gender:</span>
+                <span className="font-semibold">{selectedPatientModal.age} yrs / {selectedPatientModal.gender}</span>
               </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <InfoItem
-                  label="UHID"
-                  value={selectedPatient.uhid}
-                />
-
-                <InfoItem
-                  label="Token"
-                  value={selectedPatient.token}
-                />
-
-                <InfoItem
-                  label="Doctor"
-                  value={selectedPatient.doctor}
-                />
-
-                <InfoItem
-                  label="Department"
-                  value={selectedPatient.department}
-                />
-
-                <InfoItem
-                  label="Appointment"
-                  value={selectedPatient.appointmentTime}
-                />
-
-                <InfoItem
-                  label="Check-in"
-                  value={selectedPatient.checkInTime}
-                />
-
-                <InfoItem
-                  label="Payment"
-                  value={selectedPatient.paymentStatus}
-                />
-
-                <InfoItem
-                  label="Queue Status"
-                  value={selectedPatient.queueStatus}
-                />
+              <div className="flex justify-between py-1 border-b border-slate-50">
+                <span className="text-slate-500">Mobile:</span>
+                <span className="font-semibold">{selectedPatientModal.mobile}</span>
+              </div>
+              <div className="flex justify-between py-1 border-b border-slate-50">
+                <span className="text-slate-500">Doctor:</span>
+                <span className="font-semibold">{selectedPatientModal.doctorName}</span>
+              </div>
+              <div className="flex justify-between py-1 border-b border-slate-50">
+                <span className="text-slate-500">Check-in Time:</span>
+                <span className="font-semibold">{selectedPatientModal.checkInTime}</span>
+              </div>
+              <div className="flex justify-between py-1 border-b border-slate-50">
+                <span className="text-slate-500">Priority:</span>
+                <span className="font-semibold text-amber-700">{selectedPatientModal.priority || "Normal"}</span>
+              </div>
+              <div className="flex justify-between py-1">
+                <span className="text-slate-500">Status:</span>
+                <span className="font-bold text-blue-700">{selectedPatientModal.status}</span>
               </div>
             </div>
 
-            {/* Modal Footer */}
-            <div className="flex justify-end border-t border-slate-200 px-5 py-4">
+            <div className="pt-2 border-t border-slate-100 flex justify-end">
               <button
-                onClick={() => setSelectedPatient(null)}
-                className="rounded-lg bg-slate-800 px-4 py-2.5 text-sm font-medium text-white hover:bg-slate-700"
+                onClick={() => setSelectedPatientModal(null)}
+                className="px-4 py-1.5 bg-slate-100 text-slate-700 rounded-xl font-semibold text-xs hover:bg-slate-200 transition"
               >
                 Close
               </button>
@@ -746,20 +684,4 @@ const DoctorQueue = () => {
       )}
     </div>
   );
-};
-
-const InfoItem = ({ label, value }) => {
-  return (
-    <div>
-      <p className="text-xs font-medium text-slate-400">
-        {label}
-      </p>
-
-      <p className="mt-1 text-sm font-medium text-slate-700">
-        {value}
-      </p>
-    </div>
-  );
-};
-
-export default DoctorQueue;
+}

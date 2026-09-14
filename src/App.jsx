@@ -15,6 +15,8 @@ import Prescriptions from "./pages/DoctorDashboard/Prescriptions";
 import DoctorReports from "./pages/DoctorDashboard/DoctorReports";
 import DoctorDash from "./pages/DoctorDashboard/DoctorDash";
 import Consultation from "./pages/DoctorDashboard/Consultation";
+import MyQueue from "./pages/DoctorDashboard/MyQueue";
+import FollowUps from "./pages/DoctorDashboard/FollowUps";
 
 // Lazy Loaded Route Components for Admin Panel
 const Login = lazy(() => import("./pages/Login"));
@@ -139,6 +141,7 @@ export default function App() {
               }
             >
               <Route index element={<DoctorDash />} />
+              <Route path="my-queue" element={<MyQueue />} />
               <Route
                 path="todays-appointments"
                 element={<TodaysAppointments />}
@@ -147,6 +150,7 @@ export default function App() {
               <Route path="medical-records" element={<MedicalRecords />} />
               <Route path="prescriptions" element={<Prescriptions />} />
               <Route path="reports" element={<DoctorReports />} />
+              <Route path="follow-ups" element={<FollowUps />} />
               <Route path="consultation" element={<Consultation />} />
             </Route>
 

@@ -168,7 +168,7 @@ export const AdminDataProvider = ({ children }) => {
         try {
           localStorage.setItem('dr_vinish_clinics', JSON.stringify(items));
           window.dispatchEvent(new Event('storage'));
-        } catch (e) {}
+        } catch (e) { }
       }
     } catch (err) {
       console.warn('Backend clinic fetch offline or error:', err.message);
@@ -249,39 +249,39 @@ export const AdminDataProvider = ({ children }) => {
   ]);
 
   const [services, setServices] = useState([
-    { 
-      id: 1, 
-      title: 'Kidney Stone Treatment', 
-      subtitle: 'Laser Lithotripsy, RIRS & PCNL procedures.', 
-      description: 'Stitchless laser surgery & endoscopic stone clearance procedures.', 
-      icon: 'Stethoscope', 
+    {
+      id: 1,
+      title: 'Kidney Stone Treatment',
+      subtitle: 'Laser Lithotripsy, RIRS & PCNL procedures.',
+      description: 'Stitchless laser surgery & endoscopic stone clearance procedures.',
+      icon: 'Stethoscope',
       active: true,
       highlights: ['Stitchless Laser RIRS & PCNL for Kidney Stones', 'Bladder Stone & Ureteroscopic Surgery']
     },
-    { 
-      id: 2, 
-      title: 'Prostate Care (BPH)', 
-      subtitle: 'Advanced TURP & Laser prostate surgeries.', 
-      description: 'HolEP laser prostatectomy and BPH urinary outflow restoration.', 
-      icon: 'Shield', 
+    {
+      id: 2,
+      title: 'Prostate Care (BPH)',
+      subtitle: 'Advanced TURP & Laser prostate surgeries.',
+      description: 'HolEP laser prostatectomy and BPH urinary outflow restoration.',
+      icon: 'Shield',
       active: true,
       highlights: ['HolEP Laser Prostatectomy for BPH', 'Prostate Enlargement Evaluation & TURP']
     },
-    { 
-      id: 3, 
-      title: 'Laparoscopic Urology', 
-      subtitle: 'Minimally invasive keyhole kidney surgeries.', 
-      description: 'Keyhole surgical repair for kidney obstruction, pyeloplasty and tumors.', 
-      icon: 'Scissors', 
+    {
+      id: 3,
+      title: 'Laparoscopic Urology',
+      subtitle: 'Minimally invasive keyhole kidney surgeries.',
+      description: 'Keyhole surgical repair for kidney obstruction, pyeloplasty and tumors.',
+      icon: 'Scissors',
       active: true,
       highlights: ['Keyhole Kidney Surgery & Pyeloplasty', 'Laparoscopic Nephrectomy']
     },
-    { 
-      id: 4, 
-      title: 'Andrology & Male Infertility', 
-      subtitle: 'Microscopic varicocelectomy & erectile dysfunction.', 
-      description: 'Evidence-based male reproductive wellness and microscopic surgeries.', 
-      icon: 'Activity', 
+    {
+      id: 4,
+      title: 'Andrology & Male Infertility',
+      subtitle: 'Microscopic varicocelectomy & erectile dysfunction.',
+      description: 'Evidence-based male reproductive wellness and microscopic surgeries.',
+      icon: 'Activity',
       active: true,
       highlights: ['Male Infertility Evaluation & Micro-TESE', 'Microscopic Varicocelectomy & Erectile Health']
     }
@@ -320,7 +320,7 @@ export const AdminDataProvider = ({ children }) => {
         try {
           localStorage.setItem('dr_vinish_appointments', JSON.stringify(updatedList));
           window.dispatchEvent(new Event('storage'));
-        } catch (e) {}
+        } catch (e) { }
       }
       return updatedList;
     });
@@ -354,7 +354,7 @@ export const AdminDataProvider = ({ children }) => {
         localStorage.setItem('dr_vinish_appointments', JSON.stringify(updated));
         window.dispatchEvent(new Event('storage'));
       }
-    } catch (e) {}
+    } catch (e) { }
 
     try {
       if (typeof id === 'string' && id.length === 24) {
@@ -432,7 +432,7 @@ export const AdminDataProvider = ({ children }) => {
       try {
         localStorage.setItem('dr_vinish_clinics', JSON.stringify(updated));
         window.dispatchEvent(new Event('storage'));
-      } catch (e) {}
+      } catch (e) { }
       return updated;
     });
 
@@ -449,7 +449,7 @@ export const AdminDataProvider = ({ children }) => {
       try {
         localStorage.setItem('dr_vinish_clinics', JSON.stringify(updated));
         window.dispatchEvent(new Event('storage'));
-      } catch (e) {}
+      } catch (e) { }
       return updated;
     });
 
@@ -466,7 +466,7 @@ export const AdminDataProvider = ({ children }) => {
       try {
         localStorage.setItem('dr_vinish_clinics', JSON.stringify(updated));
         window.dispatchEvent(new Event('storage'));
-      } catch (e) {}
+      } catch (e) { }
       return updated;
     });
 
@@ -483,7 +483,7 @@ export const AdminDataProvider = ({ children }) => {
       try {
         localStorage.setItem('dr_vinish_clinics', JSON.stringify(updated));
         window.dispatchEvent(new Event('storage'));
-      } catch (e) {}
+      } catch (e) { }
       return updated;
     });
 
