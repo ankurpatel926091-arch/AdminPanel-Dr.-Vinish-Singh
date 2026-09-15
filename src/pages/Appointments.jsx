@@ -30,7 +30,7 @@ const HOSPITAL_CENTRES = [
   '🌆 Evening OPD: Dr. Shilpi Maternity & Urology Centre (Pakkabag, 03 PM - 07 PM)'
 ];
 
-const SPECIALITY_CONDITIONS = [
+const RUDRAKSH_SPECIALITY_CONDITIONS = [
   'Laser Kidney Stones (RIRS / PCNL)',
   'Prostate Care & Enlargement (BPH / TURP)',
   'Urine Leakage & UTI Infection',
@@ -39,6 +39,34 @@ const SPECIALITY_CONDITIONS = [
   'Kidney Stone Consultation',
   'Male Infertility Consultation'
 ];
+
+const SHILPI_SPECIALITY_CONDITIONS = [
+  'General Gynecology',
+  'Pregnancy Care',
+  'High Risk Pregnancy',
+  'Infertility',
+  'PCOD',
+  'Laparoscopy',
+  'Cosmetic Gynecology',
+  'Menopause',
+  'Laser Kidney Stones (RIRS / PCNL)',
+  'Prostate Surgery (HoLEP / TURP)',
+  'Recurrent Female UTI & Incontinence',
+  'General Urology Consultation',
+  'Others'
+];
+
+const SPECIALITY_CONDITIONS = RUDRAKSH_SPECIALITY_CONDITIONS;
+
+const getSpecialityConditions = (clinicVal, clinicsList = []) => {
+  if (!clinicVal) return RUDRAKSH_SPECIALITY_CONDITIONS;
+  const found = (clinicsList || []).find(c => String(c._id || c.id) === String(clinicVal) || c.name === clinicVal);
+  const nameOrTag = (found ? `${found.name || ''} ${found.tag || ''}` : String(clinicVal)).toLowerCase();
+  if (nameOrTag.includes('shilpi') || nameOrTag.includes('evening')) {
+    return SHILPI_SPECIALITY_CONDITIONS;
+  }
+  return RUDRAKSH_SPECIALITY_CONDITIONS;
+};
 
 const formatClinicDisplay = (fullString) => {
   if (!fullString) return { name: 'Rudraksh IVF & Urology', loc: '(Sharda Nagar)' };
@@ -753,11 +781,21 @@ export default function Appointments() {
                   </label>
                   <select
                     value={formData.clinic || defaultClinicId}
-                    onChange={(e) => setFormData({ ...formData, clinic: e.target.value })}
+                    onChange={(e) => {
+                      const selectedClinic = e.target.value;
+                      const newOptions = getSpecialityConditions(selectedClinic, clinics);
+                      setFormData((prev) => ({
+                        ...prev,
+                        clinic: selectedClinic,
+                        problem: newOptions[0]
+                      }));
+                    }}
                     className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all cursor-pointer"
                     required
                   >
-                    {(clinics && clinics.length > 0 ? clinics : []).map((c) => (
+                    {(clinics && clinics.length > 0 ? clinics.filter((c, index, self) => 
+                      index === self.findIndex((t) => (t.name || '').trim().toLowerCase() === (c.name || '').trim().toLowerCase())
+                    ) : []).map((c) => (
                       <option key={c._id || c.id} value={c._id || c.id}>
                         {c.name}
                       </option>
@@ -775,7 +813,7 @@ export default function Appointments() {
                   onChange={(e) => setFormData({ ...formData, problem: e.target.value })}
                   className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all cursor-pointer"
                 >
-                  {SPECIALITY_CONDITIONS.map((s, i) => (
+                  {getSpecialityConditions(formData.clinic || defaultClinicId, clinics).map((s, i) => (
                     <option key={i} value={s}>{s}</option>
                   ))}
                 </select>

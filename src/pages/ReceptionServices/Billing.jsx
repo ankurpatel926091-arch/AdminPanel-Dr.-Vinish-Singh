@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import {
   Search,
   Filter,
@@ -212,6 +213,7 @@ const paymentStatusStyles = {
 ========================================= */
 
 export default function Billing() {
+  const location = useLocation();
   const [bills, setBills] = useState(initialBills);
 
   const [search, setSearch] = useState("");
@@ -222,6 +224,48 @@ export default function Billing() {
 
   const [paymentMode, setPaymentMode] = useState("UPI");
   const [paymentAmount, setPaymentAmount] = useState("");
+
+  /* Handle incoming state from Check-in flow */
+  useEffect(() => {
+    if (location.state) {
+      const { appointment, visitId, patientId, patientName } = location.state;
+      const query = visitId || patientId || patientName || appointment?.visitId || appointment?.patientId;
+      if (query) {
+        setSearch(query);
+      }
+
+      const targetVisitId = visitId || appointment?.visitId;
+      if (targetVisitId) {
+        setBills((prev) => {
+          const exists = prev.some((b) => b.visitId === targetVisitId);
+          if (exists) return prev;
+
+          const newBill = {
+            billId: `BILL-${Math.floor(1000 + Math.random() * 9000)}`,
+            visitId: targetVisitId,
+            patientId: patientId || appointment?.patientId || "UHID-10245",
+            patientName: patientName || appointment?.patientName || "Patient",
+            age: appointment?.age || 34,
+            gender: appointment?.gender || "Male",
+            doctor: appointment?.doctorName || "Dr. Vinish Kumar Singh",
+            department: appointment?.department || "Urology",
+            hospital: "Rudraksh IVF & Urology Centre",
+            visitDate: appointment?.appointmentDate || "15 Sep 2026",
+            consultationFee: 1000,
+            services: [{ name: "OPD Consultation", amount: 1000 }],
+            discount: 0,
+            totalAmount: 1000,
+            paidAmount: 0,
+            dueAmount: 1000,
+            paymentMode: null,
+            paymentStatus: "Pending",
+            invoiceStatus: "Unpaid",
+          };
+          return [newBill, ...prev];
+        });
+      }
+    }
+  }, [location.state]);
 
   /* =========================================
      Filter Bills

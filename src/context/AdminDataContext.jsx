@@ -51,12 +51,25 @@ export const AdminDataProvider = ({ children }) => {
     }
   ];
 
+  const deduplicateClinics = (list) => {
+    if (!Array.isArray(list)) return [];
+    const seen = new Set();
+    return list.filter(item => {
+      if (!item) return false;
+      const nameKey = (item.name || item.title || '').trim().toLowerCase();
+      if (!nameKey) return true;
+      if (seen.has(nameKey)) return false;
+      seen.add(nameKey);
+      return true;
+    });
+  };
+
   const [clinics, setClinics] = useState(() => {
     try {
       const saved = localStorage.getItem('dr_vinish_clinics');
       if (saved) {
         const parsed = JSON.parse(saved);
-        return parsed.map(c => {
+        const mapped = parsed.map(c => {
           if (c.name && c.name.includes('Rudraksh')) {
             return {
               ...c,
@@ -69,6 +82,7 @@ export const AdminDataProvider = ({ children }) => {
           }
           return c;
         });
+        return deduplicateClinics(mapped);
       }
       return DEFAULT_CLINICS;
     } catch {
@@ -160,10 +174,10 @@ export const AdminDataProvider = ({ children }) => {
     try {
       const clinicRes = await getAdminClinicsApi();
       if (clinicRes && clinicRes.data && clinicRes.data.length > 0) {
-        const items = clinicRes.data.map(c => ({
+        const items = deduplicateClinics(clinicRes.data.map(c => ({
           ...c,
           id: c._id || c.id || c.clinicId
-        }));
+        })));
         setClinics(items);
         try {
           localStorage.setItem('dr_vinish_clinics', JSON.stringify(items));

@@ -138,6 +138,29 @@ export default function DoctorQueue() {
     }
   }, [queue]);
 
+  // Sync newly checked in patients from dr_vinish_queue
+  useEffect(() => {
+    const syncQueue = () => {
+      try {
+        const checkinQueueStr = localStorage.getItem("dr_vinish_queue");
+        if (checkinQueueStr) {
+          const checkinItems = JSON.parse(checkinQueueStr);
+          if (Array.isArray(checkinItems) && checkinItems.length > 0) {
+            setQueue((prev) => {
+              const existingIds = new Set(prev.map((item) => item.visitId || item.id || item.patientId));
+              const newItems = checkinItems.filter((item) => !existingIds.has(item.visitId || item.id || item.patientId));
+              return newItems.length > 0 ? [...newItems, ...prev] : prev;
+            });
+          }
+        }
+      } catch (e) {}
+    };
+
+    syncQueue();
+    window.addEventListener("storage", syncQueue);
+    return () => window.removeEventListener("storage", syncQueue);
+  }, []);
+
   // Basic Queue Summary (Total, Waiting, Completed)
   const summary = useMemo(() => {
     const total = queue.length;

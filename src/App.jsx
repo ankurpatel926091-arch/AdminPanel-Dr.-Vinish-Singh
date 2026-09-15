@@ -30,6 +30,7 @@ const Blogs = lazy(() => import("./pages/Blogs"));
 
 // Reception Service Page Components
 const TodayOPD = lazy(() => import("./pages/ReceptionServices/TodayOPD"));
+const OpdManagement = lazy(() => import("./pages/ReceptionServices/OpdManagement"));
 const PatientRegistration = lazy(() => import("./pages/ReceptionServices/PatientRegistration"));
 const CheckIn = lazy(() => import("./pages/ReceptionServices/CheckIn"));
 const Billing = lazy(() => import("./pages/ReceptionServices/Billing"));
@@ -111,7 +112,8 @@ export default function App() {
               />
 
               {/* Reception Services Routes */}
-              <Route path="today-opd" element={<TodayOPD />} />
+              <Route path="opd-management" element={<OpdManagement />} />
+              <Route path="All-Appointments" element={<TodayOPD />} />
               <Route
                 path="patient-registration"
                 element={<PatientRegistration />}
