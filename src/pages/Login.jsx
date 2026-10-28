@@ -282,7 +282,7 @@ export default function Login() {
                   href="#forgot"
                   onClick={(e) => {
                     e.preventDefault();
-                    alert("Default credentials: admin@drvinish.com / admin123");
+                    // alert("Default credentials: admin@drvinish.com / admin123");
                   }}
                   className="text-blue-600 font-semibold hover:text-indigo-600 transition-colors hover:underline"
                 >
