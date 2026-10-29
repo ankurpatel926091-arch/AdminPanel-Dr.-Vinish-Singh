@@ -22,7 +22,7 @@ export default function AppointmentsWidget() {
       </div>
 
       {/* Table Header - Fixed column widths for perfect alignment */}
-      <div className="grid grid-cols-[40px_100px_1.5fr_120px_110px_2fr] items-center gap-4 px-6 py-3 bg-slate-50 border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+      <div className="grid grid-cols-[40px_100px_minmax(0,1fr)_120px_110px_minmax(0,1fr)] items-center gap-4 px-6 py-3 bg-slate-50 border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
         <span>#</span>
         <span>Status</span>
         <span>Patient</span>
@@ -41,7 +41,7 @@ export default function AppointmentsWidget() {
           return (
             <div
               key={apt.id}
-              className="grid grid-cols-[40px_100px_1.5fr_120px_110px_2fr] items-center gap-4 px-6 py-3 hover:bg-blue-50/40 transition-colors group cursor-pointer"
+              className="grid grid-cols-[40px_100px_minmax(0,1fr)_120px_110px_minmax(0,1fr)] items-center gap-4 px-6 py-3 hover:bg-blue-50/40 transition-colors group cursor-pointer"
             >
               {/* S.No */}
               <span className="text-xs font-bold text-slate-500">{idx + 1}</span>

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAdminData } from '../context/AdminDataContext';
+import useDebouncedValue from '../hooks/useDebouncedValue';
 import {
   MapPin,
   Phone,
@@ -25,6 +26,7 @@ import { toast } from 'react-toastify';
 export default function Clinics() {
   const { clinics, updateClinic, toggleClinicStatus, deleteClinic } = useAdminData();
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebouncedValue(search);
   const [modalImage, setModalImage] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [editingClinic, setEditingClinic] = useState(null);
@@ -102,9 +104,9 @@ export default function Clinics() {
   };
 
   const filteredClinics = (clinics || []).filter(c =>
-    (c.name || '').toLowerCase().includes(search.toLowerCase()) ||
-    (c.city || '').toLowerCase().includes(search.toLowerCase()) ||
-    (c.address || '').toLowerCase().includes(search.toLowerCase())
+    (c.name || '').toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+    (c.city || '').toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+    (c.address || '').toLowerCase().includes(debouncedSearch.toLowerCase())
   );
 
   return (

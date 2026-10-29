@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import useDebouncedValue from "../../hooks/useDebouncedValue";
 import {
   Search,
   Filter,
@@ -139,6 +140,7 @@ export default function Payments() {
   const [payments, setPayments] = useState(initialPayments);
 
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(search);
   const [statusFilter, setStatusFilter] = useState("All");
   const [modeFilter, setModeFilter] = useState("All");
 
@@ -153,7 +155,7 @@ export default function Payments() {
 
   const filteredPayments = useMemo(() => {
     return payments.filter((payment) => {
-      const searchText = search.toLowerCase();
+      const searchText = debouncedSearch.toLowerCase();
 
       const matchesSearch =
         payment.paymentId.toLowerCase().includes(searchText) ||
@@ -181,7 +183,7 @@ export default function Payments() {
     });
   }, [
     payments,
-    search,
+    debouncedSearch,
     statusFilter,
     modeFilter,
   ]);

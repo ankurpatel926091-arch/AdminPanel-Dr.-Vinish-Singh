@@ -2,9 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Search, X, Calendar, Mail, User, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import useDebouncedValue from '../../hooks/useDebouncedValue';
 
 export default function SearchModal({ isOpen, onClose }) {
   const [query, setQuery] = useState('');
+  const debouncedQuery = useDebouncedValue(query);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -25,6 +27,9 @@ export default function SearchModal({ isOpen, onClose }) {
     { label: 'Manage Appointments', path: '/appointments', icon: Calendar },
     { label: 'Doctor Profile Settings', path: '/profile', icon: User },
   ];
+  const filteredQuickLinks = quickLinks.filter((link) =>
+    link.label.toLowerCase().includes(debouncedQuery.trim().toLowerCase())
+  );
 
   return createPortal(
     <div 
@@ -39,7 +44,7 @@ export default function SearchModal({ isOpen, onClose }) {
           <Search className="w-5 h-5 text-slate-400 mr-3" />
           <input
             type="text"
-            placeholder="Search enquiries, appointments, patients..."
+            placeholder="Search quick links..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             className="w-full text-slate-800 placeholder-slate-400 bg-transparent text-sm focus:outline-hidden"
@@ -55,7 +60,7 @@ export default function SearchModal({ isOpen, onClose }) {
             Quick Navigation
           </div>
           <div className="space-y-1">
-            {quickLinks.map((link, idx) => {
+            {filteredQuickLinks.length > 0 ? filteredQuickLinks.map((link, idx) => {
               const Icon = link.icon;
               return (
                 <button
@@ -73,7 +78,9 @@ export default function SearchModal({ isOpen, onClose }) {
                   <ArrowRight className="w-4 h-4 text-slate-400 group-hover:translate-x-1 transition-transform" />
                 </button>
               );
-            })}
+            }) : (
+              <p className="p-3 text-sm text-slate-500">No matching quick links found.</p>
+            )}
           </div>
         </div>
       </div>

@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import useDebouncedValue from "../../hooks/useDebouncedValue";
 import {
   Search,
   Filter,
@@ -233,12 +234,13 @@ function Section({ icon: Icon, title, children }) {
 
 export default function MedicalRecords() {
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(search);
   const [statusFilter, setStatusFilter] = useState("All");
   const [selectedRecord, setSelectedRecord] = useState(null);
 
   const filteredRecords = useMemo(() => {
     return medicalRecords.filter((record) => {
-      const searchText = search.toLowerCase();
+      const searchText = debouncedSearch.toLowerCase();
 
       const matchesSearch =
         record.patientName.toLowerCase().includes(searchText) ||
@@ -251,7 +253,7 @@ export default function MedicalRecords() {
 
       return matchesSearch && matchesStatus;
     });
-  }, [search, statusFilter]);
+  }, [debouncedSearch, statusFilter]);
 
   return (
     <div className="min-h-screen bg-slate-50 p-4 md:p-6">

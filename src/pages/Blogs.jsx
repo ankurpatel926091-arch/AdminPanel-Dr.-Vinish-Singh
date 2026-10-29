@@ -30,6 +30,7 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { toast } from 'react-toastify';
+import useDebouncedValue from '../hooks/useDebouncedValue';
 import {
   getAdminBlogsApi,
   createBlogApi,
@@ -44,6 +45,7 @@ export default function Blogs() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const debouncedSearchQuery = useDebouncedValue(searchQuery);
   const [statusFilter, setStatusFilter] = useState('All');
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 6;
@@ -51,7 +53,7 @@ export default function Blogs() {
   // Reset pagination to page 1 when search query or status filter changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, statusFilter]);
+  }, [debouncedSearchQuery, statusFilter]);
 
   // Notification Toast
   const [toastNotice, setToastNotice] = useState({ show: false, message: '', type: 'success' });
@@ -331,8 +333,8 @@ export default function Blogs() {
   // Filtered Blogs
   const filteredBlogs = blogs.filter((b) => {
     const matchesSearch =
-      b.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      b.category?.toLowerCase().includes(searchQuery.toLowerCase());
+      b.title?.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+      b.category?.toLowerCase().includes(debouncedSearchQuery.toLowerCase());
     const matchesStatus = statusFilter === 'All' || b.status === statusFilter;
     return matchesSearch && matchesStatus;
   });

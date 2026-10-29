@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import useDebouncedValue from "../../hooks/useDebouncedValue";
 import {
   Search,
   Plus,
@@ -18,6 +19,7 @@ import {
 
 export default function Prescriptions() {
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(search);
   const [statusFilter, setStatusFilter] = useState("All");
 
   const [showForm, setShowForm] = useState(false);
@@ -119,7 +121,7 @@ export default function Prescriptions() {
   ]);
 
   const filteredPrescriptions = prescriptions.filter((item) => {
-    const value = search.toLowerCase();
+    const value = debouncedSearch.toLowerCase();
 
     const matchesSearch =
       item.patientName.toLowerCase().includes(value) ||

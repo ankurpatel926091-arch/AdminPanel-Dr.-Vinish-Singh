@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useEffect } from "react";
+import useDebouncedValue from "../../hooks/useDebouncedValue";
 import { useNavigate } from "react-router-dom";
 import {
   Search,
@@ -210,6 +211,7 @@ export default function CheckIn() {
   });
 
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(search);
   const [selectedAppointment, setSelectedAppointment] = useState(null);
   const [showCheckInModal, setShowCheckInModal] = useState(false);
   const [checkInSuccess, setCheckInSuccess] = useState(null);
@@ -234,7 +236,7 @@ export default function CheckIn() {
   ========================================================= */
 
   const filteredAppointments = useMemo(() => {
-    const value = search.toLowerCase().trim();
+    const value = debouncedSearch.toLowerCase().trim();
 
     if (!value) return appointments;
 
@@ -251,7 +253,7 @@ export default function CheckIn() {
         mobile.includes(value)
       );
     });
-  }, [appointments, search]);
+  }, [appointments, debouncedSearch]);
 
   /* =========================================================
      Today's Statistics

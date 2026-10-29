@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import useDebouncedValue from "../../hooks/useDebouncedValue";
 import {
   Search,
   UserPlus,
@@ -113,6 +114,7 @@ export default function PatientRegistration() {
   const [patients, setPatients] = useState(initialPatients);
 
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(search);
 
   const [showForm, setShowForm] = useState(false);
 
@@ -136,7 +138,7 @@ export default function PatientRegistration() {
   ===================================================== */
 
   const filteredPatients = useMemo(() => {
-    const value = search.toLowerCase().trim();
+    const value = debouncedSearch.toLowerCase().trim();
 
     if (!value) return patients;
 
@@ -155,7 +157,7 @@ export default function PatientRegistration() {
           .includes(value)
       );
     });
-  }, [patients, search]);
+  }, [patients, debouncedSearch]);
 
   /* =====================================================
      Handle Form Change

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import Swal from 'sweetalert2';
 import { Image as ImageIcon, Video, Upload, Trash2, Eye, X, Check, FileUp, Link2, Play, CheckCircle2, EyeOff, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import doctorPhoto from '../assets/doctor.jpg';
 import {
@@ -249,17 +250,41 @@ export default function Gallery() {
   };
 
   const handleDelete = async (id) => {
-    if (!confirm('Are you sure you want to delete this media item?')) return;
-
     const itemId = id._id || id;
-    setGallery(prev => prev.filter(img => (img._id !== itemId && img.id !== itemId)));
+    const item = gallery.find((img) => (img._id || img.id) === itemId);
+    const confirmation = await Swal.fire({
+      title: 'Delete gallery item?',
+      text: `Are you sure you want to delete "${item?.title || 'this media item'}"? This action cannot be undone.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#e11d48',
+      cancelButtonColor: '#64748b',
+      confirmButtonText: 'Yes, delete it',
+      cancelButtonText: 'Cancel',
+      reverseButtons: true,
+    });
+
+    if (!confirmation.isConfirmed) return;
 
     try {
       if (typeof itemId === 'string' && itemId.length === 24) {
         await deleteGalleryItemApi(itemId);
       }
+      setGallery(prev => prev.filter(img => (img._id !== itemId && img.id !== itemId)));
+      await Swal.fire({
+        title: 'Deleted',
+        text: 'The gallery item has been deleted.',
+        icon: 'success',
+        confirmButtonColor: '#2563eb',
+      });
     } catch (err) {
-      console.error('Delete error:', err.message);
+      console.error('Delete error:', err);
+      await Swal.fire({
+        title: 'Delete failed',
+        text: err.message || 'The gallery item could not be deleted. Please try again.',
+        icon: 'error',
+        confirmButtonColor: '#2563eb',
+      });
     }
   };
 

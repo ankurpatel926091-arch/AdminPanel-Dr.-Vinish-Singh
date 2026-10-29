@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import useDebouncedValue from '../hooks/useDebouncedValue';
 import { useAdminData } from '../context/AdminDataContext';
 import StatusBadge from '../components/common/StatusBadge';
 import Modal from '../components/common/Modal';
@@ -9,6 +10,7 @@ export default function ContactEnquiries() {
   const { enquiries, fetchEnquiries, loadingEnquiries, updateEnquiryStatus } = useAdminData();
   const [filter, setFilter] = useState('All');
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebouncedValue(search);
   const [selectedEnquiry, setSelectedEnquiry] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 6;
@@ -20,13 +22,13 @@ export default function ContactEnquiries() {
   // Reset to page 1 when filter or search changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [filter, search]);
+  }, [filter, debouncedSearch]);
 
   const filtered = enquiries.filter(item => {
     const matchesFilter = filter === 'All' || item.status.toLowerCase() === filter.toLowerCase();
-    const matchesSearch = item.name.toLowerCase().includes(search.toLowerCase()) ||
-                          item.subject.toLowerCase().includes(search.toLowerCase()) ||
-                          item.phone.includes(search);
+    const matchesSearch = item.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+                          item.subject.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+                          item.phone.includes(debouncedSearch);
     return matchesFilter && matchesSearch;
   });
 

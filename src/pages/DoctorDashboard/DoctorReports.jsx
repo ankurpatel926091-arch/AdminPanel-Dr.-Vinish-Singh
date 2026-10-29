@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from "react";
 import { useAdminData } from "../../context/AdminDataContext";
 import { toast } from "react-toastify";
+import useDebouncedValue from "../../hooks/useDebouncedValue";
 import {
   BarChart,
   Bar,
@@ -198,6 +199,7 @@ export default function DoctorReports() {
   const [customStartDate, setCustomStartDate] = useState("");
   const [customEndDate, setCustomEndDate] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const debouncedSearchQuery = useDebouncedValue(searchQuery);
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [typeFilter, setTypeFilter] = useState("ALL");
 
@@ -300,7 +302,7 @@ export default function DoctorReports() {
   // Filtered Patient Table
   const filteredReports = useMemo(() => {
     return MOCK_PATIENT_REPORTS.filter((item) => {
-      const q = searchQuery.toLowerCase().trim();
+      const q = debouncedSearchQuery.toLowerCase().trim();
       const matchesSearch =
         !q ||
         item.patientName.toLowerCase().includes(q) ||
@@ -314,7 +316,7 @@ export default function DoctorReports() {
 
       return matchesSearch && matchesStatus && matchesType;
     });
-  }, [searchQuery, statusFilter, typeFilter]);
+  }, [debouncedSearchQuery, statusFilter, typeFilter]);
 
   return (
     <div className="space-y-6 pb-12">

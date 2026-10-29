@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import useDebouncedValue from "../../hooks/useDebouncedValue";
 import {
   Search,
   Filter,
@@ -111,6 +112,7 @@ const Patient = () => {
   const [patients, setPatients] = useState(initialPatients);
 
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(search);
   const [genderFilter, setGenderFilter] = useState("All");
   const [statusFilter, setStatusFilter] = useState("All");
 
@@ -140,7 +142,7 @@ const Patient = () => {
       const fullName =
         `${patient.firstName} ${patient.lastName}`.toLowerCase();
 
-      const searchValue = search.toLowerCase();
+      const searchValue = debouncedSearch.toLowerCase();
 
       const matchesSearch =
         fullName.includes(searchValue) ||
@@ -156,7 +158,7 @@ const Patient = () => {
 
       return matchesSearch && matchesGender && matchesStatus;
     });
-  }, [patients, search, genderFilter, statusFilter]);
+  }, [patients, debouncedSearch, genderFilter, statusFilter]);
 
   // Reset Filters
   const resetFilters = () => {

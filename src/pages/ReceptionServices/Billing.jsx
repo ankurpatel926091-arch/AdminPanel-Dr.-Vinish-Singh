@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useEffect } from "react";
+import useDebouncedValue from "../../hooks/useDebouncedValue";
 import { useLocation } from "react-router-dom";
 import {
   Search,
@@ -217,6 +218,7 @@ export default function Billing() {
   const [bills, setBills] = useState(initialBills);
 
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(search);
   const [statusFilter, setStatusFilter] = useState("All");
 
   const [selectedBill, setSelectedBill] = useState(null);
@@ -273,7 +275,7 @@ export default function Billing() {
 
   const filteredBills = useMemo(() => {
     return bills.filter((bill) => {
-      const searchText = search.toLowerCase();
+      const searchText = debouncedSearch.toLowerCase();
 
       const matchesSearch =
         bill.billId.toLowerCase().includes(searchText) ||
@@ -287,7 +289,7 @@ export default function Billing() {
 
       return matchesSearch && matchesStatus;
     });
-  }, [bills, search, statusFilter]);
+  }, [bills, debouncedSearch, statusFilter]);
 
   /* =========================================
      Statistics

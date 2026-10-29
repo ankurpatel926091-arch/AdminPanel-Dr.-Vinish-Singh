@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { toast } from "react-toastify";
+import useDebouncedValue from "../../hooks/useDebouncedValue";
 import {
   Users,
   Clock,
@@ -125,6 +126,7 @@ export default function DoctorQueue() {
   });
 
   const [searchQuery, setSearchQuery] = useState("");
+  const debouncedSearchQuery = useDebouncedValue(searchQuery);
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [doctorFilter, setDoctorFilter] = useState("ALL");
   const [selectedPatientModal, setSelectedPatientModal] = useState(null);
@@ -192,7 +194,7 @@ export default function DoctorQueue() {
   // Filtered Queue List
   const filteredQueue = useMemo(() => {
     return queue.filter((item) => {
-      const query = searchQuery.toLowerCase().trim();
+      const query = debouncedSearchQuery.toLowerCase().trim();
       const matchesSearch =
         !query ||
         item.patientName.toLowerCase().includes(query) ||
@@ -205,7 +207,7 @@ export default function DoctorQueue() {
 
       return matchesSearch && matchesStatus && matchesDoctor;
     });
-  }, [queue, searchQuery, statusFilter, doctorFilter]);
+  }, [queue, debouncedSearchQuery, statusFilter, doctorFilter]);
 
   // Operational Actions
   const handleCallNextPatient = () => {

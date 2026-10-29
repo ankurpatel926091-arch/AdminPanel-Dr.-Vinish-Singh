@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAdminData } from '../context/AdminDataContext';
 import { toast } from 'react-toastify';
+import useDebouncedValue from '../hooks/useDebouncedValue';
 import {
   Calendar as CalendarIcon,
   CalendarX,
@@ -139,6 +140,7 @@ export default function Appointments() {
   const [filter, setFilter] = useState('All');
   const [consultationTypeFilter, setConsultationTypeFilter] = useState('All');
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebouncedValue(search);
   const [showAddModal, setShowAddModal] = useState(false);
   const [viewAppointment, setViewAppointment] = useState(null);
   const [confirmVisitedApt, setConfirmVisitedApt] = useState(null);
@@ -167,11 +169,11 @@ export default function Appointments() {
     const matchesType = consultationTypeFilter === 'All' || aptType.toLowerCase() === consultationTypeFilter.toLowerCase();
     const aptEmail = getAppointmentEmail(apt);
     const clinicName = apt.clinic?.name || (typeof apt.clinic === 'string' ? apt.clinic : (apt.centre || ''));
-    const matchesSearch = (apt.name || '').toLowerCase().includes(search.toLowerCase()) ||
-                          (apt.phone || '').includes(search) ||
-                          aptEmail.toLowerCase().includes(search.toLowerCase()) ||
-                          (apt.problem || '').toLowerCase().includes(search.toLowerCase()) ||
-                          clinicName.toLowerCase().includes(search.toLowerCase());
+    const matchesSearch = (apt.name || '').toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+                          (apt.phone || '').includes(debouncedSearch) ||
+                          aptEmail.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+                          (apt.problem || '').toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+                          clinicName.toLowerCase().includes(debouncedSearch.toLowerCase());
     return matchesFilter && matchesType && matchesSearch;
   });
 

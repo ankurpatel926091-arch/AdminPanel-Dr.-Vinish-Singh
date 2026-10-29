@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
+import useDebouncedValue from "../../hooks/useDebouncedValue";
 import {
   CalendarCheck,
   Calendar,
@@ -130,6 +131,7 @@ export default function FollowUps() {
   });
 
   const [searchQuery, setSearchQuery] = useState("");
+  const debouncedSearchQuery = useDebouncedValue(searchQuery);
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [selectedModal, setSelectedModal] = useState(null);
   const [rescheduleModal, setRescheduleModal] = useState(null);
@@ -159,7 +161,7 @@ export default function FollowUps() {
   // Filtered Followups List
   const filteredFollowups = useMemo(() => {
     return followups.filter((item) => {
-      const q = searchQuery.toLowerCase().trim();
+      const q = debouncedSearchQuery.toLowerCase().trim();
       const matchesSearch =
         !q ||
         item.patientName.toLowerCase().includes(q) ||
@@ -171,7 +173,7 @@ export default function FollowUps() {
 
       return matchesSearch && matchesStatus;
     });
-  }, [followups, searchQuery, statusFilter]);
+  }, [followups, debouncedSearchQuery, statusFilter]);
 
   // ACTIONS
   const handleMarkCompleted = (id) => {

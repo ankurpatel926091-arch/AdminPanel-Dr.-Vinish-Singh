@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAdminData } from '../../context/AdminDataContext';
 import { toast } from 'react-toastify';
+import useDebouncedValue from '../../hooks/useDebouncedValue';
 import {
   Stethoscope,
   Users,
@@ -30,6 +31,7 @@ const CLINICS = [
 export default function OpdManagement() {
   const { appointments, addAppointment, updateAppointmentStatus } = useAdminData();
   const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearchTerm = useDebouncedValue(searchTerm);
   const [selectedClinic, setSelectedClinic] = useState('All');
   const [selectedStatus, setSelectedStatus] = useState('All');
   const [showAddModal, setShowAddModal] = useState(false);
@@ -49,9 +51,9 @@ export default function OpdManagement() {
   // Filter OPD queue list
   const opdList = (appointments || []).filter((apt) => {
     const matchesSearch =
-      (apt.patientName || apt.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (apt.uhid || apt.token || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (apt.phone || '').includes(searchTerm);
+      (apt.patientName || apt.name || '').toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+      (apt.uhid || apt.token || '').toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+      (apt.phone || '').includes(debouncedSearchTerm);
 
     const matchesClinic = selectedClinic === 'All' || (apt.clinic || '').includes(selectedClinic);
     const matchesStatus = selectedStatus === 'All' || (apt.status || 'Pending').toLowerCase() === selectedStatus.toLowerCase();

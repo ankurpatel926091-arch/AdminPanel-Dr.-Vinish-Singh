@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import useDebouncedValue from "../../hooks/useDebouncedValue";
 import {
   Calendar,
   Search,
@@ -200,6 +201,7 @@ const doctorData = [
 const Reports = () => {
   const [dateRange, setDateRange] = useState("Today");
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(search);
   const [activeReport, setActiveReport] = useState("Appointments");
 
   const [fromDate, setFromDate] = useState("2026-09-12");
@@ -211,7 +213,7 @@ const Reports = () => {
 
   const filteredAppointments = useMemo(() => {
     return appointmentData.filter((item) => {
-      const value = search.toLowerCase();
+      const value = debouncedSearch.toLowerCase();
 
       return (
         item.patient.toLowerCase().includes(value) ||
@@ -220,7 +222,7 @@ const Reports = () => {
         item.doctor.toLowerCase().includes(value)
       );
     });
-  }, [search]);
+  }, [debouncedSearch]);
 
   /* -------------------------------------------------------
      FILTER OPD
@@ -228,7 +230,7 @@ const Reports = () => {
 
   const filteredOPD = useMemo(() => {
     return opdData.filter((item) => {
-      const value = search.toLowerCase();
+      const value = debouncedSearch.toLowerCase();
 
       return (
         item.patient.toLowerCase().includes(value) ||
@@ -237,7 +239,7 @@ const Reports = () => {
         item.token.toLowerCase().includes(value)
       );
     });
-  }, [search]);
+  }, [debouncedSearch]);
 
   /* -------------------------------------------------------
      FILTER PAYMENTS
@@ -245,7 +247,7 @@ const Reports = () => {
 
   const filteredPayments = useMemo(() => {
     return paymentData.filter((item) => {
-      const value = search.toLowerCase();
+      const value = debouncedSearch.toLowerCase();
 
       return (
         item.patient.toLowerCase().includes(value) ||
@@ -254,7 +256,7 @@ const Reports = () => {
         item.mode.toLowerCase().includes(value)
       );
     });
-  }, [search]);
+  }, [debouncedSearch]);
 
   /* -------------------------------------------------------
      SUMMARY

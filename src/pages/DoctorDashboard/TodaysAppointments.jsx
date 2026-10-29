@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import useDebouncedValue from "../../hooks/useDebouncedValue";
 import {
   Search,
   CalendarDays,
@@ -14,6 +15,7 @@ import {
 
 const TodaysAppointments = () => {
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(search);
   const [statusFilter, setStatusFilter] = useState("All");
   const [selectedPatient, setSelectedPatient] = useState(null);
 
@@ -104,7 +106,7 @@ const TodaysAppointments = () => {
   // ---------------------------------------
   const filteredAppointments = useMemo(() => {
     return appointments.filter((appointment) => {
-      const searchText = search.toLowerCase();
+      const searchText = debouncedSearch.toLowerCase();
 
       const matchesSearch =
         appointment.patientName.toLowerCase().includes(searchText) ||
@@ -118,7 +120,7 @@ const TodaysAppointments = () => {
 
       return matchesSearch && matchesStatus;
     });
-  }, [search, statusFilter]);
+  }, [debouncedSearch, statusFilter]);
 
   // ---------------------------------------
   // Status Styling
