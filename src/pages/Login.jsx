@@ -278,16 +278,6 @@ export default function Login() {
                   />
                   Remember me
                 </label>
-                <a
-                  href="#forgot"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    // alert("Default credentials: admin@drvinish.com / admin123");
-                  }}
-                  className="text-blue-600 font-semibold hover:text-indigo-600 transition-colors hover:underline"
-                >
-                  Forgot password?
-                </a>
               </div>
 
               <button
