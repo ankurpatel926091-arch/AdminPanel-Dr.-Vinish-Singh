@@ -63,12 +63,8 @@ export default function Sidebar({ isOpen, isCollapsed, onClose }) {
           { path: "/admin/gallery", label: "Gallery", icon: ImageIcon },
           { path: "/admin/clinics", label: "Clinics", icon: MapPin },
           { path: "/admin/blogs", label: "Blogs", icon: BookOpen },
-          {
-            path: "/admin/enquiries",
-            label: "Contact Enquiries",
-            icon: Mail,
-            badge: enquiryCount,
-          },
+          { path: "/admin/enquiries",label: "Contact Enquiries", icon: Mail, badge: enquiryCount,},
+          
         ]
       : [];
 

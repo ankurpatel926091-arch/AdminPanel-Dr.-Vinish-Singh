@@ -25,7 +25,7 @@ import {
 
 const CLINICS = [
   { id: 1, name: 'Rudraksh IVF & Urology Centre (Sharda Nagar)', timings: 'Morning: 10:00 AM - 03:00 PM' },
-  { id: 2, name: 'Dr. Shilpi Maternity & Urology Centre (Pakkabag)', timings: 'Evening: 03:00 PM - 07:00 PM' }
+  { id: 2, name: 'Dr. Shilpi Maternity & Urology Centre (Pakkabag)', timings: 'Evening: 05:00 PM - 07:00 PM' }
 ];
 
 export default function OpdManagement() {
@@ -291,13 +291,12 @@ export default function OpdManagement() {
                       </td>
                       <td className="p-4">
                         <span
-                          className={`px-2.5 py-1 rounded-full text-[11px] font-bold inline-flex items-center gap-1 ${
-                            status === 'Consulting'
+                          className={`px-2.5 py-1 rounded-full text-[11px] font-bold inline-flex items-center gap-1 ${status === 'Consulting'
                               ? 'bg-blue-100 text-blue-700 border border-blue-200'
                               : status === 'Completed' || status === 'Visited'
-                              ? 'bg-emerald-100 text-emerald-700 border border-emerald-200'
-                              : 'bg-amber-100 text-amber-700 border border-amber-200'
-                          }`}
+                                ? 'bg-emerald-100 text-emerald-700 border border-emerald-200'
+                                : 'bg-amber-100 text-amber-700 border border-amber-200'
+                            }`}
                         >
                           <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse"></span>
                           {status}

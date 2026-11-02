@@ -146,10 +146,23 @@ const DEFAULT_QUEUE = [
 export default function MyQueue() {
   const navigate = useNavigate();
 
+  // Helper to normalize status for comparison
+  const normalizeStatus = (st) => {
+    const s = String(st || "").toUpperCase();
+    if (s === "WAITING") return "WAITING";
+    if (s === "IN_CONSULTATION" || s === "CONSULTING") return "IN_CONSULTATION";
+    if (s === "COMPLETED") return "COMPLETED";
+    if (s === "SKIPPED" || s === "CANCELLED") return "SKIPPED";
+    return s || "WAITING";
+  };
+
   const [queue, setQueue] = useState(() => {
     try {
       const saved = localStorage.getItem("dr_vinish_doctor_queue");
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
     } catch (e) {
       console.warn("Failed to load queue from storage", e);
     }
@@ -170,34 +183,64 @@ export default function MyQueue() {
     }
   }, [queue]);
 
+  // Real-time synchronization when patient is added from Billing or other tabs
+  useEffect(() => {
+    const syncFromStorage = () => {
+      try {
+        const saved = localStorage.getItem("dr_vinish_doctor_queue");
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setQueue((prev) => {
+              // Only update if different
+              if (JSON.stringify(prev) !== JSON.stringify(parsed)) {
+                return parsed;
+              }
+              return prev;
+            });
+          }
+        }
+      } catch (e) {
+        console.warn("Sync queue error", e);
+      }
+    };
+
+    window.addEventListener("storage", syncFromStorage);
+    const interval = setInterval(syncFromStorage, 1500);
+    return () => {
+      window.removeEventListener("storage", syncFromStorage);
+      clearInterval(interval);
+    };
+  }, []);
+
   // Statistics
   const stats = useMemo(() => {
     const total = queue.length;
-    const waiting = queue.filter((q) => q.status === "WAITING").length;
-    const inConsultation = queue.filter((q) => q.status === "IN_CONSULTATION").length;
+    const waiting = queue.filter((q) => normalizeStatus(q.status) === "WAITING").length;
+    const inConsultation = queue.filter((q) => normalizeStatus(q.status) === "IN_CONSULTATION").length;
     const emergency = queue.filter(
-      (q) => (q.priority === "EMERGENCY" || q.priority === "HIGH") && q.status !== "COMPLETED"
+      (q) => (String(q.priority).toUpperCase() === "EMERGENCY" || String(q.priority).toUpperCase() === "HIGH") && normalizeStatus(q.status) !== "COMPLETED"
     ).length;
-    const completed = queue.filter((q) => q.status === "COMPLETED").length;
-    const skipped = queue.filter((q) => q.status === "SKIPPED").length;
+    const completed = queue.filter((q) => normalizeStatus(q.status) === "COMPLETED").length;
+    const skipped = queue.filter((q) => normalizeStatus(q.status) === "SKIPPED").length;
 
     return { total, waiting, inConsultation, emergency, completed, skipped };
   }, [queue]);
 
   // Currently In Consultation Patient
   const currentConsultation = useMemo(() => {
-    return queue.find((q) => q.status === "IN_CONSULTATION") || null;
+    return queue.find((q) => normalizeStatus(q.status) === "IN_CONSULTATION") || null;
   }, [queue]);
 
   // Next Waiting Patient
   const nextWaitingPatient = useMemo(() => {
-    const waitingList = queue.filter((q) => q.status === "WAITING");
+    const waitingList = queue.filter((q) => normalizeStatus(q.status) === "WAITING");
     if (waitingList.length === 0) return null;
 
-    const emergency = waitingList.find((q) => q.priority === "EMERGENCY");
+    const emergency = waitingList.find((q) => String(q.priority).toUpperCase() === "EMERGENCY");
     if (emergency) return emergency;
 
-    const high = waitingList.find((q) => q.priority === "HIGH");
+    const high = waitingList.find((q) => String(q.priority).toUpperCase() === "HIGH");
     if (high) return high;
 
     return waitingList[0];
@@ -207,21 +250,39 @@ export default function MyQueue() {
   const filteredQueue = useMemo(() => {
     return queue.filter((item) => {
       const query = debouncedSearchQuery.toLowerCase().trim();
+      const name = String(item.patientName || "").toLowerCase();
+      const id = String(item.patientId || "").toLowerCase();
+      const token = String(item.tokenNumber || "").toLowerCase();
+      const mobile = String(item.mobile || "");
+      const notes = String(item.notes || "").toLowerCase();
+
       const matchesSearch =
         !query ||
-        item.patientName.toLowerCase().includes(query) ||
-        item.patientId.toLowerCase().includes(query) ||
-        item.tokenNumber.toLowerCase().includes(query) ||
-        item.mobile.includes(query) ||
-        item.notes.toLowerCase().includes(query);
+        name.includes(query) ||
+        id.includes(query) ||
+        token.includes(query) ||
+        mobile.includes(query) ||
+        notes.includes(query);
 
-      const matchesStatus = statusFilter === "ALL" || item.status === statusFilter;
+      const itemStatus = normalizeStatus(item.status);
+      const matchesStatus = statusFilter === "ALL" || itemStatus === statusFilter;
 
       return matchesSearch && matchesStatus;
     });
   }, [queue, debouncedSearchQuery, statusFilter]);
 
   // ACTIONS
+  const handleResetDefaultQueue = () => {
+    try {
+      localStorage.setItem("dr_vinish_doctor_queue", JSON.stringify(DEFAULT_QUEUE));
+      localStorage.setItem("dr_vinish_queue", JSON.stringify(DEFAULT_QUEUE));
+      setQueue(DEFAULT_QUEUE);
+      toast.success("Doctor Queue reset with fresh waiting patients!");
+    } catch (e) {
+      console.warn("Reset queue error", e);
+    }
+  };
+
   const handleCallNextPatient = () => {
     if (!nextWaitingPatient) {
       toast.info("No waiting patients in your queue!");
@@ -499,9 +560,19 @@ export default function MyQueue() {
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="p-4 bg-slate-50/70 border-b border-slate-200 flex items-center justify-between">
           <h2 className="font-bold text-slate-800 text-sm">Today's Patient Tokens</h2>
-          <span className="text-xs text-slate-500 font-medium">
-            Order: Emergency ➔ High Priority ➔ Token Number
-          </span>
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-slate-500 font-medium hidden sm:inline">
+              Order: Emergency ➔ High Priority ➔ Token Number
+            </span>
+            <button
+              onClick={handleResetDefaultQueue}
+              title="Reset Demo Queue"
+              className="text-xs font-semibold text-slate-500 hover:text-blue-600 flex items-center gap-1 transition"
+            >
+              <RotateCw className="w-3.5 h-3.5" />
+              Reset Queue
+            </button>
+          </div>
         </div>
 
         <div className="divide-y divide-slate-100">
@@ -509,6 +580,20 @@ export default function MyQueue() {
             <div className="p-12 text-center text-slate-400">
               <Users className="w-10 h-10 mx-auto text-slate-300 mb-2" />
               <p className="text-xs font-semibold text-slate-500">No patients found for this view.</p>
+              {statusFilter === "WAITING" && stats.waiting === 0 && (
+                <div className="mt-3">
+                  <p className="text-xs text-slate-500 max-w-md mx-auto">
+                    All queue tokens for today are already inside the cabin or consulted. Creating a new paid bill in Billing will automatically add waiting tokens here.
+                  </p>
+                  <button
+                    onClick={handleResetDefaultQueue}
+                    className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 text-blue-700 hover:bg-blue-100 text-xs font-semibold transition"
+                  >
+                    <RotateCw className="w-3.5 h-3.5" />
+                    Reset Demo Waiting Patients
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
             filteredQueue.map((item) => {

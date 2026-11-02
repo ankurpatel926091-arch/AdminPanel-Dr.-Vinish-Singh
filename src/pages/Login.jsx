@@ -44,7 +44,7 @@ export default function Login() {
           toast.error(message, { toastId: "session-expired" });
         else if (type === "success") toast.success(message);
         else if (type === "info") toast.info(message);
-      } catch (e) {}
+      } catch (e) { }
       sessionStorage.removeItem("admin_toast");
     }
   }, []);

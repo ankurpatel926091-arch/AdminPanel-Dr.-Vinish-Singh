@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import Swal from 'sweetalert2';
-import { Image as ImageIcon, Video, Upload, Trash2, Eye, X, Check, FileUp, Link2, Play, CheckCircle2, EyeOff, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Image as ImageIcon, Video, Upload, Trash2, Eye, X, Check, FileUp, Link2, Play, CheckCircle2, EyeOff, Loader2, ChevronLeft, ChevronRight, Edit2 } from 'lucide-react';
 import doctorPhoto from '../assets/doctor.jpg';
 import {
   getAdminGalleryApi,
   uploadGalleryMediaApi,
+  updateGalleryMediaApi,
   toggleGalleryStatusApi,
   deleteGalleryItemApi
 } from '../services/galleryService';
@@ -76,6 +77,7 @@ export default function Gallery() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState(null);
   const [previewMedia, setPreviewMedia] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 8;
@@ -88,6 +90,7 @@ export default function Gallery() {
   const [newCategory, setNewCategory] = useState('Photos');
   const [newType, setNewType] = useState('photo');
   const [newUrl, setNewUrl] = useState('');
+  const [newTag, setNewTag] = useState('');
   const [newActive, setNewActive] = useState(true);
 
   // Load gallery items from backend API
@@ -162,6 +165,45 @@ export default function Gallery() {
     }
   };
 
+  const openCreateModal = () => {
+    setEditingItem(null);
+    setUploadSource('file');
+    setSelectedFile(null);
+    setFilePreviewUrl('');
+    setNewTitle('');
+    setNewCategory('Photos');
+    setNewType('photo');
+    setNewUrl('');
+    setNewTag('');
+    setNewActive(true);
+    setIsModalOpen(true);
+  };
+
+  const openEditModal = (item) => {
+    const itemId = item._id || item.id;
+    if (typeof itemId !== 'string' || !/^[a-f\d]{24}$/i.test(itemId)) {
+      Swal.fire({
+        title: 'Unable to edit sample media',
+        text: 'This item is only a local preview. Connect to the backend to edit saved gallery media.',
+        icon: 'info',
+        confirmButtonColor: '#2563eb'
+      });
+      return;
+    }
+
+    setEditingItem(item);
+    setUploadSource('file');
+    setSelectedFile(null);
+    setFilePreviewUrl(item.url || '');
+    setNewTitle(item.title || '');
+    setNewCategory(item.category || 'Photos');
+    setNewType(item.type || 'photo');
+    setNewUrl(item.url || '');
+    setNewTag(item.tag || '');
+    setNewActive(item.active !== false);
+    setIsModalOpen(true);
+  };
+
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -195,7 +237,46 @@ export default function Gallery() {
     try {
       setSubmitting(true);
 
-      if (uploadSource === 'file') {
+      if (editingItem) {
+        const payload = {
+          title: newTitle.trim(),
+          category: newCategory,
+          type: newType,
+          tag: newTag.trim(),
+          active: newActive
+        };
+        let updatePayload = payload;
+
+        if (uploadSource === 'file') {
+          const formData = new FormData();
+          Object.entries(payload).forEach(([key, value]) => formData.append(key, value));
+          if (selectedFile) formData.append('file', selectedFile);
+          updatePayload = formData;
+        } else {
+          if (!newUrl.trim()) {
+            await Swal.fire({
+              title: 'Media URL required',
+              text: 'Enter a media URL before saving.',
+              icon: 'warning',
+              confirmButtonColor: '#2563eb'
+            });
+            return;
+          }
+          updatePayload = { ...payload, url: newUrl.trim() };
+        }
+
+        const itemId = editingItem._id || editingItem.id;
+        const response = await updateGalleryMediaApi(itemId, updatePayload);
+        setGallery(prev => prev.map(item =>
+          (item._id || item.id) === itemId ? response.data : item
+        ));
+        await Swal.fire({
+          title: 'Updated',
+          text: 'The gallery item has been updated.',
+          icon: 'success',
+          confirmButtonColor: '#2563eb'
+        });
+      } else if (uploadSource === 'file') {
         if (!selectedFile) {
           alert('Please select a local file to upload.');
           setSubmitting(false);
@@ -207,6 +288,7 @@ export default function Gallery() {
         formData.append('title', newTitle);
         formData.append('category', newCategory);
         formData.append('type', newType);
+        formData.append('tag', newTag);
         formData.append('active', newActive);
 
         const res = await uploadGalleryMediaApi(formData);
@@ -219,6 +301,7 @@ export default function Gallery() {
           category: newCategory,
           type: newType,
           url: newUrl.trim() || 'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&q=80&w=600',
+          tag: newTag.trim(),
           active: newActive,
           isLocal: false
         };
@@ -239,11 +322,18 @@ export default function Gallery() {
       setFilePreviewUrl('');
       setNewCategory('Photos');
       setNewType('photo');
+      setNewTag('');
       setNewActive(true);
+      setEditingItem(null);
       setIsModalOpen(false);
     } catch (err) {
       console.error('Upload Error:', err.message);
-      alert(`Upload Notice: ${err.message || 'Saved to local view'}`);
+      await Swal.fire({
+        title: editingItem ? 'Update failed' : 'Upload failed',
+        text: err.response?.data?.message || err.message || 'Please try again.',
+        icon: 'error',
+        confirmButtonColor: '#2563eb'
+      });
     } finally {
       setSubmitting(false);
     }
@@ -297,10 +387,7 @@ export default function Gallery() {
           <p className="text-sm text-slate-500 mt-1">Manage clinical photos, surgery setups, videos and facility media</p>
         </div>
         <button 
-          onClick={() => {
-            setIsModalOpen(true);
-            setUploadSource('file');
-          }}
+          onClick={openCreateModal}
           className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-600/30 flex items-center gap-1.5 transition-all self-start sm:self-auto cursor-pointer"
         >
           <Upload className="w-4 h-4" /> Upload New Media
@@ -354,12 +441,13 @@ export default function Gallery() {
                 }`}>
                   <div className="h-56 overflow-hidden bg-slate-900 relative">
                     {img.type === 'video' ? (
-                      <video src={getSecureMediaUrl(img.url)} className="w-full h-full object-cover object-top" muted />
+                      <video src={getSecureMediaUrl(img.url)} preload="metadata" className="w-full h-full object-cover object-top" muted />
                     ) : (
                       <img
                         src={getSecureMediaUrl(img.url)}
                         alt={img.title}
                         loading="lazy"
+                        decoding="async"
                         className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-300 opacity-90 group-hover:opacity-100"
                       />
                     )}
@@ -391,6 +479,13 @@ export default function Gallery() {
                         title="Preview"
                       >
                         <Eye className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => openEditModal(img)}
+                        className="p-2.5 rounded-xl bg-white/20 hover:bg-white text-white hover:text-blue-700 backdrop-blur-md transition-colors cursor-pointer"
+                        title="Edit media"
+                      >
+                        <Edit2 className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => handleDelete(itemId)}
@@ -519,8 +614,14 @@ export default function Gallery() {
               <X className="w-5 h-5" />
             </button>
 
-            <h3 className="text-lg font-bold text-slate-800 mb-1">Upload New Media</h3>
-            <p className="text-xs text-slate-500 mb-4">Choose a local photo or video file to save in MongoDB & Cloudinary</p>
+            <h3 className="text-lg font-bold text-slate-800 mb-1">
+              {editingItem ? 'Edit Gallery Media' : 'Upload New Media'}
+            </h3>
+            <p className="text-xs text-slate-500 mb-4">
+              {editingItem
+                ? 'Update media details or choose a replacement file.'
+                : 'Choose a local photo or video file to save in MongoDB & Cloudinary'}
+            </p>
 
             {/* Source Switcher Tabs */}
             <div className="flex items-center gap-2 mb-4 bg-slate-100 p-1 rounded-xl">
@@ -573,9 +674,13 @@ export default function Gallery() {
                           <img src={filePreviewUrl} alt="Preview" className="h-36 w-full object-contain rounded-xl" />
                         )}
                         <span className="text-xs font-semibold text-blue-600 block truncate">
-                          {selectedFile?.name} ({(selectedFile?.size / 1024 / 1024).toFixed(2)} MB)
+                          {selectedFile
+                            ? `${selectedFile.name} (${(selectedFile.size / 1024 / 1024).toFixed(2)} MB)`
+                            : editingItem?.fileName || 'Current media'}
                         </span>
-                        <span className="text-[10px] text-slate-400 block">Click to change file</span>
+                        <span className="text-[10px] text-slate-400 block">
+                          {editingItem && !selectedFile ? 'Click to replace media' : 'Click to change file'}
+                        </span>
                       </div>
                     ) : (
                       <div className="py-4 flex flex-col items-center">
@@ -614,6 +719,19 @@ export default function Gallery() {
                   placeholder="e.g. Advanced Laser Urology OT Setup"
                   className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white"
                   required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  Tag
+                </label>
+                <input
+                  type="text"
+                  value={newTag}
+                  onChange={(e) => setNewTag(e.target.value)}
+                  placeholder="Optional media tag"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white"
                 />
               </div>
 
@@ -684,7 +802,7 @@ export default function Gallery() {
                     </>
                   ) : (
                     <>
-                      <Check className="w-4 h-4" /> Save Media
+                      <Check className="w-4 h-4" /> {editingItem ? 'Update Media' : 'Save Media'}
                     </>
                   )}
                 </button>

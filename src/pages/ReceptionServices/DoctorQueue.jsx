@@ -140,18 +140,28 @@ export default function DoctorQueue() {
     }
   }, [queue]);
 
-  // Sync newly checked in patients from dr_vinish_queue
+  // Sync newly checked in patients from dr_vinish_doctor_queue and dr_vinish_queue
   useEffect(() => {
     const syncQueue = () => {
       try {
-        const checkinQueueStr = localStorage.getItem("dr_vinish_queue");
-        if (checkinQueueStr) {
-          const checkinItems = JSON.parse(checkinQueueStr);
-          if (Array.isArray(checkinItems) && checkinItems.length > 0) {
+        const queueStr = localStorage.getItem("dr_vinish_doctor_queue") || localStorage.getItem("dr_vinish_queue");
+        if (queueStr) {
+          const items = JSON.parse(queueStr);
+          if (Array.isArray(items) && items.length > 0) {
+            const normalized = items.map((item) => {
+              let st = item.status;
+              if (st === "IN_CONSULTATION") st = "Consulting";
+              else if (st === "WAITING") st = "Waiting";
+              else if (st === "COMPLETED") st = "Completed";
+              else if (st === "SKIPPED" || st === "CANCELLED") st = "Cancelled";
+              return { ...item, status: st || "Waiting" };
+            });
+
             setQueue((prev) => {
-              const existingIds = new Set(prev.map((item) => item.visitId || item.id || item.patientId));
-              const newItems = checkinItems.filter((item) => !existingIds.has(item.visitId || item.id || item.patientId));
-              return newItems.length > 0 ? [...newItems, ...prev] : prev;
+              if (JSON.stringify(prev) !== JSON.stringify(normalized)) {
+                return normalized;
+              }
+              return prev;
             });
           }
         }
@@ -160,7 +170,11 @@ export default function DoctorQueue() {
 
     syncQueue();
     window.addEventListener("storage", syncQueue);
-    return () => window.removeEventListener("storage", syncQueue);
+    const interval = setInterval(syncQueue, 1500);
+    return () => {
+      window.removeEventListener("storage", syncQueue);
+      clearInterval(interval);
+    };
   }, []);
 
   // Basic Queue Summary (Total, Waiting, Completed)

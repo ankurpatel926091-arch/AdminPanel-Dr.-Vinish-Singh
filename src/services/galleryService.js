@@ -13,6 +13,14 @@ export const uploadGalleryMediaApi = async (formDataOrData) => {
   const response = await API.post('/gallery/admin/upload', formDataOrData, config);
   return response.data;
 };
+
+// Update gallery media details and optionally replace the uploaded file
+export const updateGalleryMediaApi = async (id, formDataOrData) => {
+  const isFormData = formDataOrData instanceof FormData;
+  const config = isFormData ? { headers: { 'Content-Type': 'multipart/form-data' } } : {};
+  const response = await API.put(`/gallery/admin/${id}`, formDataOrData, config);
+  return response.data;
+};
     
 // Toggle active/inactive status
 export const toggleGalleryStatusApi = async (id) => {
