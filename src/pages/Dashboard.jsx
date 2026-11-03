@@ -24,17 +24,17 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="space-y-6 font-sans">
+    <div className="space-y-5 font-sans">
       {/* Main Banner */}
-      <div className="bg-gradient-to-r from-[#031B38] via-[#092B57] to-[#1A3B70] rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden flex items-center justify-between">
+      <div className="bg-gradient-to-r from-[#031B38] via-[#092B57] to-[#1A3B70] rounded-3xl px-5 py-3 sm:px-6 sm:py-4 text-white shadow-xl relative overflow-hidden flex items-center justify-between">
         {/* Decorative background glows */}
         <div className="absolute -top-24 -right-24 w-72 h-72 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute -bottom-24 -left-24 w-72 h-72 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
 
-        <div className="flex items-center gap-5 relative z-10">
+        <div className="flex items-center gap-4 relative z-10">
           {/* Left Icon Box */}
-          <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-blue-500/20 border border-blue-400/30 flex items-center justify-center text-blue-400 shrink-0 shadow-inner">
-            <svg className="w-8 h-8 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.6">
+          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-blue-500/20 border border-blue-400/30 flex items-center justify-center text-blue-400 shrink-0 shadow-inner">
+            <svg className="w-7 h-7 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.6">
               <path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5m0 0v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 7.5v3m-1.5-1.5h3" strokeWidth="2" />
             </svg>
@@ -45,17 +45,15 @@ export default function Dashboard() {
               HOSPITAL ADMIN PANEL
             </span>
             <h2 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-white tracking-tight flex items-center gap-2">
-              Welcome back, Administrator <span className="inline-block">👋</span>
+              Welcome back, Administrator <span className="inline-block"></span>
             </h2>
-            <p className="text-xs sm:text-sm text-blue-200/80 font-medium mt-1">
-              Here's your hospital operations overview for today.
-            </p>
+            
           </div>
         </div>
 
         {/* Right Hospital Building Vector Graphics */}
         <div className="hidden md:block relative z-10 shrink-0 opacity-80 hover:opacity-100 transition-opacity">
-          <svg className="w-24 h-24 sm:w-28 sm:h-28 text-blue-400/50" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.2">
+          <svg className="w-16 h-16 sm:w-20 sm:h-20 text-blue-400/50" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.2">
             <path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5m0 0v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
             <circle cx="12" cy="7" r="2.5" stroke="currentColor" strokeWidth="1.2" />
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 5.5v3m-1.5-1.5h3" strokeWidth="1.5" />
@@ -65,7 +63,7 @@ export default function Dashboard() {
       </div>
 
       {/* Top Stat Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title="Contact Enquiries"
           value={enquiriesCount}
@@ -93,7 +91,7 @@ export default function Dashboard() {
       </div>
 
       {/* Top Row: Appointment Status Overview & Enquiries Overview side by side */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-stretch">
         <div>
           <AppointmentStatusWidget />
         </div>

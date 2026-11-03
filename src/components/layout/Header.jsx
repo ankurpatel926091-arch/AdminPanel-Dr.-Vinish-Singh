@@ -60,11 +60,11 @@ export default function Header({ onToggleSidebar, onOpenSearch }) {
           <h2 className="text-sm sm:text-base md:text-lg font-bold text-slate-900 tracking-tight flex items-center gap-1.5 leading-tight">
             {isDoctorPortal ? (
               <>
-                {getGreeting()}, Dr. Vinish Kumar Singh <span className="inline-block">👋</span>
+                {getGreeting()}, Dr. Vinish Kumar Singh <span className="inline-block"></span>
               </>
             ) : (
               <>
-                {getGreeting()}, Administrator <span className="inline-block">👋</span>
+                {getGreeting()}, Administrator <span className="inline-block"></span>
               </>
             )}
           </h2>

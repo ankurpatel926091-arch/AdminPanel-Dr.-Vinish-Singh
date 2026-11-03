@@ -14,12 +14,12 @@ const API = axios.create({
   }
 });
 
-// Interceptor to attach Authorization Bearer Token
+// Interceptor to attach Authorization header
 API.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('dr_vinish_admin_token');
     if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+      config.headers.Authorization = 'Bearer ' + token;
     }
     return config;
   },
@@ -34,7 +34,6 @@ API.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    // If local request failed due to network error (backend stopped), fallback to Render API
     if (!error.response && originalRequest && !originalRequest._retry) {
       originalRequest._retry = true;
       const fallbackBaseUrl = 'https://dr-vinish-backend.onrender.com/api';
@@ -48,8 +47,6 @@ API.interceptors.response.use(
 
     if (error.response && error.response.status === 401) {
       const hadToken = Boolean(localStorage.getItem('dr_vinish_admin_token'));
-
-      // Token might be invalid or expired
       localStorage.removeItem('dr_vinish_admin_token');
       localStorage.removeItem('dr_vinish_admin_user');
 
@@ -63,7 +60,6 @@ API.interceptors.response.use(
         );
       }
 
-      // Auto-redirect to login screen if currently on a protected page
       if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
         window.location.href = '/login';
       }

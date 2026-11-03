@@ -121,7 +121,7 @@ const DoctorDash = () => {
               DOCTOR PORTAL
             </span>
             <h2 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-white tracking-tight flex items-center gap-2">
-              Welcome back, Dr. Vinish Kumar Singh <span className="inline-block">👋</span>
+              Welcome back, Dr. Vinish Kumar Singh <span className="inline-block"></span>
             </h2>
             <p className="text-xs sm:text-sm text-blue-200/80 font-medium mt-1">
               Here's your OPD and patient overview for today.

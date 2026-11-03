@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useAdminData } from '../context/AdminDataContext';
 import { toast } from 'react-toastify';
 import useDebouncedValue from '../hooks/useDebouncedValue';
+import SpecialityConditionSelect from '../components/SpecialityConditionSelect';
 import {
   Calendar as CalendarIcon,
   CalendarX,
@@ -38,7 +39,18 @@ const RUDRAKSH_SPECIALITY_CONDITIONS = [
   'Kidney Health Followup',
   'General Urology Consultation',
   'Kidney Stone Consultation',
-  'Male Infertility Consultation'
+  'Male Infertility Consultation',
+  'General Gynecology',
+  'Pregnancy Care',
+  'High Risk Pregnancy',
+  'Infertility',
+  'PCOD',
+  'Laparoscopy',
+  'Cosmetic Gynecology',
+  'Menopause',
+  'Prostate Surgery (HoLEP / TURP)',
+  'Recurrent Female UTI & Incontinence',
+  'Others'
 ];
 
 const SHILPI_SPECIALITY_CONDITIONS = [
@@ -152,6 +164,7 @@ export default function Appointments() {
   // Add Appointment Form State
   const [formData, setFormData] = useState({
     name: '',
+    age: '',
     phone: '',
     email: '',
     consultationType: 'First Visit',
@@ -201,6 +214,7 @@ export default function Appointments() {
     const newAptObj = {
       id: Date.now(),
       name: formData.name.trim(),
+      age: formData.age === '' ? '' : Number(formData.age),
       phone: formData.phone.trim(),
       email: formData.email.trim(),
       consultationType: formData.consultationType || 'First Visit',
@@ -217,6 +231,7 @@ export default function Appointments() {
 
     setFormData({
       name: '',
+      age: '',
       phone: '',
       email: '',
       consultationType: 'First Visit',
@@ -423,17 +438,17 @@ export default function Appointments() {
           <table className="w-full text-left border-collapse min-w-[1280px]">
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50/50 text-[11px] font-extrabold uppercase tracking-wider text-slate-500">
-                <th className="py-3.5 pl-6 pr-3 text-center w-12">S.No.</th>
-                <th className="py-3.5 px-4 text-center min-w-[180px]">Action</th>
-                <th className="py-3.5 px-4 min-w-[110px]">Status</th>
-                <th className="py-3.5 px-4 min-w-[180px]">Patient Name</th>
-                <th className="py-3.5 px-4 min-w-[130px]">Phone</th>
-                <th className="py-3.5 px-4 min-w-[135px]">Consultation Type</th>
-                <th className="py-3.5 px-4 min-w-[220px]">Clinic / Hospital</th>
-                <th className="py-3.5 px-4 min-w-[120px]">Date</th>
-                <th className="py-3.5 px-4 min-w-[100px]">Time</th>
-                <th className="py-3.5 px-4 min-w-[220px]">Reason / Condition</th>
-                <th className="py-3.5 px-4 text-center min-w-[180px]">Manage</th>
+                <th className="py-2.5 pl-4 pr-2 text-center w-10">S.No.</th>
+                <th className="py-2.5 px-3 text-center min-w-[170px]">Action</th>
+                <th className="py-2.5 px-3 min-w-[100px]">Status</th>
+                <th className="py-2.5 px-3 min-w-[160px]">Patient Name</th>
+                <th className="py-2.5 px-3 min-w-[120px]">Phone</th>
+                <th className="py-2.5 px-3 min-w-[125px]">Consultation Type</th>
+                <th className="py-2.5 px-3 min-w-[200px]">Clinic / Hospital</th>
+                <th className="py-2.5 px-3 min-w-[110px]">Date</th>
+                <th className="py-2.5 px-3 min-w-[90px]">Time</th>
+                <th className="py-2.5 px-3 min-w-[200px]">Reason / Condition</th>
+                <th className="py-2.5 px-3 text-center min-w-[160px]">Manage</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-xs font-medium text-slate-700">
@@ -445,13 +460,13 @@ export default function Appointments() {
                 return (
                   <tr key={apt.id} className="hover:bg-slate-50/80 transition-colors">
                     {/* Index */}
-                    <td className="py-4 pl-6 pr-3 text-center font-bold text-slate-400">
+                    <td className="py-2.5 pl-4 pr-2 text-center font-bold text-slate-400">
                       {globalIdx}
                     </td>
 
                     {/* 4 Action Buttons in Soft Horizontal Bar */}
-                    <td className="py-3 px-4 text-center whitespace-nowrap min-w-[180px]">
-                      <div className={`inline-flex items-center justify-center gap-1.5 p-1.5 rounded-2xl border ${
+                    <td className="py-2 px-3 text-center whitespace-nowrap min-w-[170px]">
+                      <div className={`inline-flex items-center justify-center gap-1.5 p-1 rounded-xl border ${
                         isVisited ? 'bg-slate-100/60 border-slate-200/60' : 'bg-slate-50/80 border-slate-100/80'
                       }`}>
                         {/* 1. Confirmed Button (Emerald Checkmark) */}
@@ -460,11 +475,11 @@ export default function Appointments() {
                           disabled={isVisited}
                           onClick={() => handleStatusChange(apt, 'Confirmed')}
                           title={isVisited ? "Appointment is Visited and status cannot be modified" : "Mark as Confirmed"}
-                          className={`w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center shadow-2xs transition-all ${
+                          className={`w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center shadow-2xs transition-all ${
                             isVisited ? 'cursor-not-allowed opacity-40 grayscale-[50%]' : 'hover:bg-emerald-100 hover:scale-105 cursor-pointer'
                           }`}
                         >
-                          <CheckCircle2 className="w-4 h-4 text-emerald-600" strokeWidth={2} />
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" strokeWidth={2} />
                         </button>
 
                         {/* 2. Visited Button (Blue CalendarCheck) */}
@@ -473,11 +488,11 @@ export default function Appointments() {
                           disabled={isVisited}
                           onClick={() => handleStatusChange(apt, 'Visited')}
                           title={isVisited ? "Appointment is Visited and status cannot be modified" : "Mark as Visited"}
-                          className={`w-8 h-8 rounded-xl bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center shadow-2xs transition-all ${
+                          className={`w-7 h-7 rounded-lg bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center shadow-2xs transition-all ${
                             isVisited ? 'cursor-not-allowed opacity-40 grayscale-[50%]' : 'hover:bg-blue-100 hover:scale-105 cursor-pointer'
                           }`}
                         >
-                          <CalendarCheck className="w-4 h-4 text-blue-600" strokeWidth={2} />
+                          <CalendarCheck className="w-3.5 h-3.5 text-blue-600" strokeWidth={2} />
                         </button>
 
                         {/* 3. Missed Button (CalendarX) */}
@@ -486,11 +501,11 @@ export default function Appointments() {
                           disabled={isVisited}
                           onClick={() => handleStatusChange(apt, 'Missed')}
                           title={isVisited ? "Appointment is Visited and status cannot be modified" : "Mark as Missed"}
-                          className={`w-8 h-8 rounded-xl bg-rose-50 text-rose-600 border border-rose-100 flex items-center justify-center shadow-2xs transition-all ${
+                          className={`w-7 h-7 rounded-lg bg-rose-50 text-rose-600 border border-rose-100 flex items-center justify-center shadow-2xs transition-all ${
                             isVisited ? 'cursor-not-allowed opacity-40 grayscale-[50%]' : 'hover:bg-rose-100 hover:scale-105 cursor-pointer'
                           }`}
                         >
-                          <CalendarX className="w-4 h-4 text-rose-600" strokeWidth={2} />
+                          <CalendarX className="w-3.5 h-3.5 text-rose-600" strokeWidth={2} />
                         </button>
 
                         {/* 4. Cancelled Button (Red X Circle) */}
@@ -499,23 +514,23 @@ export default function Appointments() {
                           disabled={isVisited}
                           onClick={() => handleStatusChange(apt, 'Cancelled')}
                           title={isVisited ? "Appointment is Visited and status cannot be modified" : "Mark as Cancelled"}
-                          className={`w-8 h-8 rounded-xl bg-rose-50 text-rose-600 border border-rose-100 flex items-center justify-center shadow-2xs transition-all ${
+                          className={`w-7 h-7 rounded-lg bg-rose-50 text-rose-600 border border-rose-100 flex items-center justify-center shadow-2xs transition-all ${
                             isVisited ? 'cursor-not-allowed opacity-40 grayscale-[50%]' : 'hover:bg-rose-100 hover:scale-105 cursor-pointer'
                           }`}
                         >
-                          <XCircle className="w-4 h-4 text-rose-600" strokeWidth={2} />
+                          <XCircle className="w-3.5 h-3.5 text-rose-600" strokeWidth={2} />
                         </button>
                       </div>
                     </td>
 
                     {/* Status Badge */}
-                    <td className="py-4 px-4 whitespace-nowrap">
+                    <td className="py-2.5 px-3 whitespace-nowrap">
                       {getStatusBadge(apt.status)}
                     </td>
 
                     {/* Patient Name & Gmail */}
-                    <td className="py-4 px-4 whitespace-nowrap">
-                      <div className="font-bold text-slate-900">{apt.name}</div>
+                    <td className="py-2.5 px-3 whitespace-nowrap">
+                      <div className="font-bold text-slate-900 text-xs sm:text-[13px]">{apt.name}</div>
                       {getAppointmentEmail(apt) && (
                         <div className="text-[11px] text-blue-600 font-medium flex items-center gap-1 mt-0.5">
                           <Mail className="w-3 h-3 text-blue-500 shrink-0" />
@@ -525,18 +540,18 @@ export default function Appointments() {
                     </td>
 
                     {/* Phone */}
-                    <td className="py-4 px-4 text-slate-600 font-semibold whitespace-nowrap">
+                    <td className="py-2.5 px-3 text-slate-600 font-semibold whitespace-nowrap text-xs">
                       {apt.phone}
                     </td>
 
                     {/* Consultation Type Badge */}
-                    <td className="py-4 px-4 whitespace-nowrap">
+                    <td className="py-2.5 px-3 whitespace-nowrap">
                       {getConsultationTypeBadge(apt)}
                     </td>
 
                     {/* Clinic / Hospital */}
-                    <td className="py-4 px-4 whitespace-nowrap">
-                      <div className="font-semibold text-slate-800">
+                    <td className="py-2.5 px-3 whitespace-nowrap">
+                      <div className="font-semibold text-slate-800 text-xs">
                         {apt.clinic?.name || (typeof apt.clinic === 'string' ? apt.clinic : clinic.name)}
                       </div>
                       {(apt.clinic?.address || clinic.loc) && (
@@ -547,34 +562,34 @@ export default function Appointments() {
                     </td>
 
                     {/* Date */}
-                    <td className="py-4 px-4 whitespace-nowrap">
-                      <div className="inline-flex items-center gap-1.5 text-slate-700 font-semibold">
+                    <td className="py-2.5 px-3 whitespace-nowrap">
+                      <div className="inline-flex items-center gap-1 text-slate-700 font-semibold text-xs">
                         <CalendarIcon className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                         <span>{apt.date}</span>
                       </div>
                     </td>
 
                     {/* Time */}
-                    <td className="py-4 px-4 whitespace-nowrap">
-                      <div className="inline-flex items-center gap-1.5 text-slate-700 font-semibold">
+                    <td className="py-2.5 px-3 whitespace-nowrap">
+                      <div className="inline-flex items-center gap-1 text-slate-700 font-semibold text-xs">
                         <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                         <span>{apt.time}</span>
                       </div>
                     </td>
 
                     {/* Reason / Condition */}
-                    <td className="py-4 px-4 font-semibold text-slate-800 min-w-[220px]">
+                    <td className="py-2.5 px-3 font-semibold text-slate-800 min-w-[200px] text-xs">
                       {apt.problem}
                     </td>
 
                     {/* Manage Column */}
-                    <td className="py-3 px-4 text-center whitespace-nowrap min-w-[180px]">
+                    <td className="py-2 px-3 text-center whitespace-nowrap min-w-[160px]">
                       <div className="inline-flex items-center justify-center gap-2">
                         {/* View Details Pill Button */}
                         <button
                           type="button"
                           onClick={() => setViewAppointment(apt)}
-                          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 font-bold rounded-xl text-xs border border-blue-100/80 transition-all cursor-pointer shadow-2xs hover:scale-102"
+                          className="inline-flex items-center gap-1 px-3 py-1 bg-blue-50 hover:bg-blue-100 text-blue-600 font-bold rounded-lg text-xs border border-blue-100/80 transition-all cursor-pointer shadow-2xs hover:scale-102"
                         >
                           <Eye className="w-3.5 h-3.5 text-blue-600" />
                           <span>View Details</span>
@@ -719,7 +734,7 @@ export default function Appointments() {
             </div>
 
             <form onSubmit={handleFormSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">
                     Patient Name <span className="text-rose-500">*</span>
@@ -731,6 +746,23 @@ export default function Appointments() {
                     placeholder="Full Patient Name"
                     className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all"
                     required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Age (Optional)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="120"
+                    step="1"
+                    inputMode="numeric"
+                    value={formData.age}
+                    onChange={(e) => setFormData({ ...formData, age: e.target.value })}
+                    placeholder="Age in years"
+                    className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all"
                   />
                 </div>
 
@@ -810,15 +842,11 @@ export default function Appointments() {
                 <label className="block text-xs font-bold text-slate-700 mb-1">
                   Select Speciality / Condition
                 </label>
-                <select
+                <SpecialityConditionSelect
+                  options={getSpecialityConditions(formData.clinic || defaultClinicId, clinics)}
                   value={formData.problem}
-                  onChange={(e) => setFormData({ ...formData, problem: e.target.value })}
-                  className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all cursor-pointer"
-                >
-                  {getSpecialityConditions(formData.clinic || defaultClinicId, clinics).map((s, i) => (
-                    <option key={i} value={s}>{s}</option>
-                  ))}
-                </select>
+                  onChange={(problem) => setFormData((prev) => ({ ...prev, problem }))}
+                />
               </div>
 
               <div className="grid grid-cols-3 gap-3">
@@ -923,6 +951,15 @@ export default function Appointments() {
                 <div>
                   <div className="text-xs font-semibold text-slate-400 mb-1">Phone:</div>
                   <div className="text-sm font-extrabold text-slate-900">{viewAppointment.phone}</div>
+                </div>
+
+                <div>
+                  <div className="text-xs font-semibold text-slate-400 mb-1">Age:</div>
+                  <div className="text-sm font-extrabold text-slate-900">
+                    {viewAppointment.age !== undefined && viewAppointment.age !== null && viewAppointment.age !== ''
+                      ? `${viewAppointment.age} years`
+                      : 'Not provided'}
+                  </div>
                 </div>
 
                 {/* Gmail / Email */}

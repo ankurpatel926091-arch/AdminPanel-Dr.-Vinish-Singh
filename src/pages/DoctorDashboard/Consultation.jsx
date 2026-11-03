@@ -1,4 +1,6 @@
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
 import {
   User,
   Calendar,
@@ -15,65 +17,132 @@ import {
   Plus,
   Trash2,
 } from "lucide-react";
+import {
+  CURRENT_CONSULTATION_STORAGE_KEY,
+  DOCTOR_QUEUE_STORAGE_KEY,
+  markAppointmentVisited,
+  readStoredArray,
+  saveQueue,
+  SHARED_QUEUE_STORAGE_KEY,
+  CONSULTATIONS_STORAGE_KEY,
+} from "../../utils/staticAppointmentFlow";
 
-export default function Consultation() {
-  const [consultation, setConsultation] = useState({
-    chiefComplaint: "",
-    clinicalNotes: "",
-    bp: "",
-    pulse: "",
-    temperature: "",
-    spo2: "",
-    weight: "",
-    height: "",
-    diagnosis: "",
-    investigation: "",
-    advice: "",
-    followUpDate: "",
-    followUpInstructions: "",
-  });
+const EMPTY_CONSULTATION = {
+  chiefComplaint: "",
+  clinicalNotes: "",
+  bp: "",
+  pulse: "",
+  temperature: "",
+  spo2: "",
+  weight: "",
+  height: "",
+  diagnosis: "",
+  investigation: "",
+  advice: "",
+  followUpDate: "",
+  followUpInstructions: "",
+};
 
-  const [medicines, setMedicines] = useState([
-    {
-      name: "",
-      dosage: "",
-      frequency: "",
-      duration: "",
-      route: "",
-      instructions: "",
-    },
-  ]);
+const EMPTY_MEDICINE = {
+  name: "",
+  dosage: "",
+  frequency: "",
+  duration: "",
+  route: "",
+  instructions: "",
+};
 
-  const [isSaved, setIsSaved] = useState(false);
+const getCurrentPatient = (locationPatient) => {
+  if (locationPatient) return locationPatient;
 
-  // Temporary patient data
-  // Later this data will come from Today's Appointments / Doctor Queue API
-  const patient = {
-    name: "Rahul Sharma",
+  try {
+    const savedPatient = JSON.parse(
+      localStorage.getItem(CURRENT_CONSULTATION_STORAGE_KEY) || "null"
+    );
+    if (savedPatient && savedPatient.status !== "COMPLETED") return savedPatient;
+
+    const sharedQueue = JSON.parse(
+      localStorage.getItem(SHARED_QUEUE_STORAGE_KEY) || "[]"
+    );
+    const queue =
+      Array.isArray(sharedQueue) && sharedQueue.length
+        ? sharedQueue
+        : JSON.parse(localStorage.getItem(DOCTOR_QUEUE_STORAGE_KEY) || "[]");
+    const activePatient = Array.isArray(queue)
+      ? queue.find((item) => item.status === "IN_CONSULTATION")
+      : null;
+    if (activePatient) return activePatient;
+  } catch (error) {
+    console.warn("Unable to load current consultation patient:", error);
+  }
+
+  return {
+    id: "DEMO-CONSULTATION",
+    patientName: "Rahul Sharma",
     patientId: "UHID-10245",
     age: 42,
     gender: "Male",
     visitId: "V-20052",
-    token: "18",
+    tokenNumber: "18",
     appointmentDate: "12 Sep 2026",
     appointmentTime: "10:30 AM",
   };
+};
 
-  // Temporary previous history
-  const previousHistory = [
-    {
-      date: "15 Aug 2026",
-      diagnosis: "Kidney Stone",
-      prescription: "Tamsulosin 0.4mg",
-      notes: "Mild flank pain reported.",
-    },
-    {
-      date: "20 Jun 2026",
-      diagnosis: "UTI",
-      prescription: "Antibiotic course",
-      notes: "Symptoms improved after treatment.",
-    },
-  ];
+export default function Consultation() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const patient = getCurrentPatient(location.state?.patient);
+  const currentPatient = {
+    ...patient,
+    name: patient.patientName || patient.name || "Patient",
+    patientId: patient.patientId || "",
+    visitId: patient.visitId || "—",
+    token: patient.tokenNumber || patient.token || "—",
+    appointmentDate: patient.appointmentDate || patient.date || "—",
+    appointmentTime: patient.appointmentTime || patient.time || "—",
+  };
+  const recordKey = String(
+    currentPatient.visitId !== "—"
+      ? currentPatient.visitId
+      : currentPatient.appointmentId || currentPatient.id || currentPatient.patientId
+  );
+  const [consultation, setConsultation] = useState(EMPTY_CONSULTATION);
+  const [medicines, setMedicines] = useState([{ ...EMPTY_MEDICINE }]);
+  const [isSaved, setIsSaved] = useState(false);
+  const previousHistory = useMemo(
+    () =>
+      readStoredArray(CONSULTATIONS_STORAGE_KEY)
+        .filter(
+          (record) =>
+            record.status === "CONSULTATION_COMPLETED" &&
+            String(record.patient?.patientId || "") === String(currentPatient.patientId) &&
+            record.recordKey !== recordKey
+        )
+        .sort((a, b) => String(b.completedAt).localeCompare(String(a.completedAt)))
+        .map((record) => ({
+          date: record.completedAt
+            ? new Date(record.completedAt).toLocaleDateString("en-IN")
+            : "Previous visit",
+          diagnosis: record.consultation?.diagnosis || "Consultation completed",
+          prescription:
+            record.medicines
+              ?.filter((medicine) => medicine.name)
+              .map((medicine) => medicine.name)
+              .join(", ") || "No medicines recorded",
+          notes: record.consultation?.clinicalNotes || record.consultation?.advice || "",
+        })),
+    [currentPatient.patientId, recordKey]
+  );
+
+  useEffect(() => {
+    const savedRecord = readStoredArray(CONSULTATIONS_STORAGE_KEY).find(
+      (record) => record.recordKey === recordKey
+    );
+    setConsultation(savedRecord?.consultation || EMPTY_CONSULTATION);
+    setMedicines(savedRecord?.medicines?.length ? savedRecord.medicines : [{ ...EMPTY_MEDICINE }]);
+    setIsSaved(Boolean(savedRecord));
+  }, [recordKey]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -104,14 +173,7 @@ export default function Consultation() {
   const addMedicine = () => {
     setMedicines((prev) => [
       ...prev,
-      {
-        name: "",
-        dosage: "",
-        frequency: "",
-        duration: "",
-        route: "",
-        instructions: "",
-      },
+      { ...EMPTY_MEDICINE },
     ]);
   };
 
@@ -122,29 +184,68 @@ export default function Consultation() {
   };
 
   const handleSaveDraft = () => {
-    console.log("Consultation Draft:", {
-      patient,
-      consultation,
-      medicines,
-    });
-
-    setIsSaved(true);
+    try {
+      persistConsultation("DRAFT");
+      setIsSaved(true);
+      toast.success("Consultation draft saved.");
+    } catch (error) {
+      console.error("Unable to save consultation draft:", error);
+      toast.error("Unable to save the consultation draft.");
+    }
   };
 
   const handleCompleteConsultation = () => {
-    const consultationData = {
-      patient,
+    try {
+      persistConsultation("CONSULTATION_COMPLETED");
+      const queue = readStoredArray(SHARED_QUEUE_STORAGE_KEY);
+      const doctorQueue = queue.length ? queue : readStoredArray(DOCTOR_QUEUE_STORAGE_KEY);
+      const updatedQueue = doctorQueue.map((item) =>
+        String(item.visitId || item.appointmentId || item.id) ===
+        String(currentPatient.visitId || currentPatient.appointmentId || currentPatient.id)
+          ? {
+              ...item,
+              status: "COMPLETED",
+              endTime: new Date().toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+              }),
+            }
+          : item
+      );
+      saveQueue(updatedQueue);
+      markAppointmentVisited(currentPatient.appointmentId);
+      localStorage.setItem(
+        CURRENT_CONSULTATION_STORAGE_KEY,
+        JSON.stringify({ ...currentPatient, status: "COMPLETED" })
+      );
+      setIsSaved(true);
+      toast.success("Consultation completed and appointment marked as visited.");
+      navigate("/doctor/my-queue");
+    } catch (error) {
+      console.error("Unable to complete consultation:", error);
+      toast.error("Unable to save the completed consultation.");
+    }
+  };
+
+  const persistConsultation = (status) => {
+    const records = readStoredArray(CONSULTATIONS_STORAGE_KEY);
+    const record = {
+      recordKey,
+      patient: currentPatient,
       consultation,
       medicines,
-      status: "CONSULTATION_COMPLETED",
-      completedAt: new Date().toISOString(),
+      status,
+      updatedAt: new Date().toISOString(),
+      ...(status === "CONSULTATION_COMPLETED"
+        ? { completedAt: new Date().toISOString() }
+        : {}),
     };
-
-    console.log("Completed Consultation:", consultationData);
-
-    setIsSaved(true);
-
-    alert("Consultation completed successfully.");
+    const updatedRecords = [
+      record,
+      ...records.filter((existing) => existing.recordKey !== recordKey),
+    ];
+    localStorage.setItem(CONSULTATIONS_STORAGE_KEY, JSON.stringify(updatedRecords));
+    window.dispatchEvent(new Event("storage"));
   };
 
   return (
@@ -195,43 +296,45 @@ export default function Consultation() {
             <InfoItem
               icon={User}
               label="Patient Name"
-              value={patient.name}
+              value={currentPatient.name}
             />
 
             <InfoItem
               icon={Hash}
               label="Patient ID / UHID"
-              value={patient.patientId}
+              value={currentPatient.patientId}
             />
 
             <InfoItem
               icon={User}
               label="Age / Gender"
-              value={`${patient.age} Years / ${patient.gender}`}
+              value={`${currentPatient.age !== '' && currentPatient.age != null
+                ? `${currentPatient.age} Years`
+                : 'Not provided'} / ${currentPatient.gender || "—"}`}
             />
 
             <InfoItem
               icon={Hash}
               label="Visit ID"
-              value={patient.visitId}
+              value={currentPatient.visitId}
             />
 
             <InfoItem
               icon={Hash}
               label="Token Number"
-              value={patient.token}
+              value={currentPatient.token}
             />
 
             <InfoItem
               icon={Calendar}
               label="Appointment Date"
-              value={patient.appointmentDate}
+              value={currentPatient.appointmentDate}
             />
 
             <InfoItem
               icon={Clock}
               label="Appointment Time"
-              value={patient.appointmentTime}
+              value={currentPatient.appointmentTime}
             />
           </div>
         </section>

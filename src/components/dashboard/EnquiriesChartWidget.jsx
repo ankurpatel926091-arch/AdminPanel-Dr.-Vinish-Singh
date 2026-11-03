@@ -114,7 +114,7 @@ export default function EnquiriesChartWidget() {
   const totalVolume = useMemo(() => dynamicChartData.reduce((acc, curr) => acc + curr.enquiries, 0), [dynamicChartData]);
 
   return (
-    <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/80 shadow-xs hover:shadow-md transition-all duration-300 flex flex-col justify-between h-full relative">
+    <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-xs hover:shadow-md transition-all duration-300 flex flex-col justify-between h-full relative">
       
       {/* Header Row: Title & Interactive Dropdown */}
       <div className="flex items-center justify-between pb-4 border-b border-slate-100 relative z-20">
@@ -187,7 +187,7 @@ export default function EnquiriesChartWidget() {
       </div>
 
       {/* Dynamic Chart Section */}
-      <div className="h-60 w-full mt-3">
+      <div className="h-48 w-full mt-2">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={dynamicChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
             <defs>

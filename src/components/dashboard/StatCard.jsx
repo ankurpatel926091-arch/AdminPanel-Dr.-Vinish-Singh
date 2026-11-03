@@ -37,33 +37,33 @@ export default function StatCard({ title, value, type }) {
   const Icon = config.icon;
 
   return (
-    <div className="bg-white rounded-[26px] p-6 border border-slate-200/70 shadow-2xs hover:shadow-md transition-shadow duration-200 relative overflow-hidden flex flex-col justify-between h-full">
+    <div className="bg-white rounded-[26px] p-4 sm:p-5 border border-slate-200/70 shadow-2xs hover:shadow-md transition-shadow duration-200 relative overflow-hidden flex flex-col justify-between h-full">
       {/* Soft Wave Graphic in Bottom-Right Corner matching reference image */}
       <div className={`absolute -bottom-6 -right-6 w-32 h-32 rounded-full bg-gradient-to-tl ${config.waveBg} pointer-events-none`} />
 
       <div>
         {/* Top Header: Large Rounded Square Icon & Circular Accent Dot */}
         <div className="flex items-start justify-between">
-          <div className={`w-14 h-14 rounded-2xl ${config.iconBg} border flex items-center justify-center shadow-2xs`}>
-            <Icon className="w-6 h-6" />
+          <div className={`w-12 h-12 rounded-2xl ${config.iconBg} border flex items-center justify-center shadow-2xs`}>
+            <Icon className="w-5 h-5" />
           </div>
 
           <div className={`w-3.5 h-3.5 rounded-full ${config.dotBg} mt-1`} />
         </div>
 
         {/* Title Text */}
-        <div className="mt-6">
+        <div className="mt-4">
           <p className="text-xs font-extrabold text-slate-500 uppercase tracking-wider">
             {title}
           </p>
         </div>
 
         {/* Dotted Separator Line */}
-        <div className="border-b border-dashed border-slate-200/90 my-3" />
+        <div className="border-b border-dashed border-slate-200/90 my-2" />
 
         {/* Big Stat Count Number */}
         <div className="relative z-10">
-          <h3 className="text-4xl sm:text-[42px] font-black text-slate-900 tracking-tight leading-none">
+          <h3 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight leading-none">
             {value}
           </h3>
         </div>

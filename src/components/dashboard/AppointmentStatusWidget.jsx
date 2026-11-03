@@ -134,10 +134,10 @@ export default function AppointmentStatusWidget() {
   }, [chartData]);
 
   return (
-    <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/80 shadow-xs hover:shadow-md transition-all duration-300 w-full relative">
+    <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-xs hover:shadow-md transition-all duration-300 w-full relative">
       
       {/* Header Row */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100 relative z-20">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 relative z-20">
         <div>
           <h3 className="text-base sm:text-lg font-extrabold text-slate-800 tracking-tight">Appointment Status Overview</h3>
           <p className="text-xs text-slate-400 font-medium mt-0.5">Current appointment counts by status</p>
@@ -184,7 +184,7 @@ export default function AppointmentStatusWidget() {
       </div>
 
       {/* Responsive Bar Chart Section */}
-      <div className="h-64 sm:h-72 w-full mt-4">
+      <div className="h-52 sm:h-56 w-full mt-3">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={chartData} barCategoryGap="12%" margin={{ top: 25, right: 20, left: -15, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
@@ -215,7 +215,7 @@ export default function AppointmentStatusWidget() {
       </div>
 
       {/* Legend Below Chart */}
-      <div className="mt-4 pt-3 border-t border-slate-100 flex flex-wrap items-center justify-center gap-4 sm:gap-8 text-xs font-bold text-slate-700">
+      <div className="mt-3 pt-2 border-t border-slate-100 flex flex-wrap items-center justify-center gap-3 sm:gap-6 text-xs font-bold text-slate-700">
         {STATUS_CONFIG.map(cfg => (
           <div key={cfg.key} className="inline-flex items-center gap-2">
             <span className={`w-2.5 h-2.5 rounded-full ${cfg.dotBg}`} />

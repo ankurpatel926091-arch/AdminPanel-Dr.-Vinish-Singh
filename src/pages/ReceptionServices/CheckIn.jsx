@@ -7,7 +7,6 @@ import {
   Calendar,
   Clock,
   Phone,
-  MapPin,
   Stethoscope,
   CheckCircle2,
   AlertCircle,
@@ -20,9 +19,17 @@ import {
   RefreshCw,
   ClipboardCheck,
   Receipt,
-  CheckSquare,
   Sparkles,
 } from "lucide-react";
+import {
+  getStaticCheckInAppointments,
+  normalizeQueueItem,
+  readStoredArray,
+  saveCheckInAppointments,
+  saveQueue,
+  SHARED_QUEUE_STORAGE_KEY,
+  DOCTOR_QUEUE_STORAGE_KEY,
+} from "../../utils/staticAppointmentFlow";
 
 /* =========================================================
    Mock Appointment Data
@@ -36,8 +43,6 @@ const defaultAppointments = [
     age: 34,
     gender: "Male",
     mobile: "9876543210",
-    email: "rahul.sharma@gmail.com",
-    address: "Lucknow, Uttar Pradesh",
 
     doctorId: "DOC-001",
     doctorName: "Dr. Vinish Kumar Singh",
@@ -61,8 +66,6 @@ const defaultAppointments = [
     age: 31,
     gender: "Female",
     mobile: "9123456780",
-    email: "priya.verma@gmail.com",
-    address: "Alambagh, Lucknow",
 
     doctorId: "DOC-001",
     doctorName: "Dr. Vinish Kumar Singh",
@@ -86,8 +89,6 @@ const defaultAppointments = [
     age: 39,
     gender: "Male",
     mobile: "9988776655",
-    email: "suresh.kumar@gmail.com",
-    address: "Kanpur Road, Lucknow",
 
     doctorId: "DOC-002",
     doctorName: "Dr. Vinish Kumar Singh",
@@ -111,8 +112,6 @@ const defaultAppointments = [
     age: 35,
     gender: "Male",
     mobile: "9123456789",
-    email: "mohit.singh@gmail.com",
-    address: "Gomti Nagar, Lucknow",
 
     doctorId: "DOC-001",
     doctorName: "Dr. Vinish Kumar Singh",
@@ -136,8 +135,6 @@ const defaultAppointments = [
     age: 42,
     gender: "Male",
     mobile: "9000011223",
-    email: "amit.gupta@gmail.com",
-    address: "Indira Nagar, Lucknow",
 
     doctorId: "DOC-002",
     doctorName: "Dr. Vinish Kumar Singh",
@@ -161,8 +158,6 @@ const defaultAppointments = [
     age: 37,
     gender: "Male",
     mobile: "9111122233",
-    email: "vikas.singh@gmail.com",
-    address: "Aliganj, Lucknow",
 
     doctorId: "DOC-001",
     doctorName: "Dr. Vinish Kumar Singh",
@@ -193,6 +188,20 @@ const statusStyles = {
   PAYMENT_COMPLETED: "border-green-200 bg-green-50 text-green-700",
 };
 
+const getPatientDemographics = (appointment, ageUnit) => {
+  const age =
+    appointment.age !== "" && appointment.age != null
+      ? `${appointment.age} ${ageUnit}`
+      : "";
+  const gender =
+    appointment.gender &&
+    appointment.gender.toLowerCase() !== "not provided"
+      ? appointment.gender
+      : "";
+
+  return [age, gender].filter(Boolean).join(" • ");
+};
+
 /* =========================================================
    Main Component
 ========================================================= */
@@ -201,13 +210,7 @@ export default function CheckIn() {
   const navigate = useNavigate();
 
   const [appointments, setAppointments] = useState(() => {
-    try {
-      const saved = localStorage.getItem("dr_vinish_checkin_appointments");
-      if (saved) return JSON.parse(saved);
-    } catch (e) {
-      console.warn("Error loading appointments from localStorage", e);
-    }
-    return defaultAppointments;
+    return getStaticCheckInAppointments(defaultAppointments);
   });
 
   const [search, setSearch] = useState("");
@@ -223,8 +226,7 @@ export default function CheckIn() {
   // Sync state to localStorage for persistence across pages
   useEffect(() => {
     try {
-      localStorage.setItem("dr_vinish_checkin_appointments", JSON.stringify(appointments));
-      window.dispatchEvent(new Event("storage"));
+      saveCheckInAppointments(appointments);
     } catch (e) {
       console.warn("Failed to persist checkin appointments", e);
     }
@@ -290,7 +292,11 @@ export default function CheckIn() {
   ========================================================= */
 
   const generateVisitId = () => {
-    const nextNum = 5000 + appointments.length + 1;
+    const largestVisitNumber = appointments.reduce((largest, appointment) => {
+      const number = Number(String(appointment.visitId || "").replace(/\D/g, ""));
+      return Number.isFinite(number) ? Math.max(largest, number) : largest;
+    }, 5000);
+    const nextNum = largestVisitNumber + 1;
     return `VIS-${nextNum}`;
   };
 
@@ -397,12 +403,19 @@ export default function CheckIn() {
       checkedInBy,
     }));
 
-    // Add to Doctor Queue in localStorage
+    // Keep the receptionist and doctor queue views on the same local queue.
     try {
-      const existingQueueStr = localStorage.getItem("dr_vinish_queue");
-      const existingQueue = existingQueueStr ? JSON.parse(existingQueueStr) : [];
+      const existingQueue =
+        readStoredArray(SHARED_QUEUE_STORAGE_KEY).length > 0
+          ? readStoredArray(SHARED_QUEUE_STORAGE_KEY)
+          : readStoredArray(DOCTOR_QUEUE_STORAGE_KEY);
+      const appointmentId = String(selectedAppointment.appointmentId);
+      const filteredQueue = existingQueue.filter(
+        (item) => String(item.appointmentId || "") !== appointmentId
+      );
       const newQueueItem = {
-        id: `Q-${Date.now()}`,
+        id: `Q-${visitId}`,
+        appointmentId,
         tokenNumber: `T-${String(tokenNumber).padStart(3, "0")}`,
         visitId,
         patientId: selectedAppointment.patientId,
@@ -412,14 +425,17 @@ export default function CheckIn() {
         mobile: selectedAppointment.mobile,
         doctorName: selectedAppointment.doctorName,
         department: selectedAppointment.department,
-        clinic: "Rudraksh IVF & Urology Centre",
+        clinic: selectedAppointment.clinic,
         checkInTime: checkInAt,
-        status: "Waiting",
-        priority: "Normal",
+        status: "WAITING",
+        priority: "NORMAL",
         startTime: null,
       };
-      localStorage.setItem("dr_vinish_queue", JSON.stringify([newQueueItem, ...existingQueue]));
-    } catch (e) {}
+      saveQueue([normalizeQueueItem(newQueueItem), ...filteredQueue.map(normalizeQueueItem)]);
+    } catch (error) {
+      console.error("Unable to add checked-in patient to doctor queue:", error);
+      alert("Check-in was saved, but the doctor queue could not be updated.");
+    }
   };
 
   /* =========================================================
@@ -575,25 +591,25 @@ export default function CheckIn() {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1100px]">
+          <table className="w-full min-w-[920px]">
             <thead>
-              <tr className="border-b border-slate-200 bg-slate-50">
-                <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <tr className="border-b border-slate-200 bg-slate-50/80">
+                <th className="px-3.5 py-2.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">
                   Appointment
                 </th>
-                <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <th className="px-3.5 py-2.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">
                   Patient
                 </th>
-                <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <th className="px-3.5 py-2.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">
                   Doctor
                 </th>
-                <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <th className="px-3.5 py-2.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">
                   Appointment Time
                 </th>
-                <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <th className="px-3.5 py-2.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">
                   Status
                 </th>
-                <th className="px-5 py-3 text-center text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <th className="px-3.5 py-2.5 text-center text-[11px] font-bold uppercase tracking-wider text-slate-500">
                   Action
                 </th>
               </tr>
@@ -607,43 +623,51 @@ export default function CheckIn() {
                   const blocked =
                     appointment.status === "CANCELLED" ||
                     appointment.status === "NO_SHOW";
+                  const patientDemographics = getPatientDemographics(
+                    appointment,
+                    "yrs"
+                  );
 
                   return (
                     <tr
                       key={appointment.appointmentId}
-                      className="transition hover:bg-slate-50"
+                      className="transition hover:bg-slate-50/80"
                     >
                       {/* Appointment */}
-                      <td className="px-5 py-4">
-                        <p className="font-semibold text-slate-800">
-                          {appointment.appointmentId}
+                      <td className="px-3.5 py-2.5">
+                        <p className="font-mono text-xs font-semibold text-slate-800" title={appointment.appointmentId}>
+                          {appointment.appointmentId && appointment.appointmentId.length > 14
+                            ? `${appointment.appointmentId.slice(0, 8)}...${appointment.appointmentId.slice(-4)}`
+                            : appointment.appointmentId}
                         </p>
-                        <p className="mt-1 flex items-center gap-1 text-xs text-slate-500">
-                          <Hash size={12} />
+                        <p className="mt-0.5 flex items-center gap-1 text-[11px] text-slate-500 font-medium">
+                          <Hash size={11} className="text-slate-400" />
                           {appointment.patientId}
                         </p>
                         {alreadyChecked && appointment.visitId && (
-                          <p className="mt-1 text-xs font-medium text-blue-600">
+                          <p className="mt-0.5 text-[11px] font-medium text-blue-600">
                             Visit: {appointment.visitId}
                           </p>
                         )}
                       </td>
 
                       {/* Patient */}
-                      <td className="px-5 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-50 text-blue-600">
-                            <User size={18} />
+                      <td className="px-3.5 py-2.5">
+                        <div className="flex items-center gap-2.5">
+                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-50 text-blue-600">
+                            <User size={15} />
                           </div>
                           <div>
-                            <p className="font-semibold text-slate-800">
+                            <p className="text-xs sm:text-[13px] font-bold text-slate-800 leading-tight">
                               {appointment.patientName}
                             </p>
-                            <p className="mt-1 text-xs text-slate-500">
-                              {appointment.age} yrs • {appointment.gender}
-                            </p>
-                            <p className="mt-1 flex items-center gap-1 text-xs text-slate-400">
-                              <Phone size={12} />
+                            {patientDemographics && (
+                              <p className="mt-0.5 text-[11px] text-slate-500">
+                                {patientDemographics}
+                              </p>
+                            )}
+                            <p className="mt-0.5 flex items-center gap-1 text-[11px] text-slate-400">
+                              <Phone size={11} />
                               {appointment.mobile}
                             </p>
                           </div>
@@ -651,17 +675,17 @@ export default function CheckIn() {
                       </td>
 
                       {/* Doctor */}
-                      <td className="px-5 py-4">
-                        <div className="flex items-start gap-2">
+                      <td className="px-3.5 py-2.5">
+                        <div className="flex items-start gap-1.5">
                           <Stethoscope
-                            size={17}
-                            className="mt-0.5 text-blue-500"
+                            size={15}
+                            className="mt-0.5 text-blue-500 shrink-0"
                           />
                           <div>
-                            <p className="text-sm font-medium text-slate-700">
+                            <p className="text-xs sm:text-[13px] font-semibold text-slate-700 leading-tight">
                               {appointment.doctorName}
                             </p>
-                            <p className="mt-1 text-xs text-slate-500">
+                            <p className="mt-0.5 text-[11px] text-slate-500">
                               {appointment.department}
                             </p>
                           </div>
@@ -669,15 +693,15 @@ export default function CheckIn() {
                       </td>
 
                       {/* Time */}
-                      <td className="px-5 py-4">
-                        <div className="flex items-center gap-2">
-                          <Clock size={16} className="text-slate-400" />
+                      <td className="px-3.5 py-2.5 whitespace-nowrap">
+                        <div className="flex items-center gap-1.5">
+                          <Clock size={14} className="text-slate-400 shrink-0" />
                           <div>
-                            <p className="text-sm font-medium text-slate-700">
+                            <p className="text-xs sm:text-[13px] font-semibold text-slate-700">
                               {appointment.appointmentTime}
                             </p>
                             {alreadyChecked && (
-                              <p className="mt-1 text-xs text-green-600">
+                              <p className="mt-0.5 text-[11px] text-emerald-600 font-medium">
                                 Check-in: {appointment.checkInAt}
                               </p>
                             )}
@@ -686,9 +710,9 @@ export default function CheckIn() {
                       </td>
 
                       {/* Status */}
-                      <td className="px-5 py-4">
+                      <td className="px-3.5 py-2.5 whitespace-nowrap">
                         <span
-                          className={`inline-flex items-center rounded-full border px-3 py-1.5 text-xs font-medium ${
+                          className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${
                             statusStyles[appointment.status] ||
                             "border-slate-200 bg-slate-50 text-slate-600"
                           }`}
@@ -697,23 +721,23 @@ export default function CheckIn() {
                         </span>
 
                         {alreadyChecked && appointment.tokenNumber && (
-                          <p className="mt-1 flex items-center gap-1 text-xs font-semibold text-blue-600">
-                            <Ticket size={12} />
+                          <p className="mt-0.5 flex items-center gap-1 text-[11px] font-semibold text-blue-600">
+                            <Ticket size={11} />
                             Token #{appointment.tokenNumber}
                           </p>
                         )}
                       </td>
 
                       {/* Action */}
-                      <td className="px-5 py-4">
-                        <div className="flex items-center justify-center gap-2">
+                      <td className="px-3.5 py-2.5 whitespace-nowrap text-center">
+                        <div className="flex items-center justify-center gap-1.5">
                           {canCheckIn && (
                             <button
                               onClick={() => openCheckIn(appointment)}
-                              className="flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-blue-700 shadow-sm"
+                              className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-blue-700 shadow-xs active:scale-95"
                             >
-                              <UserCheck size={15} />
-                              Check-in
+                              <UserCheck size={14} />
+                              Check-In
                             </button>
                           )}
 
@@ -721,21 +745,21 @@ export default function CheckIn() {
                             <>
                               <button
                                 onClick={() => openCheckIn(appointment)}
-                                className="flex items-center gap-1.5 rounded-lg border border-green-200 bg-green-50 px-2.5 py-1.5 text-xs font-semibold text-green-700 hover:bg-green-100 transition"
+                                className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 hover:bg-emerald-100 transition"
                                 title="View Check-in Details"
                               >
-                                <CheckCircle2 size={14} />
+                                <CheckCircle2 size={13} />
                                 Details
                               </button>
 
                               <button
                                 onClick={() => proceedToBilling(appointment)}
-                                className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-blue-700 shadow-sm"
+                                className="inline-flex items-center gap-1 rounded-lg bg-blue-600 px-2.5 py-1 text-[11px] font-semibold text-white transition hover:bg-blue-700 shadow-xs"
                                 title="Proceed to OPD Billing"
                               >
-                                <Receipt size={14} />
+                                <Receipt size={13} />
                                 Billing
-                                <ArrowRight size={13} />
+                                <ArrowRight size={12} />
                               </button>
                             </>
                           )}
@@ -743,9 +767,9 @@ export default function CheckIn() {
                           {blocked && (
                             <button
                               disabled
-                              className="flex cursor-not-allowed items-center gap-2 rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-xs font-medium text-slate-400"
+                              className="inline-flex cursor-not-allowed items-center gap-1 rounded-lg border border-slate-200 bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-400"
                             >
-                              <AlertCircle size={15} />
+                              <AlertCircle size={13} />
                               Not Eligible
                             </button>
                           )}
@@ -780,14 +804,14 @@ export default function CheckIn() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
           <div className="flex max-h-[94vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl animate-in fade-in zoom-in-95 duration-150">
             {/* Modal Header */}
-            <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
-              <div className="flex items-center gap-3">
-                <div className="rounded-lg bg-blue-50 p-2 text-blue-600">
-                  <UserCheck size={20} />
+            <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3 bg-slate-50/50">
+              <div className="flex items-center gap-2.5">
+                <div className="rounded-lg bg-blue-50 p-1.5 text-blue-600">
+                  <UserCheck size={18} />
                 </div>
                 <div>
-                  <h2 className="font-bold text-slate-900">Patient Check-in</h2>
-                  <p className="mt-0.5 text-xs text-slate-500">
+                  <h2 className="text-sm font-bold text-slate-900 leading-tight">Patient Check-in</h2>
+                  <p className="text-[11px] text-slate-500">
                     Appointment: {selectedAppointment.appointmentId} • UHID: {selectedAppointment.patientId}
                   </p>
                 </div>
@@ -795,59 +819,59 @@ export default function CheckIn() {
 
               <button
                 onClick={closeModal}
-                className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 transition"
+                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition"
               >
-                <X size={20} />
+                <X size={18} />
               </button>
             </div>
 
             {/* Modal Content */}
-            <div className="overflow-y-auto p-5">
+            <div className="overflow-y-auto p-4 space-y-3.5">
               {/* Success View */}
               {checkInSuccess ? (
                 <div>
-                  <div className="rounded-xl border border-green-200 bg-green-50 p-5 text-center">
-                    <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-green-100 text-green-600">
-                      <CheckCircle2 size={32} />
+                  <div className="rounded-xl border border-green-200 bg-green-50 p-4 text-center">
+                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-100 text-green-600">
+                      <CheckCircle2 size={26} />
                     </div>
 
-                    <h3 className="mt-4 text-lg font-bold text-green-800">
+                    <h3 className="mt-3 text-base font-bold text-green-800">
                       Check-in Successful!
                     </h3>
 
-                    <p className="mt-1 text-sm text-green-700">
+                    <p className="mt-0.5 text-xs text-green-700">
                       <span className="font-semibold">{checkInSuccess.patientName}</span> is checked in for today's OPD.
                     </p>
 
-                    <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                    <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
                       {/* Visit ID */}
-                      <div className="rounded-lg border border-green-200 bg-white p-3 text-left shadow-xs">
-                        <p className="text-xs font-medium text-slate-400">Visit ID</p>
-                        <p className="mt-1 text-base font-bold text-slate-900">
+                      <div className="rounded-lg border border-green-200 bg-white p-2.5 text-left shadow-2xs">
+                        <p className="text-[11px] font-medium text-slate-400">Visit ID</p>
+                        <p className="mt-0.5 text-sm font-bold text-slate-900">
                           {checkInSuccess.visitId}
                         </p>
                       </div>
 
                       {/* Token */}
-                      <div className="rounded-lg border border-green-200 bg-white p-3 text-left shadow-xs">
-                        <p className="text-xs font-medium text-slate-400">Token Number</p>
-                        <p className="mt-1 text-base font-bold text-blue-600">
+                      <div className="rounded-lg border border-green-200 bg-white p-2.5 text-left shadow-2xs">
+                        <p className="text-[11px] font-medium text-slate-400">Token Number</p>
+                        <p className="mt-0.5 text-sm font-bold text-blue-600">
                           #{checkInSuccess.tokenNumber}
                         </p>
                       </div>
 
                       {/* Timestamp */}
-                      <div className="rounded-lg border border-green-200 bg-white p-3 text-left shadow-xs">
-                        <p className="text-xs font-medium text-slate-400">Check-in Time</p>
-                        <p className="mt-1 text-sm font-bold text-slate-800">
+                      <div className="rounded-lg border border-green-200 bg-white p-2.5 text-left shadow-2xs">
+                        <p className="text-[11px] font-medium text-slate-400">Check-in Time</p>
+                        <p className="mt-0.5 text-xs font-bold text-slate-800">
                           {checkInSuccess.checkInAt}
                         </p>
                       </div>
 
                       {/* Receptionist */}
-                      <div className="rounded-lg border border-green-200 bg-white p-3 text-left shadow-xs">
-                        <p className="text-xs font-medium text-slate-400">Receptionist ID</p>
-                        <p className="mt-1 text-xs font-bold text-slate-800 truncate" title={checkInSuccess.checkedInBy}>
+                      <div className="rounded-lg border border-green-200 bg-white p-2.5 text-left shadow-2xs">
+                        <p className="text-[11px] font-medium text-slate-400">Receptionist ID</p>
+                        <p className="mt-0.5 text-xs font-bold text-slate-800 truncate" title={checkInSuccess.checkedInBy}>
                           {checkInSuccess.checkedInBy}
                         </p>
                       </div>
@@ -855,14 +879,14 @@ export default function CheckIn() {
                   </div>
 
                   {/* Step 6: Proceed to OPD billing */}
-                  <div className="mt-5 flex flex-col sm:flex-row items-center justify-between gap-4 rounded-xl border border-blue-200 bg-blue-50/70 p-4">
-                    <div className="flex items-start gap-3">
-                      <Receipt size={22} className="shrink-0 text-blue-600 mt-0.5" />
+                  <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-3 rounded-xl border border-blue-200 bg-blue-50/70 p-3.5">
+                    <div className="flex items-start gap-2.5">
+                      <Receipt size={18} className="shrink-0 text-blue-600 mt-0.5" />
                       <div>
-                        <p className="text-sm font-bold text-blue-900">
+                        <p className="text-xs font-bold text-blue-900">
                           Step 6: Proceed to OPD Billing
                         </p>
-                        <p className="mt-0.5 text-xs text-blue-700 leading-relaxed">
+                        <p className="text-[11px] text-blue-700 leading-relaxed">
                           Patient is checked in. Next step is to proceed to OPD billing to complete fee collection and generate invoice.
                         </p>
                       </div>
@@ -870,58 +894,61 @@ export default function CheckIn() {
 
                     <button
                       onClick={() => proceedToBilling(selectedAppointment)}
-                      className="w-full sm:w-auto shrink-0 flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-blue-700 transition shadow-md"
+                      className="w-full sm:w-auto shrink-0 flex items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-xs font-bold text-white hover:bg-blue-700 transition shadow-sm"
                     >
-                      <Receipt size={16} />
+                      <Receipt size={14} />
                       Proceed to OPD Billing
-                      <ArrowRight size={16} />
+                      <ArrowRight size={14} />
                     </button>
                   </div>
                 </div>
               ) : (
                 <>
                   {/* Step 2: Verify Patient Identity and Demographic Details */}
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-                      <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-600">
-                        <User size={26} />
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-600">
+                        <User size={18} />
                       </div>
 
-                      <div className="flex-1">
-                        <h3 className="text-lg font-bold text-slate-900">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-sm font-bold text-slate-900 leading-tight">
                           {selectedAppointment.patientName}
                         </h3>
 
-                        <div className="mt-1 flex flex-wrap gap-3 text-xs text-slate-500">
+                        <div className="mt-0.5 flex flex-wrap gap-2 text-[11px] text-slate-500">
                           <span className="flex items-center gap-1 font-medium">
-                            <Hash size={12} />
+                            <Hash size={11} />
                             {selectedAppointment.patientId}
                           </span>
-                          <span>{selectedAppointment.age} years</span>
-                          <span>{selectedAppointment.gender}</span>
+                          {getPatientDemographics(selectedAppointment, "years") && (
+                            <span>
+                              {getPatientDemographics(selectedAppointment, "years")}
+                            </span>
+                          )}
                           <span className="font-semibold text-blue-600">{selectedAppointment.mobile}</span>
                         </div>
                       </div>
 
-                      <span className="self-start rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700">
+                      <span className="self-start rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-[11px] font-semibold text-blue-700">
                         {selectedAppointment.status}
                       </span>
                     </div>
                   </div>
 
                   {/* Demographic & Identity Verification Panel */}
-                  <div className="mt-5">
-                    <div className="mb-3 flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <ShieldCheck size={18} className="text-blue-600" />
-                        <h3 className="font-semibold text-slate-800">
+                  <div className="mt-3.5">
+                    <div className="mb-2.5 flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <ShieldCheck size={16} className="text-blue-600" />
+                        <h3 className="text-xs font-bold text-slate-800">
                           Verify Identity & Demographic Details
                         </h3>
                       </div>
-                      <span className="text-xs text-slate-500 font-medium">Step 2 of 6</span>
+                      <span className="text-[11px] text-slate-400 font-medium">Step 2 of 6</span>
                     </div>
 
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                       <VerificationItem
                         icon={Phone}
                         label="Mobile Number"
@@ -941,11 +968,6 @@ export default function CheckIn() {
                         icon={Stethoscope}
                         label="Assigned Doctor"
                         value={`${selectedAppointment.doctorName} (${selectedAppointment.department})`}
-                      />
-                      <VerificationItem
-                        icon={MapPin}
-                        label="Address / Location"
-                        value={selectedAppointment.address}
                       />
                       <VerificationItem
                         icon={Hash}
@@ -1026,20 +1048,20 @@ export default function CheckIn() {
             </div>
 
             {/* Modal Footer */}
-            <div className="flex flex-wrap justify-end gap-2 border-t border-slate-200 bg-slate-50 px-5 py-4">
+            <div className="flex flex-wrap justify-end gap-2 border-t border-slate-200 bg-slate-50 px-4 py-2.5">
               {checkInSuccess ? (
                 <>
                   <button
                     onClick={closeModal}
-                    className="rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-100"
+                    className="rounded-lg border border-slate-200 bg-white px-3.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100 transition"
                   >
                     Close
                   </button>
                   <button
                     onClick={() => proceedToBilling(selectedAppointment)}
-                    className="flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 transition"
+                    className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 transition shadow-xs"
                   >
-                    <Receipt size={16} />
+                    <Receipt size={14} />
                     Proceed to OPD Billing
                   </button>
                 </>
@@ -1047,15 +1069,15 @@ export default function CheckIn() {
                 <>
                   <button
                     onClick={closeModal}
-                    className="rounded-lg border border-slate-200 bg-white px-5 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-100"
+                    className="rounded-lg border border-slate-200 bg-white px-3.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100 transition"
                   >
                     Close
                   </button>
                   <button
                     onClick={() => proceedToBilling(selectedAppointment)}
-                    className="flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700"
+                    className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-1.5 text-xs font-semibold text-white transition hover:bg-blue-700 shadow-xs"
                   >
-                    <Receipt size={16} />
+                    <Receipt size={14} />
                     Proceed to OPD Billing
                   </button>
                 </>
@@ -1063,7 +1085,7 @@ export default function CheckIn() {
                 <>
                   <button
                     onClick={closeModal}
-                    className="rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-100"
+                    className="rounded-lg border border-slate-200 bg-white px-3.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100 transition"
                   >
                     Cancel
                   </button>
@@ -1071,13 +1093,13 @@ export default function CheckIn() {
                   <button
                     onClick={handleCheckIn}
                     disabled={!identityVerified || !demographicsVerified}
-                    className={`flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold text-white transition ${
+                    className={`inline-flex items-center gap-1.5 rounded-lg px-4 py-1.5 text-xs font-semibold text-white transition shadow-xs ${
                       identityVerified && demographicsVerified
-                        ? "bg-blue-600 hover:bg-blue-700"
+                        ? "bg-blue-600 hover:bg-blue-700 active:scale-95"
                         : "bg-blue-300 cursor-not-allowed"
                     }`}
                   >
-                    <UserCheck size={17} />
+                    <UserCheck size={14} />
                     Confirm Check-in
                   </button>
                 </>
@@ -1117,12 +1139,12 @@ function StatCard({ title, value, icon: Icon, iconClass }) {
 
 function VerificationItem({ icon: Icon, label, value }) {
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-3">
-      <div className="flex items-center gap-2">
-        <Icon size={16} className="text-blue-600" />
-        <p className="text-xs text-slate-400">{label}</p>
+    <div className="rounded-lg border border-slate-200 bg-white p-2.5 shadow-2xs">
+      <div className="flex items-center gap-1.5">
+        <Icon size={14} className="text-blue-600 shrink-0" />
+        <p className="text-[11px] font-medium text-slate-400">{label}</p>
       </div>
-      <p className="mt-1.5 break-words text-sm font-medium text-slate-700">
+      <p className="mt-1 break-words text-xs font-semibold text-slate-800">
         {value || "-"}
       </p>
     </div>

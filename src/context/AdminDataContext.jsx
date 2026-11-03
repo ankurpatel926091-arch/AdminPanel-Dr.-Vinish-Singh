@@ -143,11 +143,18 @@ export const AdminDataProvider = ({ children }) => {
     try {
       const aptRes = await getAdminAppointmentsApi();
       if (aptRes && aptRes.data && Array.isArray(aptRes.data)) {
-        const items = aptRes.data.map(item => ({
+        const backendItems = aptRes.data.map(item => ({
           ...item,
           id: item._id || item.id
         }));
+        const localApts = JSON.parse(localStorage.getItem('dr_vinish_appointments') || '[]');
+        const backendIds = new Set(backendItems.map(item => String(item.id || item._id)));
+        const items = [
+          ...localApts.filter(item => !backendIds.has(String(item.id || item._id))),
+          ...backendItems
+        ];
         setAppointments(items);
+        localStorage.setItem('dr_vinish_appointments', JSON.stringify(items));
       }
     } catch (err) {
       console.warn('Backend appointment fetch offline or error:', err.message);
@@ -307,7 +314,16 @@ export const AdminDataProvider = ({ children }) => {
       ...newApt,
       clinic: foundClinic || newApt.clinic
     };
-    setAppointments(prev => [aptWithClinic, ...prev]);
+    setAppointments(prev => {
+      const updated = [aptWithClinic, ...prev];
+      try {
+        localStorage.setItem('dr_vinish_appointments', JSON.stringify(updated));
+        window.dispatchEvent(new Event('storage'));
+      } catch (error) {
+        console.error('Unable to persist appointment:', error);
+      }
+      return updated;
+    });
     setStats(prev => ({
       ...prev,
       appointments: { ...prev.appointments, count: prev.appointments.count + 1 }

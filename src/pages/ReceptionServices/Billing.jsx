@@ -1403,36 +1403,36 @@ export default function Billing() {
       ========================================= */}
 
       {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
-          <div className="flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-3 sm:p-4 backdrop-blur-xs">
+          <div className="flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
             {/* Modal Header */}
-            <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-6 py-4">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 text-white shadow-sm">
-                  <FilePlus size={20} />
+            <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50/80 px-4 py-2.5 sm:px-5 sm:py-3">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-white shadow-xs">
+                  <FilePlus size={16} />
                 </div>
                 <div>
-                  <h2 className="text-lg font-bold text-slate-900">
+                  <h2 className="text-sm font-bold text-slate-900 leading-tight">
                     Create New OPD Bill
                   </h2>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-[11px] text-slate-500">
                     Enter patient details, diagnosis, services & payment
                   </p>
                 </div>
               </div>
               <button
                 onClick={() => setShowCreateModal(false)}
-                className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-200 hover:text-slate-600"
+                className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-200 hover:text-slate-600"
               >
-                <X size={20} />
+                <X size={18} />
               </button>
             </div>
 
             {/* Modal Form Body */}
-            <form onSubmit={handleCreateBill} className="flex-1 overflow-y-auto p-6 space-y-6">
+            <form onSubmit={handleCreateBill} className="flex-1 overflow-y-auto p-3.5 sm:p-4 space-y-3">
               {/* Section 1: Patient Selection & Basic Info */}
-              <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4">
-                <div className="mb-3 flex items-center justify-between">
+              <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-3">
+                <div className="mb-2 flex items-center justify-between">
                   <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
                     1. Patient Details
                   </span>
@@ -1605,9 +1605,9 @@ export default function Billing() {
                   </div>
                 )}
 
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-4">
+                <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 md:grid-cols-4">
                   <div className="sm:col-span-2">
-                    <label className="mb-1 block text-xs font-medium text-slate-600">
+                    <label className="mb-0.5 block text-[11px] font-semibold text-slate-600">
                       Patient Full Name <span className="text-red-500">*</span>
                     </label>
                     <input
@@ -1621,12 +1621,12 @@ export default function Billing() {
                           patientName: e.target.value,
                         }))
                       }
-                      className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                      className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-100"
                     />
                   </div>
 
                   <div>
-                    <label className="mb-1 block text-xs font-medium text-slate-600">
+                    <label className="mb-0.5 block text-[11px] font-semibold text-slate-600">
                       Phone Number
                     </label>
                     <input
@@ -1639,13 +1639,13 @@ export default function Billing() {
                           phone: e.target.value,
                         }))
                       }
-                      className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                      className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-100"
                     />
                   </div>
 
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="mb-1 block text-xs font-medium text-slate-600">
+                      <label className="mb-0.5 block text-[11px] font-semibold text-slate-600">
                         Age
                       </label>
                       <input
@@ -1658,11 +1658,11 @@ export default function Billing() {
                             age: e.target.value,
                           }))
                         }
-                        className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                        className="w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-100"
                       />
                     </div>
                     <div>
-                      <label className="mb-1 block text-xs font-medium text-slate-600">
+                      <label className="mb-0.5 block text-[11px] font-semibold text-slate-600">
                         Gender
                       </label>
                       <select
@@ -1673,7 +1673,7 @@ export default function Billing() {
                             gender: e.target.value,
                           }))
                         }
-                        className="w-full rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                        className="w-full rounded-lg border border-slate-200 bg-white px-1.5 py-1.5 text-xs outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-100"
                       >
                         <option value="Male">Male</option>
                         <option value="Female">Female</option>
@@ -1685,14 +1685,14 @@ export default function Billing() {
               </div>
 
               {/* Section 2: Clinic & Diagnosis */}
-              <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4">
-                <span className="mb-3 block text-xs font-bold uppercase tracking-wider text-slate-500">
+              <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-3">
+                <span className="mb-2 block text-[11px] font-bold uppercase tracking-wider text-slate-500">
                   2. Clinic, Doctor & Diagnosis
                 </span>
 
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
                   <div>
-                    <label className="mb-1 block text-xs font-medium text-slate-600">
+                    <label className="mb-0.5 block text-[11px] font-semibold text-slate-600">
                       Clinic / Hospital Branch
                     </label>
                     <select
@@ -1703,7 +1703,7 @@ export default function Billing() {
                           hospital: e.target.value,
                         }))
                       }
-                      className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                      className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-100"
                     >
                       {CLINIC_CENTRES.map((c, i) => (
                         <option key={i} value={c}>
@@ -1714,20 +1714,20 @@ export default function Billing() {
                   </div>
 
                   <div>
-                    <label className="mb-1 block text-xs font-medium text-slate-600">
+                    <label className="mb-0.5 block text-[11px] font-semibold text-slate-600">
                       Consultant Doctor
                     </label>
                     <input
                       type="text"
                       readOnly
                       value={newBillForm.doctor}
-                      className="w-full rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-sm text-slate-600 outline-none cursor-not-allowed"
+                      className="w-full rounded-lg border border-slate-200 bg-slate-100 px-2.5 py-1.5 text-xs text-slate-600 outline-none cursor-not-allowed"
                     />
                   </div>
 
                   {/* Diagnosis */}
                   <div className="sm:col-span-2">
-                    <label className="mb-1 block text-xs font-semibold text-blue-900">
+                    <label className="mb-0.5 block text-[11px] font-semibold text-blue-900">
                       Diagnosis / Reason for Visit <span className="text-red-500">*</span>
                     </label>
                     <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -1739,7 +1739,7 @@ export default function Billing() {
                             diagnosis: e.target.value,
                           }))
                         }
-                        className="w-full rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm font-medium text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                        className="w-full rounded-lg border border-blue-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-800 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-100"
                       >
                         {UROLOGY_CONDITIONS.map((cond, i) => (
                           <option key={i} value={cond}>
@@ -1760,7 +1760,7 @@ export default function Billing() {
                               customDiagnosis: e.target.value,
                             }))
                           }
-                          className="w-full rounded-lg border border-blue-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                          className="w-full rounded-lg border border-blue-300 bg-white px-2.5 py-1.5 text-xs outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-100"
                         />
                       )}
                     </div>
@@ -1769,31 +1769,31 @@ export default function Billing() {
               </div>
 
               {/* Section 3: Bill Items / Services */}
-              <div className="rounded-xl border border-slate-200 bg-white p-4">
-                <div className="mb-3 flex items-center justify-between">
+              <div className="rounded-xl border border-slate-200 bg-white p-3">
+                <div className="mb-2 flex items-center justify-between">
                   <div>
-                    <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
                       3. Services & Particulars
                     </span>
-                    <p className="text-xs text-slate-400">
+                    <p className="text-[11px] text-slate-400">
                       Add consultation, tests, ultrasound, or procedure charges
                     </p>
                   </div>
                   <button
                     type="button"
                     onClick={handleAddServiceRow}
-                    className="flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 transition hover:bg-blue-100"
+                    className="flex items-center gap-1 rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700 transition hover:bg-blue-100"
                   >
-                    <Plus size={14} />
+                    <Plus size={13} />
                     Add Item
                   </button>
                 </div>
 
-                <div className="space-y-3">
+                <div className="space-y-2">
                   {newBillForm.services.map((item, index) => (
                     <div
                       key={index}
-                      className="flex flex-col gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 sm:flex-row sm:items-center"
+                      className="flex flex-col gap-2 rounded-lg border border-slate-200 bg-slate-50 p-2 sm:flex-row sm:items-center"
                     >
                       {/* Preset selector */}
                       <div className="sm:w-1/3">
@@ -1802,7 +1802,7 @@ export default function Billing() {
                             handlePresetServiceSelect(index, e.target.value)
                           }
                           defaultValue=""
-                          className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-700 outline-none focus:border-blue-500"
+                          className="w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-700 outline-none focus:border-blue-500"
                         >
                           <option value="" disabled>
                             -- Quick Select Service --
@@ -1825,13 +1825,13 @@ export default function Billing() {
                           onChange={(e) =>
                             handleServiceChange(index, "name", e.target.value)
                           }
-                          className="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-800 outline-none focus:border-blue-500"
+                          className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-800 outline-none focus:border-blue-500"
                         />
                       </div>
 
                       {/* Amount */}
-                      <div className="relative w-32">
-                        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400">
+                      <div className="relative w-28">
+                        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-slate-400">
                           ₹
                         </span>
                         <input
@@ -1847,7 +1847,7 @@ export default function Billing() {
                               Number(e.target.value)
                             )
                           }
-                          className="w-full rounded-lg border border-slate-200 bg-white py-1.5 pl-6 pr-2 text-xs font-semibold text-slate-800 outline-none focus:border-blue-500"
+                          className="w-full rounded-lg border border-slate-200 bg-white py-1.5 pl-5 pr-2 text-xs font-semibold text-slate-800 outline-none focus:border-blue-500"
                         />
                       </div>
 
@@ -1855,10 +1855,10 @@ export default function Billing() {
                       <button
                         type="button"
                         onClick={() => handleRemoveServiceRow(index)}
-                        className="self-end rounded-md p-1.5 text-slate-400 transition hover:bg-red-50 hover:text-red-500 sm:self-center"
+                        className="self-end rounded-md p-1 text-slate-400 transition hover:bg-red-50 hover:text-red-500 sm:self-center"
                         title="Remove service"
                       >
-                        <Trash2 size={16} />
+                        <Trash2 size={15} />
                       </button>
                     </div>
                   ))}
@@ -1866,14 +1866,14 @@ export default function Billing() {
               </div>
 
               {/* Section 4: Calculation & Payment Details */}
-              <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4">
-                <span className="mb-3 block text-xs font-bold uppercase tracking-wider text-slate-500">
+              <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-3">
+                <span className="mb-2 block text-[11px] font-bold uppercase tracking-wider text-slate-500">
                   4. Billing Summary & Payment
                 </span>
 
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                   {/* Summary Box */}
-                  <div className="space-y-2.5 rounded-lg border border-slate-200 bg-white p-3.5">
+                  <div className="space-y-2 rounded-lg border border-slate-200 bg-white p-2.5">
                     <div className="flex justify-between text-xs text-slate-500">
                       <span>Subtotal:</span>
                       <span className="font-semibold text-slate-700">
@@ -1883,7 +1883,7 @@ export default function Billing() {
 
                     <div className="flex items-center justify-between text-xs text-slate-500">
                       <span>Discount:</span>
-                      <div className="relative w-28">
+                      <div className="relative w-24">
                         <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-slate-400">
                           ₹
                         </span>
@@ -1902,7 +1902,7 @@ export default function Billing() {
                       </div>
                     </div>
 
-                    <div className="border-t border-slate-100 pt-2 flex justify-between text-sm font-bold text-slate-900">
+                    <div className="border-t border-slate-100 pt-1.5 flex justify-between text-xs font-bold text-slate-900">
                       <span>Total Net Amount:</span>
                       <span className="text-blue-700">
                         ₹{formTotalAmount.toLocaleString("en-IN")}
@@ -1911,13 +1911,13 @@ export default function Billing() {
                   </div>
 
                   {/* Payment Input Box */}
-                  <div className="space-y-3 rounded-lg border border-slate-200 bg-white p-3.5">
+                  <div className="space-y-2 rounded-lg border border-slate-200 bg-white p-2.5">
                     <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <label className="text-xs font-medium text-slate-600">
+                      <div className="flex items-center justify-between mb-0.5">
+                        <label className="text-[11px] font-medium text-slate-600">
                           Paid Amount
                         </label>
-                        <div className="flex gap-1.5 text-[11px]">
+                        <div className="flex gap-1.5 text-[10px]">
                           <button
                             type="button"
                             onClick={() =>
@@ -1947,7 +1947,7 @@ export default function Billing() {
                       </div>
 
                       <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400">
+                        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400">
                           ₹
                         </span>
                         <input
@@ -1961,7 +1961,7 @@ export default function Billing() {
                               paidAmount: e.target.value,
                             }))
                           }
-                          className="w-full rounded-lg border border-slate-200 py-2 pl-7 pr-3 text-sm font-bold text-green-700 outline-none focus:border-blue-500"
+                          className="w-full rounded-lg border border-slate-200 py-1.5 pl-6 pr-2.5 text-xs font-bold text-green-700 outline-none focus:border-blue-500"
                         />
                       </div>
                     </div>
@@ -1979,10 +1979,10 @@ export default function Billing() {
                     {/* Payment Mode */}
                     {formPaidAmount > 0 && (
                       <div>
-                        <label className="mb-1 block text-xs font-medium text-slate-600">
+                        <label className="mb-0.5 block text-[11px] font-medium text-slate-600">
                           Payment Mode
                         </label>
-                        <div className="grid grid-cols-4 gap-1.5">
+                        <div className="grid grid-cols-4 gap-1">
                           {["Cash", "UPI", "Card", "Online"].map((mode) => (
                             <button
                               key={mode}
@@ -1993,7 +1993,7 @@ export default function Billing() {
                                   paymentMode: mode,
                                 }))
                               }
-                              className={`rounded-md py-1 text-xs font-medium border transition ${
+                              className={`rounded-md py-1 text-[11px] font-medium border transition ${
                                 newBillForm.paymentMode === mode
                                   ? "border-blue-500 bg-blue-50 text-blue-700"
                                   : "border-slate-200 text-slate-600 hover:bg-slate-50"
@@ -2010,19 +2010,19 @@ export default function Billing() {
               </div>
 
               {/* Modal Footer inside form */}
-              <div className="flex items-center justify-end gap-3 border-t border-slate-200 pt-4">
+              <div className="flex items-center justify-end gap-2.5 border-t border-slate-200 pt-3">
                 <button
                   type="button"
                   onClick={() => setShowCreateModal(false)}
-                  className="rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50"
+                  className="rounded-lg border border-slate-200 px-3.5 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700 active:scale-95"
+                  className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-1.5 text-xs font-bold text-white shadow-xs transition hover:bg-blue-700 active:scale-95"
                 >
-                  <CheckCircle2 size={18} />
+                  <CheckCircle2 size={15} />
                   <span>Generate & Save Bill</span>
                 </button>
               </div>

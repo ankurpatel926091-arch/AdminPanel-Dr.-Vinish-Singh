@@ -23,6 +23,14 @@ import {
   ArrowRight,
   User,
 } from "lucide-react";
+import {
+  CURRENT_CONSULTATION_STORAGE_KEY,
+  DOCTOR_QUEUE_STORAGE_KEY,
+  normalizeQueueItem,
+  readStoredArray,
+  saveQueue,
+  SHARED_QUEUE_STORAGE_KEY,
+} from "../../utils/staticAppointmentFlow";
 
 // Default Doctor Queue Initial State if localStorage is empty
 const DEFAULT_QUEUE = [
@@ -157,16 +165,10 @@ export default function MyQueue() {
   };
 
   const [queue, setQueue] = useState(() => {
-    try {
-      const saved = localStorage.getItem("dr_vinish_doctor_queue");
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
-    } catch (e) {
-      console.warn("Failed to load queue from storage", e);
-    }
-    return DEFAULT_QUEUE;
+    const sharedQueue = readStoredArray(SHARED_QUEUE_STORAGE_KEY);
+    const doctorQueue = readStoredArray(DOCTOR_QUEUE_STORAGE_KEY);
+    const savedQueue = sharedQueue.length ? sharedQueue : doctorQueue;
+    return savedQueue.length ? savedQueue.map(normalizeQueueItem) : DEFAULT_QUEUE;
   });
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -177,7 +179,7 @@ export default function MyQueue() {
   // Sync state with LocalStorage
   useEffect(() => {
     try {
-      localStorage.setItem("dr_vinish_doctor_queue", JSON.stringify(queue));
+      saveQueue(queue);
     } catch (e) {
       console.warn("Failed to save queue state", e);
     }
@@ -187,18 +189,13 @@ export default function MyQueue() {
   useEffect(() => {
     const syncFromStorage = () => {
       try {
-        const saved = localStorage.getItem("dr_vinish_doctor_queue");
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            setQueue((prev) => {
-              // Only update if different
-              if (JSON.stringify(prev) !== JSON.stringify(parsed)) {
-                return parsed;
-              }
-              return prev;
-            });
-          }
+        const sharedQueue = readStoredArray(SHARED_QUEUE_STORAGE_KEY);
+        const doctorQueue = readStoredArray(DOCTOR_QUEUE_STORAGE_KEY);
+        const parsed = (sharedQueue.length ? sharedQueue : doctorQueue).map(normalizeQueueItem);
+        if (parsed.length) {
+          setQueue((prev) => (
+            JSON.stringify(prev) !== JSON.stringify(parsed) ? parsed : prev
+          ));
         }
       } catch (e) {
         console.warn("Sync queue error", e);
@@ -274,8 +271,7 @@ export default function MyQueue() {
   // ACTIONS
   const handleResetDefaultQueue = () => {
     try {
-      localStorage.setItem("dr_vinish_doctor_queue", JSON.stringify(DEFAULT_QUEUE));
-      localStorage.setItem("dr_vinish_queue", JSON.stringify(DEFAULT_QUEUE));
+      saveQueue(DEFAULT_QUEUE);
       setQueue(DEFAULT_QUEUE);
       toast.success("Doctor Queue reset with fresh waiting patients!");
     } catch (e) {
@@ -284,6 +280,11 @@ export default function MyQueue() {
   };
 
   const handleCallNextPatient = () => {
+    if (currentConsultation) {
+      toast.info("Complete the current consultation before calling the next patient.");
+      return;
+    }
+
     if (!nextWaitingPatient) {
       toast.info("No waiting patients in your queue!");
       return;
@@ -295,15 +296,9 @@ export default function MyQueue() {
     });
 
     setQueue((prev) =>
-      prev.map((item) => {
-        if (item.status === "IN_CONSULTATION") {
-          return { ...item, status: "COMPLETED", endTime: nowStr };
-        }
-        if (item.id === nextWaitingPatient.id) {
-          return { ...item, status: "IN_CONSULTATION", startTime: nowStr };
-        }
-        return item;
-      })
+      prev.map((item) => item.id === nextWaitingPatient.id
+        ? { ...item, status: "IN_CONSULTATION", startTime: nowStr }
+        : item)
     );
 
     toast.success(
@@ -313,44 +308,39 @@ export default function MyQueue() {
   };
 
   const handleStartConsultation = (id) => {
+    if (currentConsultation && currentConsultation.id !== id) {
+      toast.info("Complete the current consultation before starting another patient.");
+      return;
+    }
+
     const nowStr = new Date().toLocaleTimeString([], {
       hour: "2-digit",
       minute: "2-digit",
     });
 
     setQueue((prev) =>
-      prev.map((item) => {
-        if (item.status === "IN_CONSULTATION" && item.id !== id) {
-          return { ...item, status: "COMPLETED", endTime: nowStr };
-        }
-        if (item.id === id) {
-          return { ...item, status: "IN_CONSULTATION", startTime: nowStr };
-        }
-        return item;
-      })
+      prev.map((item) => item.id === id
+        ? { ...item, status: "IN_CONSULTATION", startTime: nowStr }
+        : item)
     );
 
     const pt = queue.find((q) => q.id === id);
     toast.success(`Started consultation for Token ${pt?.tokenNumber || id}`);
   };
 
-  const handleCompleteConsultation = (id, openPrescription = false) => {
-    const nowStr = new Date().toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-
-    setQueue((prev) =>
-      prev.map((item) =>
-        item.id === id ? { ...item, status: "COMPLETED", endTime: nowStr } : item
-      )
-    );
-
+  const handleOpenConsultation = (id) => {
     const pt = queue.find((q) => q.id === id);
-    toast.success(`Consultation completed for Token ${pt?.tokenNumber || id}`);
+    if (!pt) {
+      toast.error("Patient not found in the current queue.");
+      return;
+    }
 
-    if (openPrescription) {
-      navigate("/doctor/consultation");
+    try {
+      localStorage.setItem(CURRENT_CONSULTATION_STORAGE_KEY, JSON.stringify(pt));
+      navigate("/doctor/consultation", { state: { patient: pt } });
+    } catch (error) {
+      console.error("Unable to open the patient consultation:", error);
+      toast.error("Unable to open this patient's consultation.");
     }
   };
 
@@ -449,7 +439,7 @@ export default function MyQueue() {
                 Vitals & Notes
               </button>
               <button
-                onClick={() => handleCompleteConsultation(currentConsultation.id, true)}
+                onClick={() => handleOpenConsultation(currentConsultation.id)}
                 className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-md transition"
               >
                 <MessageSquare className="w-4 h-4" />
@@ -635,7 +625,10 @@ export default function MyQueue() {
                           {item.patientName}
                         </h4>
                         <span className="text-xs text-slate-500 font-normal">
-                          ({item.gender}, {item.age} yrs)
+                          ({item.gender},{" "}
+                          {item.age !== '' && item.age != null
+                            ? `${item.age} yrs`
+                            : 'Age not provided'})
                         </span>
 
                         {isEmergency && (
@@ -707,7 +700,7 @@ export default function MyQueue() {
 
                       {item.status === "IN_CONSULTATION" && (
                         <button
-                          onClick={() => handleCompleteConsultation(item.id, true)}
+                          onClick={() => handleOpenConsultation(item.id)}
                           className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1 shadow-sm"
                         >
                           <MessageSquare className="w-3.5 h-3.5" />

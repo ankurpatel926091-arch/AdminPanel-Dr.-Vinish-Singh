@@ -598,31 +598,31 @@ export default function PatientRegistration() {
 
               <tr className="border-b border-slate-200 bg-slate-50">
 
-                <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <th className="px-3.5 py-2.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">
                   Patient
                 </th>
 
-                <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <th className="px-3.5 py-2.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">
                   UHID
                 </th>
 
-                <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <th className="px-3.5 py-2.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">
                   Age / Gender
                 </th>
 
-                <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <th className="px-3.5 py-2.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">
                   Mobile
                 </th>
 
-                <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <th className="px-3.5 py-2.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">
                   Address
                 </th>
 
-                <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <th className="px-3.5 py-2.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">
                   Status
                 </th>
 
-                <th className="px-5 py-3 text-center text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <th className="px-3.5 py-2.5 text-center text-[11px] font-bold uppercase tracking-wider text-slate-500">
                   Action
                 </th>
 
@@ -642,22 +642,22 @@ export default function PatientRegistration() {
                   >
 
                     {/* Patient */}
-                    <td className="px-5 py-4">
+                    <td className="px-3.5 py-2.5">
 
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2.5">
 
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-50 text-blue-600">
-                          <User size={18} />
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-50 text-blue-600">
+                          <User size={15} />
                         </div>
 
                         <div>
 
-                          <p className="font-semibold text-slate-800">
+                          <p className="text-xs sm:text-[13px] font-bold text-slate-800 leading-tight">
                             {patient.firstName}{" "}
                             {patient.lastName}
                           </p>
 
-                          <p className="mt-1 text-xs text-slate-500">
+                          <p className="mt-0.5 text-[11px] text-slate-500">
                             Registered{" "}
                             {patient.createdAt}
                           </p>
@@ -669,16 +669,16 @@ export default function PatientRegistration() {
                     </td>
 
                     {/* UHID */}
-                    <td className="px-5 py-4">
+                    <td className="px-3.5 py-2.5">
 
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5">
 
                         <Hash
-                          size={15}
-                          className="text-blue-500"
+                          size={13}
+                          className="text-blue-500 shrink-0"
                         />
 
-                        <span className="text-sm font-semibold text-slate-700">
+                        <span className="font-mono text-xs font-semibold text-slate-700">
                           {patient.patientId}
                         </span>
 
@@ -687,29 +687,29 @@ export default function PatientRegistration() {
                     </td>
 
                     {/* Age Gender */}
-                    <td className="px-5 py-4">
+                    <td className="px-3.5 py-2.5">
 
-                      <p className="text-sm font-medium text-slate-700">
-                        {patient.age || "-"} years
+                      <p className="text-xs font-medium text-slate-700">
+                        {patient.age || "-"} yrs
                       </p>
 
-                      <p className="mt-1 text-xs text-slate-500">
+                      <p className="mt-0.5 text-[11px] text-slate-500">
                         {patient.gender}
                       </p>
 
                     </td>
 
                     {/* Mobile */}
-                    <td className="px-5 py-4">
+                    <td className="px-3.5 py-2.5 whitespace-nowrap">
 
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5">
 
                         <Phone
-                          size={15}
-                          className="text-slate-400"
+                          size={13}
+                          className="text-slate-400 shrink-0"
                         />
 
-                        <span className="text-sm text-slate-700">
+                        <span className="text-xs text-slate-700">
                           {patient.mobile}
                         </span>
 
@@ -718,16 +718,16 @@ export default function PatientRegistration() {
                     </td>
 
                     {/* Address */}
-                    <td className="max-w-[220px] px-5 py-4">
+                    <td className="max-w-[200px] px-3.5 py-2.5">
 
-                      <div className="flex items-start gap-2">
+                      <div className="flex items-start gap-1.5">
 
                         <MapPin
-                          size={15}
+                          size={13}
                           className="mt-0.5 shrink-0 text-slate-400"
                         />
 
-                        <span className="truncate text-sm text-slate-600">
+                        <span className="truncate text-xs text-slate-600">
                           {patient.address || "-"}
                         </span>
 
@@ -736,10 +736,10 @@ export default function PatientRegistration() {
                     </td>
 
                     {/* Status */}
-                    <td className="px-5 py-4">
+                    <td className="px-3.5 py-2.5 whitespace-nowrap">
 
                       <span
-                        className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-medium ${
+                        className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium ${
                           patient.status ===
                           "Active"
                             ? "border-green-200 bg-green-50 text-green-700"
@@ -750,7 +750,7 @@ export default function PatientRegistration() {
                         {patient.status ===
                           "Active" && (
                           <CheckCircle2
-                            size={13}
+                            size={12}
                           />
                         )}
 
@@ -761,9 +761,9 @@ export default function PatientRegistration() {
                     </td>
 
                     {/* Action */}
-                    <td className="px-5 py-4">
+                    <td className="px-3.5 py-2.5 whitespace-nowrap text-center">
 
-                      <div className="flex justify-center gap-1.5">
+                      <div className="flex justify-center gap-1">
 
                         <button
                           onClick={() =>
@@ -772,7 +772,7 @@ export default function PatientRegistration() {
                             )
                           }
                           title="View Patient Details"
-                          className="rounded-lg border border-slate-200 bg-white p-2 text-slate-600 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600"
+                          className="rounded-lg border border-slate-200 bg-white p-1.5 text-slate-600 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600"
                         >
                           <Eye size={17} />
                         </button>
@@ -842,26 +842,26 @@ export default function PatientRegistration() {
 
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
 
-          <div className="flex max-h-[94vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+          <div className="flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
 
             {/* Modal Header */}
 
-            <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+            <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
 
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2.5">
 
-                <div className="rounded-lg bg-blue-50 p-2 text-blue-600">
-                  {editingPatientId ? <Edit size={20} /> : <UserPlus size={20} />}
+                <div className="rounded-lg bg-blue-50 p-1.5 text-blue-600">
+                  {editingPatientId ? <Edit size={18} /> : <UserPlus size={18} />}
                 </div>
 
                 <div>
-                  <h2 className="font-bold text-slate-900">
+                  <h2 className="text-sm sm:text-base font-bold text-slate-900">
                     {editingPatientId
                       ? `Edit Patient Demographics (${editingPatientId})`
                       : "Register New Patient"}
                   </h2>
 
-                  <p className="text-xs text-slate-500">
+                  <p className="text-[11px] text-slate-500">
                     {editingPatientId
                       ? "Update demographic and contact details"
                       : "Create a permanent patient profile"}
@@ -874,9 +874,9 @@ export default function PatientRegistration() {
                 onClick={() =>
                   setShowForm(false)
                 }
-                className="rounded-lg p-2 text-slate-500 transition hover:bg-slate-100"
+                className="rounded-lg p-1.5 text-slate-500 transition hover:bg-slate-100"
               >
-                <X size={20} />
+                <X size={18} />
               </button>
 
             </div>
@@ -888,20 +888,20 @@ export default function PatientRegistration() {
               className="overflow-y-auto"
             >
 
-              <div className="p-5">
+              <div className="p-4 space-y-3.5">
 
                 {/* Error */}
 
                 {formError && (
 
-                  <div className="mb-5 flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 p-3">
+                  <div className="flex items-start gap-2.5 rounded-lg border border-red-200 bg-red-50 p-2.5">
 
                     <AlertCircle
-                      size={18}
+                      size={16}
                       className="mt-0.5 shrink-0 text-red-600"
                     />
 
-                    <p className="text-sm text-red-700">
+                    <p className="text-xs text-red-700">
                       {formError}
                     </p>
 
@@ -913,14 +913,14 @@ export default function PatientRegistration() {
 
                 {successMessage && (
 
-                  <div className="mb-5 flex items-center gap-3 rounded-lg border border-green-200 bg-green-50 p-3">
+                  <div className="flex items-center gap-2.5 rounded-lg border border-green-200 bg-green-50 p-2.5">
 
                     <CheckCircle2
-                      size={18}
+                      size={16}
                       className="text-green-600"
                     />
 
-                    <p className="text-sm font-medium text-green-700">
+                    <p className="text-xs font-medium text-green-700">
                       {successMessage}
                     </p>
 
@@ -932,22 +932,22 @@ export default function PatientRegistration() {
                     Basic Information
                 ================================================= */}
 
-                <div className="mb-6">
+                <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-3">
 
-                  <div className="mb-4 flex items-center gap-2 border-b border-slate-100 pb-3">
+                  <div className="mb-2.5 flex items-center gap-1.5 border-b border-slate-200/60 pb-2">
 
                     <User
-                      size={18}
+                      size={15}
                       className="text-blue-600"
                     />
 
-                    <h3 className="font-semibold text-slate-800">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">
                       Basic Information
                     </h3>
 
                   </div>
 
-                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div className="grid grid-cols-1 gap-2.5 md:grid-cols-2">
 
                     {/* First Name */}
 
@@ -975,15 +975,15 @@ export default function PatientRegistration() {
 
                     <div>
 
-                      <label className="mb-1.5 block text-sm font-medium text-slate-700">
+                      <label className="mb-0.5 block text-[11px] font-semibold text-slate-700">
                         Date of Birth
                       </label>
 
                       <div className="relative">
 
                         <Calendar
-                          size={17}
-                          className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                          size={14}
+                          className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400"
                         />
 
                         <input
@@ -995,7 +995,7 @@ export default function PatientRegistration() {
                           onChange={
                             handleDobChange
                           }
-                          className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-3 text-sm outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100"
+                          className="w-full rounded-lg border border-slate-200 bg-white py-1.5 pl-8 pr-2.5 text-xs outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-100"
                         />
 
                       </div>
@@ -1006,7 +1006,7 @@ export default function PatientRegistration() {
 
                     <div>
 
-                      <label className="mb-1.5 block text-sm font-medium text-slate-700">
+                      <label className="mb-0.5 block text-[11px] font-semibold text-slate-700">
                         Age
                       </label>
 
@@ -1018,7 +1018,7 @@ export default function PatientRegistration() {
                         placeholder="Age"
                         min="0"
                         max="120"
-                        className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100"
+                        className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-100"
                       />
 
                     </div>
@@ -1027,7 +1027,7 @@ export default function PatientRegistration() {
 
                     <div>
 
-                      <label className="mb-1.5 block text-sm font-medium text-slate-700">
+                      <label className="mb-0.5 block text-[11px] font-semibold text-slate-700">
                         Gender{" "}
                         <span className="text-red-500">
                           *
@@ -1038,7 +1038,7 @@ export default function PatientRegistration() {
                         name="gender"
                         value={formData.gender}
                         onChange={handleChange}
-                        className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100"
+                        className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-100"
                       >
                         <option value="">
                           Select gender
@@ -1067,22 +1067,22 @@ export default function PatientRegistration() {
                     Contact Information
                 ================================================= */}
 
-                <div className="mb-6">
+                <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-3">
 
-                  <div className="mb-4 flex items-center gap-2 border-b border-slate-100 pb-3">
+                  <div className="mb-2.5 flex items-center gap-1.5 border-b border-slate-200/60 pb-2">
 
                     <Phone
-                      size={18}
+                      size={15}
                       className="text-blue-600"
                     />
 
-                    <h3 className="font-semibold text-slate-800">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">
                       Contact Information
                     </h3>
 
                   </div>
 
-                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div className="grid grid-cols-1 gap-2.5 md:grid-cols-2">
 
                     {/* Mobile */}
 
@@ -1111,7 +1111,7 @@ export default function PatientRegistration() {
 
                     <div className="md:col-span-2">
 
-                      <label className="mb-1.5 block text-sm font-medium text-slate-700">
+                      <label className="mb-0.5 block text-[11px] font-semibold text-slate-700">
                         Address
                       </label>
 
@@ -1119,9 +1119,9 @@ export default function PatientRegistration() {
                         name="address"
                         value={formData.address}
                         onChange={handleChange}
-                        rows={3}
+                        rows={2}
                         placeholder="Enter complete address"
-                        className="w-full resize-none rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100"
+                        className="w-full resize-none rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-100"
                       />
 
                     </div>
@@ -1147,25 +1147,23 @@ export default function PatientRegistration() {
                     Verification Note
                 ================================================= */}
 
-                <div className="flex gap-3 rounded-xl border border-blue-100 bg-blue-50 p-4">
+                <div className="flex gap-2.5 rounded-xl border border-blue-100 bg-blue-50 p-2.5">
 
                   <ShieldCheck
-                    size={20}
+                    size={16}
                     className="mt-0.5 shrink-0 text-blue-600"
                   />
 
                   <div>
 
-                    <p className="text-sm font-semibold text-blue-800">
+                    <p className="text-xs font-semibold text-blue-800">
                       Patient Verification
                     </p>
 
-                    <p className="mt-1 text-xs leading-5 text-blue-700">
+                    <p className="mt-0.5 text-[11px] leading-4 text-blue-700">
                       Before creating a new profile, verify
                       that the patient does not already exist
                       using UHID or verified mobile number.
-                      This helps prevent duplicate patient
-                      records.
                     </p>
 
                   </div>
@@ -1178,30 +1176,30 @@ export default function PatientRegistration() {
                   Footer
               ================================================= */}
 
-              <div className="flex flex-wrap justify-end gap-2 border-t border-slate-200 bg-slate-50 px-5 py-4">
+              <div className="flex flex-wrap justify-end gap-2 border-t border-slate-200 bg-slate-50 px-4 py-2.5">
 
                 <button
                   type="button"
                   onClick={() =>
                     setShowForm(false)
                   }
-                  className="rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100"
+                  className="rounded-lg border border-slate-200 bg-white px-3.5 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-100"
                 >
                   Cancel
                 </button>
 
                 <button
                   type="submit"
-                  className="flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700"
+                  className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-1.5 text-xs font-semibold text-white transition hover:bg-blue-700"
                 >
                   {editingPatientId ? (
                     <>
-                      <Edit size={17} />
+                      <Edit size={14} />
                       Save Changes
                     </>
                   ) : (
                     <>
-                      <UserPlus size={17} />
+                      <UserPlus size={14} />
                       Register Patient
                     </>
                   )}
@@ -1601,12 +1599,12 @@ function FormInput({
   return (
     <div>
 
-      <label className="mb-1.5 block text-sm font-medium text-slate-700">
+      <label className="mb-0.5 block text-[11px] font-semibold text-slate-700">
 
         {label}
 
         {required && (
-          <span className="ml-1 text-red-500">
+          <span className="ml-0.5 text-red-500">
             *
           </span>
         )}
@@ -1620,7 +1618,7 @@ function FormInput({
         onChange={onChange}
         placeholder={placeholder}
         required={required}
-        className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100"
+        className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs outline-none transition focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-100"
       />
 
     </div>
