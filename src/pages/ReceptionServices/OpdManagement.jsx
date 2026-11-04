@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useAdminData } from '../../context/AdminDataContext';
 import { toast } from 'react-toastify';
 import useDebouncedValue from '../../hooks/useDebouncedValue';
@@ -330,59 +331,74 @@ export default function OpdManagement() {
         </div>
       </div>
 
-      {/* New OPD Check-in Modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4 relative animate-in fade-in zoom-in duration-200">
-            <div className="flex items-center justify-between border-b pb-3">
-              <h3 className="font-bold text-slate-800 text-lg flex items-center gap-2">
-                <Stethoscope className="w-5 h-5 text-blue-600" />
-                New OPD Token Check-in
+            {/* New OPD Check-in Modal */}
+      {showAddModal && createPortal(
+        <div 
+          className="fixed inset-0 z-[9999] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 cursor-pointer"
+          onClick={() => setShowAddModal(false)}
+        >
+          <div 
+            className="bg-white rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-2xl space-y-4 relative cursor-default animate-in fade-in zoom-in-95 duration-200 border border-slate-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="font-bold text-slate-800 text-base flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+                  <Stethoscope className="w-4 h-4" />
+                </div>
+                <span>New OPD Token Check-in</span>
               </h3>
-              <button onClick={() => setShowAddModal(false)} className="text-slate-400 hover:text-slate-600 p-1">
-                <X className="w-5 h-5" />
+              <button 
+                onClick={() => setShowAddModal(false)} 
+                className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 p-1.5 rounded-lg transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            <form onSubmit={handleAddSubmit} className="space-y-4">
+            <form onSubmit={handleAddSubmit} className="space-y-3.5">
               <div>
-                <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Patient Full Name *</label>
+                <label className="block text-[11px] font-semibold text-slate-700 uppercase mb-1">
+                  Patient Full Name <span className="text-red-500">*</span>
+                </label>
                 <input
                   type="text"
                   required
                   placeholder="e.g. Ankur Patel"
                   value={formData.patientName}
                   onChange={(e) => setFormData({ ...formData, patientName: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Phone Number *</label>
+                  <label className="block text-[11px] font-semibold text-slate-700 uppercase mb-1">
+                    Phone Number <span className="text-red-500">*</span>
+                  </label>
                   <input
                     type="text"
                     required
-                    placeholder="9876543210"
+                    placeholder="10-digit mobile"
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    className="w-full px-3 py-2 border rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Age / Gender</label>
+                  <label className="block text-[11px] font-semibold text-slate-700 uppercase mb-1">Age / Gender</label>
                   <div className="flex gap-2">
                     <input
                       type="number"
                       placeholder="Age"
                       value={formData.age}
                       onChange={(e) => setFormData({ ...formData, age: e.target.value })}
-                      className="w-1/2 px-3 py-2 border rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                      className="w-1/2 px-2.5 py-2 border border-slate-200 rounded-lg text-xs font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
                     />
                     <select
                       value={formData.gender}
                       onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
-                      className="w-1/2 px-2 py-2 border rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                      className="w-1/2 px-2 py-2 border border-slate-200 rounded-lg text-xs font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
                     >
                       <option value="Male">Male</option>
                       <option value="Female">Female</option>
@@ -393,11 +409,11 @@ export default function OpdManagement() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-600 uppercase mb-1">OPD Centre / Clinic</label>
+                <label className="block text-[11px] font-semibold text-slate-700 uppercase mb-1">OPD Centre / Clinic</label>
                 <select
                   value={formData.clinic}
                   onChange={(e) => setFormData({ ...formData, clinic: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
                 >
                   {CLINICS.map((c) => (
                     <option key={c.id} value={c.name}>
@@ -407,58 +423,69 @@ export default function OpdManagement() {
                 </select>
               </div>
 
-              <div className="pt-2 flex justify-end gap-3 border-t">
+              <div className="pt-3 flex justify-end gap-2.5 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
-                  className="px-4 py-2 border rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50"
+                  className="px-3.5 py-2 border border-slate-200 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold text-sm rounded-xl shadow-lg shadow-blue-600/30"
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-lg shadow-xs transition-colors"
                 >
                   Generate OPD Token
                 </button>
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {/* Details Drawer / Modal */}
-      {selectedPatient && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 relative">
-            <div className="flex items-center justify-between border-b pb-3">
-              <h3 className="font-bold text-slate-800 text-base">OPD Patient Details</h3>
-              <button onClick={() => setSelectedPatient(null)} className="text-slate-400 hover:text-slate-600 p-1">
-                <X className="w-5 h-5" />
+            {/* Details Drawer / Modal */}
+      {selectedPatient && createPortal(
+        <div 
+          className="fixed inset-0 z-[9999] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 cursor-pointer"
+          onClick={() => setSelectedPatient(null)}
+        >
+          <div 
+            className="bg-white rounded-2xl max-w-md w-full p-5 shadow-2xl space-y-4 relative cursor-default border border-slate-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="font-bold text-slate-800 text-sm">OPD Patient Details</h3>
+              <button 
+                onClick={() => setSelectedPatient(null)} 
+                className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 p-1.5 rounded-lg transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
               </button>
             </div>
-            <div className="space-y-3 text-sm">
-              <div className="flex justify-between items-center p-3 bg-blue-50 rounded-xl">
-                <span className="font-bold text-blue-900 text-base">{selectedPatient.patientName || selectedPatient.name}</span>
-                <span className="px-2.5 py-1 bg-blue-600 text-white font-extrabold text-xs rounded-lg">{selectedPatient.token || 'T-001'}</span>
+            <div className="space-y-3 text-xs">
+              <div className="flex justify-between items-center p-3 bg-blue-50/80 rounded-xl border border-blue-100">
+                <span className="font-bold text-blue-900 text-sm">{selectedPatient.patientName || selectedPatient.name}</span>
+                <span className="px-2 py-0.5 bg-blue-600 text-white font-bold text-xs rounded-lg">{selectedPatient.token || 'T-001'}</span>
               </div>
-              <div className="grid grid-cols-2 gap-2 text-xs text-slate-600">
-                <div><span className="font-bold">UHID:</span> {selectedPatient.uhid || 'UHID-10293'}</div>
-                <div><span className="font-bold">Phone:</span> {selectedPatient.phone || '9876543210'}</div>
-                <div><span className="font-bold">Doctor:</span> {selectedPatient.doctor || 'Dr. Vinish Kumar Singh'}</div>
-                <div><span className="font-bold">Status:</span> {selectedPatient.status || 'Waiting'}</div>
+              <div className="grid grid-cols-2 gap-2 text-xs text-slate-600 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                <div><span className="font-bold text-slate-700">UHID:</span> {selectedPatient.uhid || 'UHID-10293'}</div>
+                <div><span className="font-bold text-slate-700">Phone:</span> {selectedPatient.phone || '9876543210'}</div>
+                <div><span className="font-bold text-slate-700">Doctor:</span> {selectedPatient.doctor || 'Dr. Vinish Kumar Singh'}</div>
+                <div><span className="font-bold text-slate-700">Status:</span> {selectedPatient.status || 'Waiting'}</div>
               </div>
             </div>
             <div className="pt-2 flex justify-end">
               <button
                 onClick={() => setSelectedPatient(null)}
-                className="px-4 py-2 bg-slate-800 text-white font-semibold text-xs rounded-xl"
+                className="px-4 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs rounded-lg transition-colors"
               >
                 Close
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

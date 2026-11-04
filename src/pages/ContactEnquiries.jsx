@@ -1,19 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import useDebouncedValue from '../hooks/useDebouncedValue';
 import { useAdminData } from '../context/AdminDataContext';
-import StatusBadge from '../components/common/StatusBadge';
 import Modal from '../components/common/Modal';
 import { Mail, Search, Eye, CheckCircle, Clock, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'react-toastify';
 
 export default function ContactEnquiries() {
   const { enquiries, fetchEnquiries, loadingEnquiries, updateEnquiryStatus } = useAdminData();
-  const [filter, setFilter] = useState('All');
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebouncedValue(search);
   const [selectedEnquiry, setSelectedEnquiry] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const ITEMS_PER_PAGE = 6;
+  const ITEMS_PER_PAGE = 20;
 
   useEffect(() => {
     fetchEnquiries();
@@ -22,14 +20,13 @@ export default function ContactEnquiries() {
   // Reset to page 1 when filter or search changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [filter, debouncedSearch]);
+  }, [debouncedSearch]);
 
   const filtered = enquiries.filter(item => {
-    const matchesFilter = filter === 'All' || item.status.toLowerCase() === filter.toLowerCase();
     const matchesSearch = item.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-                          item.subject.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-                          item.phone.includes(debouncedSearch);
-    return matchesFilter && matchesSearch;
+      item.subject.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+      item.phone.includes(debouncedSearch);
+    return matchesSearch;
   });
 
   // Pagination Calculations
@@ -64,7 +61,7 @@ export default function ContactEnquiries() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-extrabold text-slate-800">Contact Enquiries</h1>
-          <p className="text-sm text-slate-500 mt-1">Manage patient messages and consultation requests</p>
+          <p className="text-sm text-slate-500 mt-1"> patient messages and consultation requests</p>
         </div>
 
         {/* Search & Refresh */}
@@ -91,23 +88,6 @@ export default function ContactEnquiries() {
         </div>
       </div>
 
-      {/* Filter Tabs */}
-      <div className="flex items-center gap-2 border-b border-slate-200 pb-3">
-        {['All', 'New', 'Read', 'Replied'].map(tab => (
-          <button
-            key={tab}
-            onClick={() => setFilter(tab)}
-            className={`px-4 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
-              filter === tab
-                ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
-                : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
-            }`}
-          >
-            {tab}
-          </button>
-        ))}
-      </div>
-
       {/* Enquiries Table */}
       <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
         <div className="overflow-x-auto">
@@ -119,21 +99,20 @@ export default function ContactEnquiries() {
                 <th className="py-3.5 px-4">Phone</th>
                 <th className="py-3.5 px-4">Subject</th>
                 <th className="py-3.5 px-4">Date</th>
-                <th className="py-3.5 px-4">Status</th>
                 <th className="py-3.5 px-4 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-medium">
               {loadingEnquiries && filtered.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="py-12 text-center text-slate-400 font-medium">
+                  <td colSpan="6" className="py-12 text-center text-slate-400 font-medium">
                     <RefreshCw className="w-6 h-6 animate-spin mx-auto text-blue-600 mb-2" />
                     Loading contact enquiries...
                   </td>
                 </tr>
               ) : filtered.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="py-12 text-center text-slate-400 font-medium">
+                  <td colSpan="6" className="py-12 text-center text-slate-400 font-medium">
                     No contact enquiries found.
                   </td>
                 </tr>
@@ -148,9 +127,6 @@ export default function ContactEnquiries() {
                       <td className="py-4 px-4 text-slate-500">{enq.phone}</td>
                       <td className="py-4 px-4 text-slate-700 font-semibold">{enq.subject}</td>
                       <td className="py-4 px-4 text-slate-400">{enq.date}</td>
-                      <td className="py-4 px-4">
-                        <StatusBadge status={enq.status} />
-                      </td>
                       <td className="py-4 px-4 text-right">
                         <div className="flex items-center justify-end gap-1.5">
                           <button
@@ -203,11 +179,10 @@ export default function ContactEnquiries() {
                 <button
                   key={pageNum}
                   onClick={() => setCurrentPage(pageNum)}
-                  className={`w-8 h-8 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center ${
-                    validCurrentPage === pageNum
-                      ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
-                      : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
-                  }`}
+                  className={`w-8 h-8 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center ${validCurrentPage === pageNum
+                    ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
+                    : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+                    }`}
                 >
                   {pageNum}
                 </button>
@@ -261,23 +236,6 @@ export default function ContactEnquiries() {
               </p>
             </div>
 
-            <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
-              <span className="text-slate-400 font-semibold">Mark Status As:</span>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => { updateEnquiryStatus(selectedEnquiry._id || selectedEnquiry.id, 'Read'); setSelectedEnquiry(null); }}
-                  className="px-3 py-1.5 bg-sky-50 text-sky-700 border border-sky-200 rounded-lg font-bold hover:bg-sky-100"
-                >
-                  Read
-                </button>
-                <button
-                  onClick={() => { updateEnquiryStatus(selectedEnquiry._id || selectedEnquiry.id, 'Replied'); setSelectedEnquiry(null); }}
-                  className="px-3 py-1.5 bg-emerald-600 text-white rounded-lg font-bold hover:bg-emerald-700 shadow-xs"
-                >
-                  Mark Replied
-                </button>
-              </div>
-            </div>
           </div>
         </Modal>
       )}

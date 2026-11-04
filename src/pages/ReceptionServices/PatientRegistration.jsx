@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import useDebouncedValue from "../../hooks/useDebouncedValue";
 import {
   Search,
@@ -838,11 +839,11 @@ export default function PatientRegistration() {
           REGISTRATION MODAL
       ===================================================== */}
 
-      {showForm && (
+      {showForm && createPortal(
 
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 cursor-pointer" onClick={() => setShowForm(false)}>
 
-          <div className="flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+          <div className="flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl cursor-default" onClick={(e) => e.stopPropagation()}>
 
             {/* Modal Header */}
 
@@ -1219,11 +1220,11 @@ export default function PatientRegistration() {
           PATIENT DETAILS MODAL
       ===================================================== */}
 
-      {selectedPatient && (
+      {selectedPatient && createPortal(
 
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 cursor-pointer" onClick={() => setSelectedPatient(null)}>
 
-          <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white shadow-2xl">
+          <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white shadow-2xl cursor-default" onClick={(e) => e.stopPropagation()}>
 
             {/* Header */}
 
@@ -1410,9 +1411,9 @@ export default function PatientRegistration() {
           SUCCESS CONFIRMATION & REGISTRATION SLIP MODAL
       ===================================================== */}
 
-      {registeredSuccessData && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-          <div className="flex max-h-[95vh] w-full max-w-xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl animate-in fade-in zoom-in duration-200">
+      {registeredSuccessData && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 cursor-pointer" onClick={() => setRegisteredSuccessData(null)}>
+          <div className="flex max-h-[95vh] w-full max-w-xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl animate-in fade-in zoom-in duration-200 cursor-default" onClick={(e) => e.stopPropagation()}>
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4 bg-emerald-50/50">
               <div className="flex items-center gap-3">

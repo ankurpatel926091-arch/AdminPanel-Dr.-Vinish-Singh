@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import useDebouncedValue from "../../hooks/useDebouncedValue";
 import { useLocation } from "react-router-dom";
 import { toast } from "react-toastify";
@@ -1402,9 +1403,9 @@ export default function Billing() {
           Create New Bill Modal
       ========================================= */}
 
-      {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-3 sm:p-4 backdrop-blur-xs">
-          <div className="flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+      {showCreateModal && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/60 p-3 sm:p-4 backdrop-blur-xs cursor-pointer" onClick={() => setShowCreateModal(false)}>
+          <div className="flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl cursor-default" onClick={(e) => e.stopPropagation()}>
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50/80 px-4 py-2.5 sm:px-5 sm:py-3">
               <div className="flex items-center gap-2.5">
@@ -2035,9 +2036,9 @@ export default function Billing() {
           Edit Bill Modal
       ========================================= */}
 
-      {editingBill && editFormData && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
-          <div className="flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+      {editingBill && editFormData && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs cursor-pointer" onClick={() => { setEditingBill(null); setEditFormData(null); }}>
+          <div className="flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl cursor-default" onClick={(e) => e.stopPropagation()}>
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-6 py-4">
               <div className="flex items-center gap-3">
@@ -2773,7 +2774,7 @@ export default function Billing() {
 
       {paymentBill && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl">
+          <div className="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl cursor-default" onClick={(e) => e.stopPropagation()}>
             {/* Header */}
             <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
               <div>

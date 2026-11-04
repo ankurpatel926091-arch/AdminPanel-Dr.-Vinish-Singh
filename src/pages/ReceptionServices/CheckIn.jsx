@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import useDebouncedValue from "../../hooks/useDebouncedValue";
 import { useNavigate } from "react-router-dom";
 import {
@@ -800,9 +801,9 @@ export default function CheckIn() {
           CHECK-IN & VERIFICATION MODAL
       ===================================================== */}
 
-      {showCheckInModal && selectedAppointment && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
-          <div className="flex max-h-[94vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+      {showCheckInModal && selectedAppointment && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs cursor-pointer" onClick={closeModal}>
+          <div className="flex max-h-[94vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl animate-in fade-in zoom-in-95 duration-150 cursor-default" onClick={(e) => e.stopPropagation()}>
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3 bg-slate-50/50">
               <div className="flex items-center gap-2.5">

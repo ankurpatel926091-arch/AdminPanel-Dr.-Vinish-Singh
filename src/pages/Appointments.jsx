@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useAdminData } from '../context/AdminDataContext';
 import { toast } from 'react-toastify';
 import useDebouncedValue from '../hooks/useDebouncedValue';
@@ -716,9 +717,9 @@ export default function Appointments() {
       </div>
 
       {/* ================= 5. ADD APPOINTMENT MODAL ================= */}
-      {showAddModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-7 shadow-2xl border border-slate-200 relative">
+      {showAddModal && createPortal(
+        <div className="fixed inset-0 z-[9999] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 cursor-pointer" onClick={() => setShowAddModal(false)}>
+          <div className="bg-white rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-2xl border border-slate-200 relative cursor-default" onClick={(e) => e.stopPropagation()}>
             <button
               onClick={() => setShowAddModal(false)}
               className="absolute top-5 right-5 text-slate-400 hover:text-slate-600 p-1 rounded-full cursor-pointer"
@@ -924,102 +925,137 @@ export default function Appointments() {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* ================= 5. VIEW APPOINTMENT DETAILS MODAL ================= */}
-      {viewAppointment && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-7 shadow-2xl border border-slate-200 relative animate-fadeIn">
-            <button
-              onClick={() => setViewAppointment(null)}
-              className="absolute top-5 right-5 text-slate-400 hover:text-slate-600 p-1 rounded-full cursor-pointer"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
-            {/* Clean Light Card matching Reference Photo 2 */}
-            <div className="p-5 sm:p-6 rounded-3xl bg-slate-50/70 border border-slate-200/80 mb-5 mt-2">
-              <div className="grid grid-cols-2 gap-y-4 gap-x-6 text-left">
-                {/* Patient Name */}
-                <div>
-                  <div className="text-xs font-semibold text-slate-400 mb-1">Patient Name:</div>
-                  <div className="text-sm font-extrabold text-slate-900">{viewAppointment.name}</div>
+      {viewAppointment && createPortal(
+        <div 
+          className="fixed inset-0 z-[9999] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 cursor-pointer"
+          onClick={() => setViewAppointment(null)}
+        >
+          <div 
+            className="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-slate-200 overflow-hidden cursor-default animate-fadeIn"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 bg-slate-50/80">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center">
+                  <CalendarIcon className="w-4 h-4" />
                 </div>
-
-                {/* Phone */}
                 <div>
-                  <div className="text-xs font-semibold text-slate-400 mb-1">Phone:</div>
-                  <div className="text-sm font-extrabold text-slate-900">{viewAppointment.phone}</div>
-                </div>
-
-                <div>
-                  <div className="text-xs font-semibold text-slate-400 mb-1">Age:</div>
-                  <div className="text-sm font-extrabold text-slate-900">
-                    {viewAppointment.age !== undefined && viewAppointment.age !== null && viewAppointment.age !== ''
-                      ? `${viewAppointment.age} years`
-                      : 'Not provided'}
-                  </div>
-                </div>
-
-                {/* Gmail / Email */}
-                {getAppointmentEmail(viewAppointment) ? (
-                  <div className="col-span-2 sm:col-span-1">
-                    <div className="text-xs font-semibold text-slate-400 mb-1">Gmail / Email:</div>
-                    <div className="text-xs sm:text-sm font-bold text-blue-600 break-all">{getAppointmentEmail(viewAppointment)}</div>
-                  </div>
-                ) : null}
-
-                {/* Subject / Treatment */}
-                <div>
-                  <div className="text-xs font-semibold text-slate-400 mb-1">Subject / Treatment:</div>
-                  <div className="text-xs sm:text-sm font-extrabold text-blue-600">{viewAppointment.problem}</div>
-                </div>
-
-                {/* Date & Time */}
-                <div>
-                  <div className="text-xs font-semibold text-slate-400 mb-1">Date & Time:</div>
-                  <div className="text-xs sm:text-sm font-extrabold text-slate-800">
-                    {viewAppointment.date} {viewAppointment.time ? `• ${viewAppointment.time}` : ''}
-                  </div>
-                </div>
-
-                {/* Consultation Type */}
-                <div>
-                  <div className="text-xs font-semibold text-slate-400 mb-1">Consultation Type:</div>
-                  <div className="text-xs font-extrabold text-slate-800">{getAppointmentConsultationType(viewAppointment)}</div>
+                  <h3 className="text-sm font-bold text-slate-800">Appointment Details</h3>
+                  <p className="text-[11px] text-slate-500">Patient information & appointment summary</p>
                 </div>
               </div>
+              <button
+                type="button"
+                onClick={() => setViewAppointment(null)}
+                className="text-slate-400 hover:text-slate-600 hover:bg-slate-200/60 p-1.5 rounded-lg transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
 
-            {/* Message Content Box matching Reference Photo 2 */}
-            <div className="space-y-2 mb-6 text-left">
-              <div className="text-xs font-bold text-slate-700">Message Content:</div>
-              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 text-xs sm:text-sm font-medium text-slate-700 leading-relaxed min-h-[60px]">
-                {cleanNotesMessage(viewAppointment.message) || (
-                  <span className="text-slate-400 italic">No additional message provided.</span>
-                )}
+            {/* Modal Body */}
+            <div className="p-5 space-y-4">
+              {/* Clean Patient Card */}
+              <div className="p-4 rounded-xl bg-slate-50/90 border border-slate-200/80">
+                <div className="grid grid-cols-2 gap-3 text-left">
+                  {/* Patient Name */}
+                  <div>
+                    <div className="text-[11px] font-semibold text-slate-400 mb-0.5">Patient Name:</div>
+                    <div className="text-sm font-bold text-slate-900">{viewAppointment.name}</div>
+                  </div>
+
+                  {/* Phone */}
+                  <div>
+                    <div className="text-[11px] font-semibold text-slate-400 mb-0.5">Phone:</div>
+                    <div className="text-xs sm:text-sm font-semibold text-slate-800">{viewAppointment.phone}</div>
+                  </div>
+
+                  {/* Age */}
+                  <div>
+                    <div className="text-[11px] font-semibold text-slate-400 mb-0.5">Age:</div>
+                    <div className="text-xs sm:text-sm font-semibold text-slate-800">
+                      {viewAppointment.age !== undefined && viewAppointment.age !== null && viewAppointment.age !== ''
+                        ? `${viewAppointment.age} years`
+                        : 'Not provided'}
+                    </div>
+                  </div>
+
+                  {/* Gmail / Email */}
+                  {getAppointmentEmail(viewAppointment) ? (
+                    <div>
+                      <div className="text-[11px] font-semibold text-slate-400 mb-0.5">Gmail / Email:</div>
+                      <div className="text-xs font-bold text-blue-600 break-all">{getAppointmentEmail(viewAppointment)}</div>
+                    </div>
+                  ) : (
+                    <div>
+                      <div className="text-[11px] font-semibold text-slate-400 mb-0.5">Gmail / Email:</div>
+                      <div className="text-xs text-slate-400 italic">Not provided</div>
+                    </div>
+                  )}
+
+                  {/* Subject / Treatment */}
+                  <div className="col-span-2">
+                    <div className="text-[11px] font-semibold text-slate-400 mb-1">Subject / Treatment:</div>
+                    <div className="text-xs font-bold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-100 inline-block">
+                      {viewAppointment.problem}
+                    </div>
+                  </div>
+
+                  {/* Date & Time */}
+                  <div>
+                    <div className="text-[11px] font-semibold text-slate-400 mb-0.5">Date & Time:</div>
+                    <div className="text-xs font-bold text-slate-800 flex items-center gap-1 mt-0.5">
+                      <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                      <span>{viewAppointment.date} {viewAppointment.time ? `• ${viewAppointment.time}` : ''}</span>
+                    </div>
+                  </div>
+
+                  {/* Consultation Type */}
+                  <div>
+                    <div className="text-[11px] font-semibold text-slate-400 mb-0.5">Consultation Type:</div>
+                    <div className="text-xs font-bold text-slate-800 mt-0.5">
+                      {getConsultationTypeBadge(viewAppointment)}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Message Content Box */}
+              <div>
+                <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Message Content:</div>
+                <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 text-xs font-medium text-slate-700 leading-relaxed min-h-[50px]">
+                  {cleanNotesMessage(viewAppointment.message) || (
+                    <span className="text-slate-400 italic">No additional message provided.</span>
+                  )}
+                </div>
               </div>
             </div>
 
             {/* Modal Bottom Actions */}
-            <div className="pt-2 flex items-center justify-end gap-3">
+            <div className="px-5 py-3 bg-slate-50/80 border-t border-slate-100 flex items-center justify-end">
               <button
                 type="button"
                 onClick={() => setViewAppointment(null)}
-                className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs transition-all cursor-pointer"
+                className="px-4 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-lg text-xs transition-all cursor-pointer shadow-xs active:scale-95"
               >
                 Close
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* ================= 6. CONFIRM VISITED MODAL ================= */}
-      {confirmVisitedApt && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl border border-slate-200 relative text-center animate-fadeIn">
+      {confirmVisitedApt && createPortal(
+        <div className="fixed inset-0 z-[9999] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 cursor-pointer" onClick={() => setConfirmVisitedApt(null)}>
+          <div className="bg-white rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-slate-200 relative text-center animate-fadeIn cursor-default" onClick={(e) => e.stopPropagation()}>
             <button
               type="button"
               onClick={() => setConfirmVisitedApt(null)}
