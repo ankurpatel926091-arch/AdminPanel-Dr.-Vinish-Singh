@@ -33,7 +33,7 @@ export const toCheckInAppointment = (appointment, index = 0) => {
   let status = 'PENDING';
 
   if (['cancelled', 'canceled'].includes(sourceStatus)) status = 'CANCELLED';
-  else if (['missed', 'no_show', 'no show'].includes(sourceStatus)) status = 'NO_SHOW';
+  else if (['missed', 'no_show', 'no show'].includes(sourceStatus)) status = 'MISSED';
   else if (['visited', 'completed', 'consultation_completed'].includes(sourceStatus)) status = 'COMPLETED';
   else if (
     ['checked_in', 'checked-in'].includes(sourceStatus) ||
@@ -68,7 +68,7 @@ export const toCheckInAppointment = (appointment, index = 0) => {
   };
 };
 
-export const getStaticCheckInAppointments = (fallbackAppointments) => {
+export const getStaticCheckInAppointments = (fallbackAppointments = []) => {
   const savedCheckIns = readArray(CHECK_IN_APPOINTMENTS_STORAGE_KEY);
   const adminAppointments = readArray(APPOINTMENTS_STORAGE_KEY);
   const savedById = new Map(
@@ -79,11 +79,19 @@ export const getStaticCheckInAppointments = (fallbackAppointments) => {
     return { ...mapped, ...savedById.get(mapped.appointmentId) };
   });
   const adminIds = new Set(mappedAdminAppointments.map(getAppointmentId));
-  const standaloneCheckIns = savedCheckIns.filter(
-    (appointment) => !adminIds.has(getAppointmentId(appointment))
-  );
 
-  if (!savedCheckIns.length && !adminAppointments.length) {
+  // Purge any legacy dummy/mock static demo records
+  const mockNames = ['Rahul Sharma', 'Priya Verma', 'Suresh Kumar', 'Mohit Singh', 'Amit Gupta', 'Vikas Singh'];
+  const standaloneCheckIns = savedCheckIns.filter((appointment) => {
+    const rawId = String(getAppointmentId(appointment) || '');
+    const name = String(appointment.patientName || appointment.name || '');
+    if (adminIds.has(rawId)) return false;
+    if (rawId.startsWith('APT-100') || rawId.startsWith('APT-DEMO')) return false;
+    if (mockNames.includes(name)) return false;
+    return true;
+  });
+
+  if (!savedCheckIns.length && !adminAppointments.length && Array.isArray(fallbackAppointments) && fallbackAppointments.length > 0) {
     return fallbackAppointments.map(toCheckInAppointment);
   }
 

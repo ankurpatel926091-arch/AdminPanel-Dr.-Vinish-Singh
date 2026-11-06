@@ -2,6 +2,8 @@ import React, { useMemo, useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import useDebouncedValue from "../../hooks/useDebouncedValue";
 import { useNavigate } from "react-router-dom";
+import { useAdminData } from "../../context/AdminDataContext";
+import { toast } from "react-toastify";
 import {
   Search,
   User,
@@ -36,145 +38,7 @@ import {
    Mock Appointment Data
 ========================================================= */
 
-const defaultAppointments = [
-  {
-    appointmentId: "APT-1001",
-    patientId: "UHID-10245",
-    patientName: "Rahul Sharma",
-    age: 34,
-    gender: "Male",
-    mobile: "9876543210",
-
-    doctorId: "DOC-001",
-    doctorName: "Dr. Vinish Kumar Singh",
-    department: "Urology",
-
-    appointmentDate: "15 Sep 2026",
-    appointmentTime: "10:00 AM",
-
-    status: "CONFIRMED",
-
-    visitId: null,
-    tokenNumber: null,
-    checkInAt: null,
-    checkedInBy: null,
-  },
-
-  {
-    appointmentId: "APT-1002",
-    patientId: "UHID-10246",
-    patientName: "Priya Verma",
-    age: 31,
-    gender: "Female",
-    mobile: "9123456780",
-
-    doctorId: "DOC-001",
-    doctorName: "Dr. Vinish Kumar Singh",
-    department: "Urology",
-
-    appointmentDate: "15 Sep 2026",
-    appointmentTime: "10:30 AM",
-
-    status: "CONFIRMED",
-
-    visitId: null,
-    tokenNumber: null,
-    checkInAt: null,
-    checkedInBy: null,
-  },
-
-  {
-    appointmentId: "APT-1003",
-    patientId: "UHID-10247",
-    patientName: "Suresh Kumar",
-    age: 39,
-    gender: "Male",
-    mobile: "9988776655",
-
-    doctorId: "DOC-002",
-    doctorName: "Dr. Vinish Kumar Singh",
-    department: "Andrology",
-
-    appointmentDate: "15 Sep 2026",
-    appointmentTime: "11:00 AM",
-
-    status: "CONFIRMED",
-
-    visitId: null,
-    tokenNumber: null,
-    checkInAt: null,
-    checkedInBy: null,
-  },
-
-  {
-    appointmentId: "APT-1004",
-    patientId: "UHID-10248",
-    patientName: "Mohit Singh",
-    age: 35,
-    gender: "Male",
-    mobile: "9123456789",
-
-    doctorId: "DOC-001",
-    doctorName: "Dr. Vinish Kumar Singh",
-    department: "Urology",
-
-    appointmentDate: "15 Sep 2026",
-    appointmentTime: "11:30 AM",
-
-    status: "CHECKED_IN",
-
-    visitId: "VIS-5001",
-    tokenNumber: 1,
-    checkInAt: "09:42 AM",
-    checkedInBy: "REC-101 (Administrator)",
-  },
-
-  {
-    appointmentId: "APT-1005",
-    patientId: "UHID-10249",
-    patientName: "Amit Gupta",
-    age: 42,
-    gender: "Male",
-    mobile: "9000011223",
-
-    doctorId: "DOC-002",
-    doctorName: "Dr. Vinish Kumar Singh",
-    department: "Andrology",
-
-    appointmentDate: "15 Sep 2026",
-    appointmentTime: "12:00 PM",
-
-    status: "NO_SHOW",
-
-    visitId: null,
-    tokenNumber: null,
-    checkInAt: null,
-    checkedInBy: null,
-  },
-
-  {
-    appointmentId: "APT-1006",
-    patientId: "UHID-10250",
-    patientName: "Vikas Singh",
-    age: 37,
-    gender: "Male",
-    mobile: "9111122233",
-
-    doctorId: "DOC-001",
-    doctorName: "Dr. Vinish Kumar Singh",
-    department: "Urology",
-
-    appointmentDate: "15 Sep 2026",
-    appointmentTime: "12:30 PM",
-
-    status: "CANCELLED",
-
-    visitId: null,
-    tokenNumber: null,
-    checkInAt: null,
-    checkedInBy: null,
-  },
-];
+const defaultAppointments = [];
 
 /* =========================================================
    Status Styles
@@ -183,7 +47,8 @@ const defaultAppointments = [
 const statusStyles = {
   CONFIRMED: "border-blue-200 bg-blue-50 text-blue-700",
   CHECKED_IN: "border-green-200 bg-green-50 text-green-700",
-  NO_SHOW: "border-red-200 bg-red-50 text-red-700",
+  MISSED: "border-rose-200 bg-rose-50 text-rose-700",
+  NO_SHOW: "border-rose-200 bg-rose-50 text-rose-700",
   CANCELLED: "border-slate-200 bg-slate-100 text-slate-500",
   BILLING_PENDING: "border-amber-200 bg-amber-50 text-amber-700",
   PAYMENT_COMPLETED: "border-green-200 bg-green-50 text-green-700",
@@ -209,10 +74,18 @@ const getPatientDemographics = (appointment, ageUnit) => {
 
 export default function CheckIn() {
   const navigate = useNavigate();
+  const { appointments: realAdminAppointments } = useAdminData();
 
   const [appointments, setAppointments] = useState(() => {
-    return getStaticCheckInAppointments(defaultAppointments);
+    return getStaticCheckInAppointments([]);
   });
+
+  // Keep in sync with real admin appointments from database
+  useEffect(() => {
+    if (Array.isArray(realAdminAppointments)) {
+      setAppointments(getStaticCheckInAppointments([]));
+    }
+  }, [realAdminAppointments]);
 
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebouncedValue(search);
@@ -239,11 +112,16 @@ export default function CheckIn() {
   ========================================================= */
 
   const filteredAppointments = useMemo(() => {
+    // Only show Confirmed and Checked-in appointments (exclude Pending and Cancelled)
+    const confirmedList = appointments.filter(
+      (apt) => apt.status === "CONFIRMED" || apt.status === "CHECKED_IN"
+    );
+
     const value = debouncedSearch.toLowerCase().trim();
 
-    if (!value) return appointments;
+    if (!value) return confirmedList;
 
-    return appointments.filter((appointment) => {
+    return confirmedList.filter((appointment) => {
       const aptId = (appointment.appointmentId || "").toLowerCase();
       const patientId = (appointment.patientId || "").toLowerCase();
       const name = (appointment.patientName || "").toLowerCase();
@@ -262,7 +140,10 @@ export default function CheckIn() {
      Today's Statistics
   ========================================================= */
 
-  const totalAppointments = appointments.length;
+  const confirmedList = appointments.filter(
+    (item) => item.status === "CONFIRMED" || item.status === "CHECKED_IN"
+  );
+  const totalAppointments = confirmedList.length;
 
   const confirmedCount = appointments.filter(
     (item) => item.status === "CONFIRMED"
@@ -270,10 +151,6 @@ export default function CheckIn() {
 
   const checkedInCount = appointments.filter(
     (item) => item.status === "CHECKED_IN"
-  ).length;
-
-  const notEligibleCount = appointments.filter(
-    (item) => item.status === "CANCELLED" || item.status === "NO_SHOW"
   ).length;
 
   /* =========================================================
@@ -352,12 +229,9 @@ export default function CheckIn() {
 
     if (
       selectedAppointment.status === "CANCELLED" ||
-      selectedAppointment.status === "NO_SHOW"
+      selectedAppointment.status === "NO_SHOW" ||
+      selectedAppointment.status === "MISSED"
     ) {
-      return;
-    }
-
-    if (selectedAppointment.status === "CHECKED_IN") {
       return;
     }
 
@@ -366,45 +240,28 @@ export default function CheckIn() {
     const checkInAt = getCurrentTime();
     const checkedInBy = getLoggedInUser();
 
-    const updatedAppointments = appointments.map((appointment) =>
-      appointment.appointmentId === selectedAppointment.appointmentId
-        ? {
-            ...appointment,
-            status: "CHECKED_IN",
-            visitId,
-            tokenNumber,
-            checkInAt,
-            checkedInBy,
-          }
-        : appointment
-    );
-
-    setAppointments(updatedAppointments);
-
-    const successData = {
-      visitId,
-      tokenNumber,
-      patientName: selectedAppointment.patientName,
-      patientId: selectedAppointment.patientId,
-      appointmentId: selectedAppointment.appointmentId,
-      doctorName: selectedAppointment.doctorName,
-      department: selectedAppointment.department,
-      checkedInBy,
-      checkInAt,
-    };
-
-    setCheckInSuccess(successData);
-
-    setSelectedAppointment((prev) => ({
-      ...prev,
+    const updatedApt = {
+      ...selectedAppointment,
       status: "CHECKED_IN",
       visitId,
       tokenNumber,
       checkInAt,
       checkedInBy,
-    }));
+    };
 
-    // Keep the receptionist and doctor queue views on the same local queue.
+    const updatedAppointments = appointments.map((appointment) =>
+      appointment.appointmentId === selectedAppointment.appointmentId
+        ? updatedApt
+        : appointment
+    );
+
+    setAppointments(updatedAppointments);
+    try {
+      saveCheckInAppointments(updatedAppointments);
+    } catch (e) {
+      console.warn("Failed to persist checkin appointments", e);
+    }
+
     try {
       const existingQueue =
         readStoredArray(SHARED_QUEUE_STORAGE_KEY).length > 0
@@ -435,8 +292,21 @@ export default function CheckIn() {
       saveQueue([normalizeQueueItem(newQueueItem), ...filteredQueue.map(normalizeQueueItem)]);
     } catch (error) {
       console.error("Unable to add checked-in patient to doctor queue:", error);
-      alert("Check-in was saved, but the doctor queue could not be updated.");
     }
+
+    closeModal();
+    toast.success(`Check-In confirmed for ${selectedAppointment.patientName}! Opening OPD Billing...`);
+
+    navigate("/admin/billing", {
+      state: {
+        appointment: updatedApt,
+        visitId,
+        patientId: updatedApt.patientId,
+        patientName: updatedApt.patientName,
+        doctorName: updatedApt.doctorName,
+        autoOpenPayment: true,
+      },
+    });
   };
 
   /* =========================================================
@@ -493,16 +363,16 @@ export default function CheckIn() {
           STAT CARDS
       ===================================================== */}
 
-      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {/* Total */}
+      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+        {/* Total Confirmed */}
         <StatCard
-          title="Today's Appointments"
+          title="Confirmed Appointments"
           value={totalAppointments}
           icon={Calendar}
           iconClass="bg-blue-50 text-blue-600"
         />
 
-        {/* Confirmed */}
+        {/* Confirmed / Ready */}
         <StatCard
           title="Ready for Check-in"
           value={confirmedCount}
@@ -512,18 +382,10 @@ export default function CheckIn() {
 
         {/* Checked In */}
         <StatCard
-          title="Checked-in"
+          title="Checked-in Today"
           value={checkedInCount}
           icon={CheckCircle2}
           iconClass="bg-green-50 text-green-600"
-        />
-
-        {/* Not Eligible */}
-        <StatCard
-          title="Not Eligible"
-          value={notEligibleCount}
-          icon={AlertCircle}
-          iconClass="bg-red-50 text-red-600"
         />
       </div>
 
@@ -575,7 +437,7 @@ export default function CheckIn() {
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
           <div>
-            <h2 className="font-semibold text-slate-800">Today's Appointments</h2>
+            <h2 className="font-semibold text-slate-800">Confirmed Appointments</h2>
             <p className="mt-1 text-xs text-slate-500">
               {filteredAppointments.length} appointment
               {filteredAppointments.length !== 1 ? "s" : ""} found
@@ -623,7 +485,8 @@ export default function CheckIn() {
                   const alreadyChecked = appointment.status === "CHECKED_IN";
                   const blocked =
                     appointment.status === "CANCELLED" ||
-                    appointment.status === "NO_SHOW";
+                    appointment.status === "NO_SHOW" ||
+                    appointment.status === "MISSED";
                   const patientDemographics = getPatientDemographics(
                     appointment,
                     "yrs"
@@ -718,7 +581,7 @@ export default function CheckIn() {
                             "border-slate-200 bg-slate-50 text-slate-600"
                           }`}
                         >
-                          {appointment.status}
+                          {appointment.status === "NO_SHOW" || appointment.status === "MISSED" ? "Missed" : appointment.status}
                         </span>
 
                         {alreadyChecked && appointment.tokenNumber && (
@@ -932,7 +795,7 @@ export default function CheckIn() {
                       </div>
 
                       <span className="self-start rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-[11px] font-semibold text-blue-700">
-                        {selectedAppointment.status}
+                        {selectedAppointment.status === "NO_SHOW" || selectedAppointment.status === "MISSED" ? "Missed" : selectedAppointment.status}
                       </span>
                     </div>
                   </div>
@@ -1107,7 +970,8 @@ export default function CheckIn() {
               )}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

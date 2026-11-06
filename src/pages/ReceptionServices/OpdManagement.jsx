@@ -30,7 +30,7 @@ const CLINICS = [
 ];
 
 export default function OpdManagement() {
-  const { appointments, addAppointment, updateAppointmentStatus } = useAdminData();
+  const { appointments, addOpdRecord, updateAppointmentStatus } = useAdminData();
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearchTerm = useDebouncedValue(searchTerm);
   const [selectedClinic, setSelectedClinic] = useState('All');
@@ -93,8 +93,8 @@ export default function OpdManagement() {
       date: new Date().toLocaleDateString('en-GB'),
     };
 
-    if (addAppointment) {
-      addAppointment(newRecord);
+    if (addOpdRecord) {
+      addOpdRecord(newRecord);
     }
     toast.success(`OPD Token ${newToken} generated successfully!`);
     setShowAddModal(false);

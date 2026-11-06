@@ -1212,7 +1212,8 @@ export default function PatientRegistration() {
 
           </div>
 
-        </div>
+        </div>,
+        document.body
 
       )}
 
@@ -1403,7 +1404,8 @@ export default function PatientRegistration() {
 
           </div>
 
-        </div>
+        </div>,
+        document.body
 
       )}
 
@@ -1556,7 +1558,8 @@ export default function PatientRegistration() {
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Print Stylesheet */}

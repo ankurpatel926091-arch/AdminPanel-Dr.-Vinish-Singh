@@ -14,7 +14,7 @@ export default function RecentEnquiriesWidget() {
           <h3 className="text-base font-extrabold text-slate-800 tracking-tight">Recent Contact Enquiries</h3>
           <p className="text-xs text-slate-400 font-medium">Website visitor enquiries & messages</p>
         </div>
-        <Link to="/enquiries" className="text-xs font-bold text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-0.5 transition-colors">
+        <Link to="/admin/enquiries" className="text-xs font-bold text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-0.5 transition-colors">
           <span>View all</span>
           <ChevronRight className="w-3.5 h-3.5" />
         </Link>

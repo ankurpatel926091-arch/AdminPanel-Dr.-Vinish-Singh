@@ -29,7 +29,7 @@ const Clinics = lazy(() => import("./pages/Clinics"));
 const Blogs = lazy(() => import("./pages/Blogs"));
 
 // Reception Service Page Components
-const TodayOPD = lazy(() => import("./pages/ReceptionServices/TodayOPD"));
+const ReceptionAppointments = lazy(() => import("./pages/ReceptionServices/ReceptionAppointments"));
 const OpdManagement = lazy(() => import("./pages/ReceptionServices/OpdManagement"));
 const PatientRegistration = lazy(() => import("./pages/ReceptionServices/PatientRegistration"));
 const CheckIn = lazy(() => import("./pages/ReceptionServices/CheckIn"));
@@ -80,9 +80,7 @@ export default function App() {
         pauseOnHover
         theme="colored"
       />
-      <BrowserRouter
-        future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
-      >
+      <BrowserRouter future={{ v7_relativeSplatPath: true }}>
         <Suspense fallback={<PageLoader />}>
           <Routes>
             {/* Public Login Route */}
@@ -113,7 +111,7 @@ export default function App() {
 
               {/* Reception Services Routes */}
               <Route path="opd-management" element={<OpdManagement />} />
-              <Route path="All-Appointments" element={<TodayOPD />} />
+              <Route path="All-Appointments" element={<ReceptionAppointments />} />
               <Route
                 path="patient-registration"
                 element={<PatientRegistration />}
@@ -162,6 +160,7 @@ export default function App() {
             <Route path="/billing" element={<Navigate to="/admin/billing" replace />} />
             <Route path="/payments" element={<Navigate to="/admin/payments" replace />} />
             <Route path="/doctor-queue" element={<Navigate to="/admin/doctor-queue" replace />} /> */}
+            
 
             {/* Root & Catch-All */}
             <Route path="/" element={<RootRedirect />} />

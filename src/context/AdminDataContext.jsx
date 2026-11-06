@@ -1,15 +1,15 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { getAdminEnquiriesApi, updateEnquiryStatusApi, deleteEnquiryApi } from '../services/enquiryService';
-import { getAdminAppointmentsApi, updateAppointmentStatusApi, deleteAppointmentApi, notifyAppointmentEmailApi } from '../services/appointmentService';
-import { getAdminGalleryApi } from '../services/galleryService';
-import { getAdminBlogsApi } from '../services/blogService';
+import { getAdminEnquiriesApi, updateEnquiryStatusApi, deleteEnquiryApi } from '../api/enquiryApi';
+import { getAdminAppointmentsApi, createAdminAppointmentApi, updateAppointmentStatusApi, deleteAppointmentApi, notifyAppointmentEmailApi } from '../api/appointmentApi';
+import { getAdminGalleryApi } from '../api/galleryApi';
+import { getAdminBlogsApi } from '../api/blogApi';
 import {
   getAdminClinicsApi,
   updateClinicApi,
   createClinicApi,
   toggleClinicStatusApi,
   deleteClinicApi
-} from '../services/clinicService';
+} from '../api/clinicApi';
 import { isLoggedIn } from '../utils/auth';
 
 const AdminDataContext = createContext();
@@ -154,7 +154,6 @@ export const AdminDataProvider = ({ children }) => {
           ...backendItems
         ];
         setAppointments(items);
-        localStorage.setItem('dr_vinish_appointments', JSON.stringify(items));
       }
     } catch (err) {
       console.warn('Backend appointment fetch offline or error:', err.message);
@@ -308,26 +307,63 @@ export const AdminDataProvider = ({ children }) => {
     }
   ]);
 
-  const addAppointment = (newApt) => {
-    const foundClinic = clinics.find(c => String(c._id || c.id) === String(newApt.clinic)) || clinics[0];
-    const aptWithClinic = {
+  const addAppointment = async (newApt) => {
+    const foundClinic = clinics.find(c => String(c._id || c.id) === String(newApt.clinic));
+    const appointmentPayload = {
       ...newApt,
-      clinic: foundClinic || newApt.clinic
+      source: 'Manual',
+      clinic: foundClinic?._id || foundClinic?.id || newApt.clinic
     };
+
+    let savedAppointment = null;
+    try {
+      const response = await createAdminAppointmentApi(appointmentPayload);
+      const dataObj = response?.data || response;
+      if (dataObj && (dataObj._id || dataObj.id)) {
+        savedAppointment = {
+          ...dataObj,
+          id: dataObj._id || dataObj.id
+        };
+      }
+    } catch (err) {
+      console.warn('Backend appointment creation fallback:', err.message);
+    }
+
+    if (!savedAppointment) {
+      const fallbackId = 'APT-' + Date.now();
+      savedAppointment = {
+        ...appointmentPayload,
+        _id: fallbackId,
+        id: fallbackId,
+        createdAt: new Date().toISOString()
+      };
+    }
+
+    setAppointments(prev => [
+      savedAppointment,
+      ...prev.filter(item => String(item._id || item.id) !== String(savedAppointment._id || savedAppointment.id))
+    ]);
+
+    try {
+      const current = JSON.parse(localStorage.getItem('dr_vinish_appointments') || '[]');
+      localStorage.setItem('dr_vinish_appointments', JSON.stringify([savedAppointment, ...current]));
+      window.dispatchEvent(new Event('storage'));
+    } catch (e) {}
+
+    return savedAppointment;
+  };
+
+  const addOpdRecord = (newRecord) => {
     setAppointments(prev => {
-      const updated = [aptWithClinic, ...prev];
+      const updated = [newRecord, ...prev];
       try {
         localStorage.setItem('dr_vinish_appointments', JSON.stringify(updated));
         window.dispatchEvent(new Event('storage'));
       } catch (error) {
-        console.error('Unable to persist appointment:', error);
+        console.error('Unable to persist OPD record:', error);
       }
       return updated;
     });
-    setStats(prev => ({
-      ...prev,
-      appointments: { ...prev.appointments, count: prev.appointments.count + 1 }
-    }));
   };
 
   const updateAppointmentStatus = async (id, newStatus) => {
@@ -538,6 +574,7 @@ export const AdminDataProvider = ({ children }) => {
       loadingEnquiries,
       fetchEnquiries,
       addAppointment,
+      addOpdRecord,
       updateAppointmentStatus,
       deleteAppointment,
       updateEnquiryStatus,

@@ -148,6 +148,17 @@ const cleanNotesMessage = (msg) => {
   return '';
 };
 
+export const isOnlineAppointment = (apt) => {
+  if (apt?.source) {
+    return String(apt.source).toLowerCase() === 'online';
+  }
+  // Legacy manual entries created from Admin TodayOPD have numeric timestamp id and no MongoDB _id
+  if (typeof apt?.id === 'number' && !apt?._id) {
+    return false;
+  }
+  return true;
+};
+
 export default function Appointments() {
   const { appointments, clinics, addAppointment, updateAppointmentStatus } = useAdminData();
   const [filter, setFilter] = useState('All');
@@ -155,6 +166,7 @@ export default function Appointments() {
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebouncedValue(search);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [isSavingAppointment, setIsSavingAppointment] = useState(false);
   const [viewAppointment, setViewAppointment] = useState(null);
   const [confirmVisitedApt, setConfirmVisitedApt] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -178,6 +190,7 @@ export default function Appointments() {
   });
 
   const filtered = appointments.filter(apt => {
+    if (!isOnlineAppointment(apt)) return false;
     const matchesFilter = filter === 'All' || (apt.status || '').toLowerCase() === filter.toLowerCase();
     const aptType = getAppointmentConsultationType(apt);
     const matchesType = consultationTypeFilter === 'All' || aptType.toLowerCase() === consultationTypeFilter.toLowerCase();
@@ -196,8 +209,9 @@ export default function Appointments() {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedAppointments = filtered.slice(startIndex, startIndex + itemsPerPage);
 
-  const handleFormSubmit = (e) => {
+  const handleFormSubmit = async (e) => {
     e.preventDefault();
+    if (isSavingAppointment) return;
     if (!formData.name.trim() || !formData.phone.trim()) {
       alert('Please fill in patient name and phone number.');
       return;
@@ -213,7 +227,6 @@ export default function Appointments() {
 
     const selectedClinicId = formData.clinic || defaultClinicId;
     const newAptObj = {
-      id: Date.now(),
       name: formData.name.trim(),
       age: formData.age === '' ? '' : Number(formData.age),
       phone: formData.phone.trim(),
@@ -227,23 +240,29 @@ export default function Appointments() {
       status: formData.status
     };
 
-    addAppointment(newAptObj);
-    toast.success('Appointment created successfully!');
-
-    setFormData({
-      name: '',
-      age: '',
-      phone: '',
-      email: '',
-      consultationType: 'First Visit',
-      clinic: defaultClinicId,
-      problem: SPECIALITY_CONDITIONS[0],
-      date: new Date().toISOString().split('T')[0],
-      time: '11:00 AM',
-      message: '',
-      status: 'Confirmed'
-    });
-    setShowAddModal(false);
+    setIsSavingAppointment(true);
+    try {
+      await addAppointment(newAptObj);
+      toast.success('Appointment created successfully!');
+      setFormData({
+        name: '',
+        age: '',
+        phone: '',
+        email: '',
+        consultationType: 'First Visit',
+        clinic: defaultClinicId,
+        problem: SPECIALITY_CONDITIONS[0],
+        date: new Date().toISOString().split('T')[0],
+        time: '11:00 AM',
+        message: '',
+        status: 'Confirmed'
+      });
+      setShowAddModal(false);
+    } catch (error) {
+      toast.error(error.response?.data?.message || error.message || 'Unable to save appointment.');
+    } finally {
+      setIsSavingAppointment(false);
+    }
   };
 
   const handleStatusChange = (aptOrId, newStatus) => {
@@ -721,6 +740,8 @@ export default function Appointments() {
         <div className="fixed inset-0 z-[9999] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 cursor-pointer" onClick={() => setShowAddModal(false)}>
           <div className="bg-white rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-2xl border border-slate-200 relative cursor-default" onClick={(e) => e.stopPropagation()}>
             <button
+              type="button"
+              disabled={isSavingAppointment}
               onClick={() => setShowAddModal(false)}
               className="absolute top-5 right-5 text-slate-400 hover:text-slate-600 p-1 rounded-full cursor-pointer"
             >
@@ -917,10 +938,11 @@ export default function Appointments() {
               <div className="pt-2">
                 <button
                   type="submit"
-                  className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white font-bold text-xs rounded-xl shadow-md flex items-center justify-center gap-2 transition-all cursor-pointer"
+                  disabled={isSavingAppointment}
+                  className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed active:scale-[0.99] text-white font-bold text-xs rounded-xl shadow-md flex items-center justify-center gap-2 transition-all cursor-pointer"
                 >
                   <Send className="w-4 h-4" />
-                  <span>Submit Appointment Request</span>
+                  <span>{isSavingAppointment ? 'Saving Appointment...' : 'Submit Appointment Request'}</span>
                 </button>
               </div>
             </form>
@@ -1102,7 +1124,8 @@ export default function Appointments() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

@@ -148,13 +148,41 @@ const cleanNotesMessage = (msg) => {
   return '';
 };
 
-export default function TodayOPD() {
+export const isOnlineAppointment = (apt) => {
+  if (apt?.source) {
+    return String(apt.source).toLowerCase() === 'online';
+  }
+  // Legacy manual entries created from Admin TodayOPD have numeric timestamp id and no MongoDB _id
+  if (typeof apt?.id === 'number' && !apt?._id) {
+    return false;
+  }
+  return true;
+};
+
+const getAppointmentSourceBadge = (apt) => {
+  const isOnline = isOnlineAppointment(apt);
+  if (isOnline) {
+    return (
+      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200 shrink-0">
+        🌐 Online
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200 shrink-0">
+      🏥 Walk-in
+    </span>
+  );
+};
+
+export default function ReceptionAppointments() {
   const { appointments, clinics, addAppointment, updateAppointmentStatus } = useAdminData();
   const [filter, setFilter] = useState('All');
   const [consultationTypeFilter, setConsultationTypeFilter] = useState('All');
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebouncedValue(search);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [isSavingAppointment, setIsSavingAppointment] = useState(false);
   const [viewAppointment, setViewAppointment] = useState(null);
   const [confirmVisitedApt, setConfirmVisitedApt] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -196,8 +224,9 @@ export default function TodayOPD() {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedAppointments = filtered.slice(startIndex, startIndex + itemsPerPage);
 
-  const handleFormSubmit = (e) => {
+  const handleFormSubmit = async (e) => {
     e.preventDefault();
+    if (isSavingAppointment) return;
     if (!formData.name.trim() || !formData.phone.trim()) {
       alert('Please fill in patient name and phone number.');
       return;
@@ -213,7 +242,6 @@ export default function TodayOPD() {
 
     const selectedClinicId = formData.clinic || defaultClinicId;
     const newAptObj = {
-      id: Date.now(),
       name: formData.name.trim(),
       age: formData.age === '' ? '' : Number(formData.age),
       phone: formData.phone.trim(),
@@ -227,23 +255,29 @@ export default function TodayOPD() {
       status: formData.status
     };
 
-    addAppointment(newAptObj);
-    toast.success('Appointment created successfully!');
-
-    setFormData({
-      name: '',
-      age: '',
-      phone: '',
-      email: '',
-      consultationType: 'First Visit',
-      clinic: defaultClinicId,
-      problem: SPECIALITY_CONDITIONS[0],
-      date: new Date().toISOString().split('T')[0],
-      time: '11:00 AM',
-      message: '',
-      status: 'Confirmed'
-    });
-    setShowAddModal(false);
+    setIsSavingAppointment(true);
+    try {
+      await addAppointment(newAptObj);
+      toast.success('Appointment created successfully!');
+      setFormData({
+        name: '',
+        age: '',
+        phone: '',
+        email: '',
+        consultationType: 'First Visit',
+        clinic: defaultClinicId,
+        problem: SPECIALITY_CONDITIONS[0],
+        date: new Date().toISOString().split('T')[0],
+        time: '11:00 AM',
+        message: '',
+        status: 'Confirmed'
+      });
+      setShowAddModal(false);
+    } catch (error) {
+      toast.error(error.response?.data?.message || error.message || 'Unable to save appointment.');
+    } finally {
+      setIsSavingAppointment(false);
+    }
   };
 
   const handleStatusChange = (aptOrId, newStatus) => {
@@ -335,8 +369,8 @@ export default function TodayOPD() {
       {/* ================= 1. PAGE HEADER ================= */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-2xl lg:text-3xl font-black text-slate-900 tracking-tight">Today's OPD</h1>
-          <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1">Schedule and manage hospital &amp; clinic consultations</p>
+          <h1 className="text-2xl lg:text-3xl font-black text-slate-900 tracking-tight">All Appointments</h1>
+          <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1">Schedule and manage hospital  &amp; clinic consultations</p>
         </div>
 
         <div className="flex items-center gap-3 flex-wrap sm:flex-nowrap">
@@ -541,7 +575,7 @@ export default function TodayOPD() {
 
                     {/* Patient Name & Gmail */}
                     <td className="py-2.5 px-3 whitespace-nowrap">
-                      <div className="font-bold text-slate-900 text-xs sm:text-[13px]">{apt.name}</div>
+                      <div className="flex items-center gap-2"><span className="font-bold text-slate-900 text-xs sm:text-[13px]">{apt.name}</span>{getAppointmentSourceBadge(apt)}</div>
                       {getAppointmentEmail(apt) && (
                         <div className="text-[11px] text-blue-600 font-medium flex items-center gap-1 mt-0.5">
                           <Mail className="w-3 h-3 text-blue-500 shrink-0" />
@@ -731,6 +765,8 @@ export default function TodayOPD() {
         <div className="fixed inset-0 z-[9999] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 cursor-pointer" onClick={() => setShowAddModal(false)}>
           <div className="bg-white rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-2xl border border-slate-200 relative cursor-default" onClick={(e) => e.stopPropagation()}>
             <button
+              type="button"
+              disabled={isSavingAppointment}
               onClick={() => setShowAddModal(false)}
               className="absolute top-5 right-5 text-slate-400 hover:text-slate-600 p-1 rounded-full cursor-pointer"
             >
@@ -925,10 +961,11 @@ export default function TodayOPD() {
               <div className="pt-2">
                 <button
                   type="submit"
-                  className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white font-bold text-xs rounded-xl shadow-md flex items-center justify-center gap-2 transition-all cursor-pointer"
+                  disabled={isSavingAppointment}
+                  className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed active:scale-[0.99] text-white font-bold text-xs rounded-xl shadow-md flex items-center justify-center gap-2 transition-all cursor-pointer"
                 >
                   <Send className="w-4 h-4" />
-                  <span>Submit Appointment Request</span>
+                  <span>{isSavingAppointment ? 'Saving Appointment...' : 'Submit Appointment Request'}</span>
                 </button>
               </div>
             </form>
@@ -1110,7 +1147,8 @@ export default function TodayOPD() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
