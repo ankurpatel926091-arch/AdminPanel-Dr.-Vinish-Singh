@@ -25,14 +25,17 @@ import {
   Sparkles,
 } from "lucide-react";
 import {
-  getStaticCheckInAppointments,
+  toCheckInAppointment,
   normalizeQueueItem,
   readStoredArray,
-  saveCheckInAppointments,
   saveQueue,
   SHARED_QUEUE_STORAGE_KEY,
   DOCTOR_QUEUE_STORAGE_KEY,
 } from "../../utils/staticAppointmentFlow";
+import {
+  getAdminAppointmentsApi,
+  checkInAppointmentApi,
+} from "../../api/appointmentApi";
 
 /* =========================================================
    Mock Appointment Data
@@ -74,16 +77,39 @@ const getPatientDemographics = (appointment, ageUnit) => {
 
 export default function CheckIn() {
   const navigate = useNavigate();
-  const { appointments: realAdminAppointments } = useAdminData();
+  const { appointments: realAdminAppointments, updateAppointmentStatus } = useAdminData();
 
-  const [appointments, setAppointments] = useState(() => {
-    return getStaticCheckInAppointments([]);
-  });
+  const [appointments, setAppointments] = useState(() =>
+    Array.isArray(realAdminAppointments)
+      ? realAdminAppointments.map(toCheckInAppointment)
+      : []
+  );
+  const [loading, setLoading] = useState(true);
+  const [isCheckingIn, setIsCheckingIn] = useState(false);
 
-  // Keep in sync with real admin appointments from database
+  // Fetch latest appointments directly from backend database (no fallback data)
+  const loadAppointments = async () => {
+    setLoading(true);
+    try {
+      const res = await getAdminAppointmentsApi();
+      const list = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
+      setAppointments(list.map(toCheckInAppointment));
+    } catch (err) {
+      toast.error(err?.response?.data?.message || "Failed to load appointments from server");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    if (Array.isArray(realAdminAppointments)) {
-      setAppointments(getStaticCheckInAppointments([]));
+    loadAppointments();
+  }, []);
+
+  // Keep in sync with real admin appointments from context
+  useEffect(() => {
+    if (Array.isArray(realAdminAppointments) && realAdminAppointments.length > 0) {
+      setAppointments(realAdminAppointments.map(toCheckInAppointment));
+      setLoading(false);
     }
   }, [realAdminAppointments]);
 
@@ -96,15 +122,6 @@ export default function CheckIn() {
   // Demographic & identity verification state
   const [identityVerified, setIdentityVerified] = useState(true);
   const [demographicsVerified, setDemographicsVerified] = useState(true);
-
-  // Sync state to localStorage for persistence across pages
-  useEffect(() => {
-    try {
-      saveCheckInAppointments(appointments);
-    } catch (e) {
-      console.warn("Failed to persist checkin appointments", e);
-    }
-  }, [appointments]);
 
   /* =========================================================
      1. Search Appointment / Patient
@@ -224,89 +241,101 @@ export default function CheckIn() {
      5. Mark Appointment / Visit as CHECKED_IN
   ========================================================= */
 
-  const handleCheckIn = () => {
-    if (!selectedAppointment) return;
+  const handleCheckIn = async () => {
+    if (!selectedAppointment || isCheckingIn) return;
 
     if (
       selectedAppointment.status === "CANCELLED" ||
       selectedAppointment.status === "NO_SHOW" ||
-      selectedAppointment.status === "MISSED"
+      selectedAppointment.status === "MISSED" ||
+      selectedAppointment.status === "COMPLETED"
     ) {
       return;
     }
 
-    const visitId = generateVisitId();
-    const tokenNumber = generateToken(selectedAppointment.doctorId);
-    const checkInAt = getCurrentTime();
-    const checkedInBy = getLoggedInUser();
-
-    const updatedApt = {
-      ...selectedAppointment,
-      status: "CHECKED_IN",
-      visitId,
-      tokenNumber,
-      checkInAt,
-      checkedInBy,
-    };
-
-    const updatedAppointments = appointments.map((appointment) =>
-      appointment.appointmentId === selectedAppointment.appointmentId
-        ? updatedApt
-        : appointment
-    );
-
-    setAppointments(updatedAppointments);
+    setIsCheckingIn(true);
     try {
-      saveCheckInAppointments(updatedAppointments);
-    } catch (e) {
-      console.warn("Failed to persist checkin appointments", e);
-    }
+      const checkInAt = getCurrentTime();
+      const checkedInBy = getLoggedInUser();
+      const res = await checkInAppointmentApi(selectedAppointment.appointmentId, {
+        checkInAt,
+        checkedInBy,
+      });
 
-    try {
-      const existingQueue =
-        readStoredArray(SHARED_QUEUE_STORAGE_KEY).length > 0
-          ? readStoredArray(SHARED_QUEUE_STORAGE_KEY)
-          : readStoredArray(DOCTOR_QUEUE_STORAGE_KEY);
-      const appointmentId = String(selectedAppointment.appointmentId);
-      const filteredQueue = existingQueue.filter(
-        (item) => String(item.appointmentId || "") !== appointmentId
+      const savedRaw = res?.data || res;
+      if (!savedRaw || (!savedRaw._id && !savedRaw.id)) {
+        throw new Error("Invalid check-in response from server");
+      }
+
+      const updatedApt = toCheckInAppointment(savedRaw);
+
+      setAppointments((prev) =>
+        prev.map((appointment) =>
+          appointment.appointmentId === selectedAppointment.appointmentId
+            ? updatedApt
+            : appointment
+        )
       );
-      const newQueueItem = {
-        id: `Q-${visitId}`,
-        appointmentId,
-        tokenNumber: `T-${String(tokenNumber).padStart(3, "0")}`,
-        visitId,
-        patientId: selectedAppointment.patientId,
-        patientName: selectedAppointment.patientName,
-        age: selectedAppointment.age,
-        gender: selectedAppointment.gender,
-        mobile: selectedAppointment.mobile,
-        doctorName: selectedAppointment.doctorName,
-        department: selectedAppointment.department,
-        clinic: selectedAppointment.clinic,
-        checkInTime: checkInAt,
-        status: "WAITING",
-        priority: "NORMAL",
-        startTime: null,
-      };
-      saveQueue([normalizeQueueItem(newQueueItem), ...filteredQueue.map(normalizeQueueItem)]);
+
+      if (typeof updateAppointmentStatus === "function") {
+        updateAppointmentStatus(selectedAppointment.appointmentId, "Checked-in", {
+          visitId: updatedApt.visitId,
+          tokenNumber: updatedApt.tokenNumber,
+          checkInAt: updatedApt.checkInAt,
+          checkedInBy: updatedApt.checkedInBy,
+        });
+      }
+
+      try {
+        const existingQueue =
+          readStoredArray(SHARED_QUEUE_STORAGE_KEY).length > 0
+            ? readStoredArray(SHARED_QUEUE_STORAGE_KEY)
+            : readStoredArray(DOCTOR_QUEUE_STORAGE_KEY);
+        const appointmentId = String(updatedApt.appointmentId);
+        const filteredQueue = existingQueue.filter(
+          (item) => String(item.appointmentId || "") !== appointmentId
+        );
+        const newQueueItem = {
+          id: `Q-${updatedApt.visitId}`,
+          appointmentId,
+          tokenNumber: `T-${String(updatedApt.tokenNumber).padStart(3, "0")}`,
+          visitId: updatedApt.visitId,
+          patientId: updatedApt.patientId,
+          patientName: updatedApt.patientName,
+          age: updatedApt.age,
+          gender: updatedApt.gender,
+          mobile: updatedApt.mobile,
+          doctorName: updatedApt.doctorName,
+          department: updatedApt.department,
+          clinic: updatedApt.clinic,
+          checkInTime: updatedApt.checkInAt,
+          status: "WAITING",
+          priority: "NORMAL",
+          startTime: null,
+        };
+        saveQueue([normalizeQueueItem(newQueueItem), ...filteredQueue.map(normalizeQueueItem)]);
+      } catch (error) {
+        console.error("Unable to add checked-in patient to doctor queue:", error);
+      }
+
+      closeModal();
+      toast.success(`Check-In confirmed for ${updatedApt.patientName}! Opening OPD Billing...`);
+
+      navigate("/admin/billing", {
+        state: {
+          appointment: updatedApt,
+          visitId: updatedApt.visitId,
+          patientId: updatedApt.patientId,
+          patientName: updatedApt.patientName,
+          doctorName: updatedApt.doctorName,
+          autoOpenPayment: true,
+        },
+      });
     } catch (error) {
-      console.error("Unable to add checked-in patient to doctor queue:", error);
+      toast.error(error?.response?.data?.message || error?.message || "Failed to check in patient");
+    } finally {
+      setIsCheckingIn(false);
     }
-
-    closeModal();
-    toast.success(`Check-In confirmed for ${selectedAppointment.patientName}! Opening OPD Billing...`);
-
-    navigate("/admin/billing", {
-      state: {
-        appointment: updatedApt,
-        visitId,
-        patientId: updatedApt.patientId,
-        patientName: updatedApt.patientName,
-        doctorName: updatedApt.doctorName,
-        autoOpenPayment: true,
-      },
-    });
   };
 
   /* =========================================================
@@ -479,7 +508,16 @@ export default function CheckIn() {
             </thead>
 
             <tbody className="divide-y divide-slate-100">
-              {filteredAppointments.length > 0 ? (
+              {loading && appointments.length === 0 ? (
+                <tr>
+                  <td colSpan="6" className="px-5 py-14 text-center">
+                    <RefreshCw size={28} className="mx-auto animate-spin text-blue-500" />
+                    <p className="mt-3 text-sm font-medium text-slate-600">
+                      Loading appointments from server...
+                    </p>
+                  </td>
+                </tr>
+              ) : filteredAppointments.length > 0 ? (
                 filteredAppointments.map((appointment) => {
                   const canCheckIn = appointment.status === "CONFIRMED";
                   const alreadyChecked = appointment.status === "CHECKED_IN";
@@ -956,15 +994,15 @@ export default function CheckIn() {
 
                   <button
                     onClick={handleCheckIn}
-                    disabled={!identityVerified || !demographicsVerified}
+                    disabled={!identityVerified || !demographicsVerified || isCheckingIn}
                     className={`inline-flex items-center gap-1.5 rounded-lg px-4 py-1.5 text-xs font-semibold text-white transition shadow-xs ${
-                      identityVerified && demographicsVerified
+                      identityVerified && demographicsVerified && !isCheckingIn
                         ? "bg-blue-600 hover:bg-blue-700 active:scale-95"
                         : "bg-blue-300 cursor-not-allowed"
                     }`}
                   >
                     <UserCheck size={14} />
-                    Confirm Check-in
+                    {isCheckingIn ? "Checking in..." : "Confirm Check-in"}
                   </button>
                 </>
               )}

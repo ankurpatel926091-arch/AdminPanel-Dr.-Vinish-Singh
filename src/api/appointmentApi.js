@@ -1,9 +1,23 @@
 import API from './axios';
 
-// Get all appointments for Admin Panel
-export const getAdminAppointmentsApi = async () => {
+// Get all appointments for Admin Panel (with optional MongoDB backend query filters)
+export const getAdminAppointmentsApi = async (filters = {}) => {
   try {
-    const response = await API.get('/appointments/admin/all');
+    const params = {};
+    if (filters.status && filters.status !== 'All') {
+      params.status = filters.status;
+    }
+    if (filters.consultationType && filters.consultationType !== 'All') {
+      params.consultationType = filters.consultationType;
+    }
+    if (filters.source && filters.source !== 'All') {
+      params.source = filters.source;
+    }
+    if (filters.search && String(filters.search).trim()) {
+      params.search = String(filters.search).trim();
+    }
+
+    const response = await API.get('/appointments/admin/all', { params });
     return response.data;
   } catch (error) {
     if (error.response && error.response.status === 404) {
@@ -40,6 +54,12 @@ export const createAdminAppointmentApi = async (appointment) => {
     }
     throw error;
   }
+};
+
+// Check-in appointment and persist visitId & tokenNumber in DB
+export const checkInAppointmentApi = async (id, payload = {}) => {
+  const response = await API.patch(`/appointments/admin/${id}/check-in`, payload);
+  return response.data;
 };
 
 // Update appointment status ('Pending', 'Confirmed', 'Missed', 'Cancelled', 'Checked-in', 'Visited')

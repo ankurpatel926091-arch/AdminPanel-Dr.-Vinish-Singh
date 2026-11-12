@@ -7,13 +7,12 @@ import { useAdminData } from '../context/AdminDataContext';
 import { Mail, Calendar, Image as ImageIcon, BookOpen } from 'lucide-react'; // Added icons for cards
 
 export default function Dashboard() {
-  const { stats, enquiries, appointments, galleryItems, blogs } = useAdminData();
+  const { enquiries, appointments, galleryItems, blogs } = useAdminData();
 
-  // Dynamic live count calculations
-  const enquiriesCount = (enquiries && enquiries.length > 0) ? enquiries.length : stats.enquiries.count;
-  const appointmentsCount = (appointments && appointments.length > 0) ? appointments.length : stats.appointments.count;
-  const galleryCount = (galleryItems && galleryItems.length > 0) ? galleryItems.length : (stats.galleryImages?.count || 36);
-  const blogsCount = (blogs && blogs.length > 0) ? blogs.length : (stats.blogs?.count || 24);
+  const enquiriesCount = enquiries.length;
+  const appointmentsCount = appointments.length;
+  const galleryCount = galleryItems.length;
+  const blogsCount = blogs.length;
 
   // Data for Custom Cards (To match your required layout)
   const cardData = [

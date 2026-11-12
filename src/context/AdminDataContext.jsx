@@ -1,15 +1,9 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { getAdminEnquiriesApi, updateEnquiryStatusApi, deleteEnquiryApi } from '../api/enquiryApi';
-import { getAdminAppointmentsApi, createAdminAppointmentApi, updateAppointmentStatusApi, deleteAppointmentApi, notifyAppointmentEmailApi } from '../api/appointmentApi';
+import { getAdminEnquiriesApi } from '../api/enquiryApi';
+import { getAdminAppointmentsApi } from '../api/appointmentApi';
 import { getAdminGalleryApi } from '../api/galleryApi';
 import { getAdminBlogsApi } from '../api/blogApi';
-import {
-  getAdminClinicsApi,
-  updateClinicApi,
-  createClinicApi,
-  toggleClinicStatusApi,
-  deleteClinicApi
-} from '../api/clinicApi';
+import { getAdminClinicsApi } from '../api/clinicApi';
 import { isLoggedIn } from '../utils/auth';
 
 const AdminDataContext = createContext();
@@ -19,37 +13,6 @@ export const AdminDataProvider = ({ children }) => {
   const [loadingEnquiries, setLoadingEnquiries] = useState(false);
   const [galleryItems, setGalleryItems] = useState([]);
   const [blogs, setBlogs] = useState([]);
-
-  const DEFAULT_CLINICS = [
-    {
-      id: 1,
-      name: 'Rudraksh IVF & Urology Centre',
-      tag: 'Morning OPD',
-      badgeLabel: 'MORNING CONSULTATION CENTRE',
-      city: 'Sharda Nagar, Lucknow',
-      address: '1/795, Ratan Khand, Sharda Nagar, Lucknow, UP 226002',
-      phone: '+91 72759 81480',
-      timings: '10:00 AM – 03:00 PM',
-      image: 'https://images.unsplash.com/photo-1586773860418-d37222d8fce3?auto=format&fit=crop&q=80&w=800',
-      mapUrl: 'https://www.google.com/maps?q=Rudraksh+IVF+And+Urology+Centre+Lucknow',
-      embedUrl: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3561.428!2d80.9242723!3d26.7803631!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x399bff149cec4b2d%3A0xe680ad74dd601b3b!2sDr.%20Vinish%20Singh%20%7C%20Rudraksh%20IVF%20%26%20Urology%20Centre!5e0!3m2!1sen!2sin',
-      active: true
-    },
-    {
-      id: 2,
-      name: 'Dr. Shilpi Maternity & Urology Centre',
-      tag: 'Evening OPD',
-      badgeLabel: 'EVENING CONSULTATION CENTRE',
-      city: 'Pakkabag, Ring Road, Lucknow',
-      address: '596Pb/1114/03, Ring Rd, Pakkabag, Lucknow, UP 226017',
-      phone: '+91 86048 91955',
-      timings: '03:00 PM – 07:00 PM',
-      image: 'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&q=80&w=800',
-      mapUrl: 'https://maps.app.goo.gl/w9mqio5fe4Hj8KLm9',
-      embedUrl: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3558.200!2d80.8609337!3d26.8566859!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x399bff2d7be105cf%3A0x87c6db827648df8!2sDr.%20Shilpi%20Maternity%20%26%20Urology%20Centre!5e0!3m2!1sen!2sin',
-      active: true
-    }
-  ];
 
   const deduplicateClinics = (list) => {
     if (!Array.isArray(list)) return [];
@@ -64,51 +27,19 @@ export const AdminDataProvider = ({ children }) => {
     });
   };
 
-  const [clinics, setClinics] = useState(() => {
-    try {
-      const saved = localStorage.getItem('dr_vinish_clinics');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        const mapped = parsed.map(c => {
-          if (c.name && c.name.includes('Rudraksh')) {
-            return {
-              ...c,
-              mapUrl: 'https://www.google.com/maps?q=Rudraksh+IVF+And+Urology+Centre+Lucknow',
-              embedUrl: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3561.428!2d80.9242723!3d26.7803631!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x399bff149cec4b2d%3A0xe680ad74dd601b3b!2sDr.%20Vinish%20Singh%20%7C%20Rudraksh%20IVF%20%26%20Urology%20Centre!5e0!3m2!1sen!2sin'
-            };
-          }
-          if (c.name && c.name.includes('Shilpi')) {
-            return { ...c, embedUrl: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3558.200!2d80.8609337!3d26.8566859!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x399bff2d7be105cf%3A0x87c6db827648df8!2sDr.%20Shilpi%20Maternity%20%26%20Urology%20Centre!5e0!3m2!1sen!2sin' };
-          }
-          return c;
-        });
-        return deduplicateClinics(mapped);
-      }
-      return DEFAULT_CLINICS;
-    } catch {
-      return DEFAULT_CLINICS;
-    }
-  });
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('dr_vinish_clinics', JSON.stringify(clinics));
-    } catch (err) {
-      console.warn('Failed to save clinics to localStorage', err);
-    }
-  }, [clinics]);
+  const [clinics, setClinics] = useState([]);
 
   const [appointments, setAppointments] = useState([]);
 
   const [enquiries, setEnquiries] = useState([]);
 
   const [stats, setStats] = useState({
-    enquiries: { count: 0, change: '+12%', isPositive: true },
-    appointments: { count: 0, change: '+8%', isPositive: true },
-    testimonials: { count: 18, change: '+15%', isPositive: true },
-    treatments: { count: 12, change: 'No change', isNeutral: true },
-    galleryImages: { count: 36, change: '+5%', isPositive: true },
-    blogs: { count: 24, change: '+10%', isPositive: true }
+    enquiries: { count: 0 },
+    appointments: { count: 0 },
+    testimonials: { count: 0 },
+    treatments: { count: 0 },
+    galleryImages: { count: 0 },
+    blogs: { count: 0 }
   });
 
   // Keep stats in sync with dynamic arrays
@@ -117,8 +48,8 @@ export const AdminDataProvider = ({ children }) => {
       ...prev,
       enquiries: { ...prev.enquiries, count: enquiries.length },
       appointments: { ...prev.appointments, count: appointments.length },
-      galleryImages: { ...prev.galleryImages, count: galleryItems.length > 0 ? galleryItems.length : prev.galleryImages.count },
-      blogs: { ...prev.blogs, count: blogs.length > 0 ? blogs.length : prev.blogs.count }
+      galleryImages: { ...prev.galleryImages, count: galleryItems.length },
+      blogs: { ...prev.blogs, count: blogs.length }
     }));
   }, [enquiries.length, appointments.length, galleryItems.length, blogs.length]);
 
@@ -140,19 +71,14 @@ export const AdminDataProvider = ({ children }) => {
       setLoadingEnquiries(false);
     }
 
+    // Appointments: sirf backend se, localStorage nahi
     try {
       const aptRes = await getAdminAppointmentsApi();
       if (aptRes && aptRes.data && Array.isArray(aptRes.data)) {
-        const backendItems = aptRes.data.map(item => ({
+        const items = aptRes.data.map(item => ({
           ...item,
           id: item._id || item.id
         }));
-        const localApts = JSON.parse(localStorage.getItem('dr_vinish_appointments') || '[]');
-        const backendIds = new Set(backendItems.map(item => String(item.id || item._id)));
-        const items = [
-          ...localApts.filter(item => !backendIds.has(String(item.id || item._id))),
-          ...backendItems
-        ];
         setAppointments(items);
       }
     } catch (err) {
@@ -179,23 +105,19 @@ export const AdminDataProvider = ({ children }) => {
 
     try {
       const clinicRes = await getAdminClinicsApi();
-      if (clinicRes && clinicRes.data && clinicRes.data.length > 0) {
+      if (clinicRes && Array.isArray(clinicRes.data)) {
         const items = deduplicateClinics(clinicRes.data.map(c => ({
           ...c,
           id: c._id || c.id || c.clinicId
         })));
         setClinics(items);
-        try {
-          localStorage.setItem('dr_vinish_clinics', JSON.stringify(items));
-          window.dispatchEvent(new Event('storage'));
-        } catch (e) { }
       }
     } catch (err) {
       console.warn('Backend clinic fetch offline or error:', err.message);
     }
   };
 
-  // Real-time synchronization of enquiries & appointments submitted from website
+  // Real-time synchronization (sirf enquiries ke liye, appointments localStorage se nahi)
   const syncLocalStorageData = () => {
     try {
       // Contact Enquiries submitted from website
@@ -211,22 +133,7 @@ export const AdminDataProvider = ({ children }) => {
         }
       }
 
-      // Appointments submitted from website or updated in local state
-      const localAptStr = localStorage.getItem('dr_vinish_appointments');
-      if (localAptStr) {
-        const localApts = JSON.parse(localAptStr);
-        if (Array.isArray(localApts) && localApts.length > 0) {
-          setAppointments(prev => {
-            const existingIds = new Set(prev.map(a => String(a.id || a._id)));
-            const newItems = localApts.filter(a => !existingIds.has(String(a.id || a._id)));
-            const updated = prev.map(item => {
-              const match = localApts.find(l => String(l.id || l._id) === String(item.id || item._id));
-              return match ? { ...item, ...match } : item;
-            });
-            return newItems.length > 0 ? [...newItems, ...updated] : updated;
-          });
-        }
-      }
+      // Appointments: localStorage se sync hata diya
     } catch (err) {
       console.warn('Sync local data error:', err.message);
     }
@@ -254,211 +161,62 @@ export const AdminDataProvider = ({ children }) => {
     }
   }, []);
 
-  const [testimonials, setTestimonials] = useState([
-    { id: 1, name: 'Sandeep Gupta', rating: 5, text: 'Very good experience with Dr. Vinish Singh. He is very kind and treats patients with care.', status: 'Approved', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200' },
-    { id: 2, name: 'Asha Mishra', rating: 5, text: 'Excellent treatment and very professional approach.', status: 'Approved', avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=200' },
-    { id: 3, name: 'Rohit Tiwari', rating: 5, text: 'Highly recommended doctor for urology related problems.', status: 'Approved', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200' }
-  ]);
+  const [testimonials, setTestimonials] = useState([]);
+  const [chartData] = useState([]);
+  const [services, setServices] = useState([]);
 
-  const [chartData] = useState([
-    { date: '18 May', enquiries: 8 },
-    { date: '25 May', enquiries: 14 },
-    { date: '01 Jun', enquiries: 18 },
-    { date: '08 Jun', enquiries: 22 },
-    { date: '15 Jun', enquiries: 15 }
-  ]);
-
-  const [services, setServices] = useState([
-    {
-      id: 1,
-      title: 'Kidney Stone Treatment',
-      subtitle: 'Laser Lithotripsy, RIRS & PCNL procedures.',
-      description: 'Stitchless laser surgery & endoscopic stone clearance procedures.',
-      icon: 'Stethoscope',
-      active: true,
-      highlights: ['Stitchless Laser RIRS & PCNL for Kidney Stones', 'Bladder Stone & Ureteroscopic Surgery']
-    },
-    {
-      id: 2,
-      title: 'Prostate Care (BPH)',
-      subtitle: 'Advanced TURP & Laser prostate surgeries.',
-      description: 'HolEP laser prostatectomy and BPH urinary outflow restoration.',
-      icon: 'Shield',
-      active: true,
-      highlights: ['HolEP Laser Prostatectomy for BPH', 'Prostate Enlargement Evaluation & TURP']
-    },
-    {
-      id: 3,
-      title: 'Laparoscopic Urology',
-      subtitle: 'Minimally invasive keyhole kidney surgeries.',
-      description: 'Keyhole surgical repair for kidney obstruction, pyeloplasty and tumors.',
-      icon: 'Scissors',
-      active: true,
-      highlights: ['Keyhole Kidney Surgery & Pyeloplasty', 'Laparoscopic Nephrectomy']
-    },
-    {
-      id: 4,
-      title: 'Andrology & Male Infertility',
-      subtitle: 'Microscopic varicocelectomy & erectile dysfunction.',
-      description: 'Evidence-based male reproductive wellness and microscopic surgeries.',
-      icon: 'Activity',
-      active: true,
-      highlights: ['Male Infertility Evaluation & Micro-TESE', 'Microscopic Varicocelectomy & Erectile Health']
-    }
-  ]);
-
-  const addAppointment = async (newApt) => {
+  // addAppointment: ab localStorage nahi, sirf state
+  const addAppointment = (newApt) => {
     const foundClinic = clinics.find(c => String(c._id || c.id) === String(newApt.clinic));
-    const appointmentPayload = {
+    const savedAppointment = {
       ...newApt,
-      source: 'Manual',
-      clinic: foundClinic?._id || foundClinic?.id || newApt.clinic
+      id: newApt._id || newApt.id || ('APT-' + Date.now()),
+      source: newApt.source || 'Manual',
+      clinic: foundClinic?.name || foundClinic?._id || newApt.clinic
     };
-
-    let savedAppointment = null;
-    try {
-      const response = await createAdminAppointmentApi(appointmentPayload);
-      const dataObj = response?.data || response;
-      if (dataObj && (dataObj._id || dataObj.id)) {
-        savedAppointment = {
-          ...dataObj,
-          id: dataObj._id || dataObj.id
-        };
-      }
-    } catch (err) {
-      console.warn('Backend appointment creation fallback:', err.message);
-    }
-
-    if (!savedAppointment) {
-      const fallbackId = 'APT-' + Date.now();
-      savedAppointment = {
-        ...appointmentPayload,
-        _id: fallbackId,
-        id: fallbackId,
-        createdAt: new Date().toISOString()
-      };
-    }
 
     setAppointments(prev => [
       savedAppointment,
       ...prev.filter(item => String(item._id || item.id) !== String(savedAppointment._id || savedAppointment.id))
     ]);
 
-    try {
-      const current = JSON.parse(localStorage.getItem('dr_vinish_appointments') || '[]');
-      localStorage.setItem('dr_vinish_appointments', JSON.stringify([savedAppointment, ...current]));
-      window.dispatchEvent(new Event('storage'));
-    } catch (e) {}
-
     return savedAppointment;
   };
 
+  // addOpdRecord: ab localStorage nahi, sirf state
   const addOpdRecord = (newRecord) => {
-    setAppointments(prev => {
-      const updated = [newRecord, ...prev];
-      try {
-        localStorage.setItem('dr_vinish_appointments', JSON.stringify(updated));
-        window.dispatchEvent(new Event('storage'));
-      } catch (error) {
-        console.error('Unable to persist OPD record:', error);
-      }
-      return updated;
-    });
+    setAppointments(prev => [newRecord, ...prev]);
   };
 
-  const updateAppointmentStatus = async (id, newStatus) => {
-    let targetApt = null;
-    let isAlreadyVisited = false;
-
-    setAppointments(prev => {
-      const updatedList = prev.map(item => {
+  // updateAppointmentStatus: ab localStorage nahi, sirf state
+  const updateAppointmentStatus = (id, newStatus, extraFields = {}) => {
+    setAppointments(prev =>
+      prev.map(item => {
         if (String(item.id) === String(id) || String(item._id) === String(id)) {
-          if ((item.status || '').toLowerCase() === 'visited') {
-            isAlreadyVisited = true;
-            return item;
-          }
-          targetApt = { ...item, status: newStatus };
-          return targetApt;
+          return { ...item, ...extraFields, status: newStatus };
         }
         return item;
-      });
-      if (!isAlreadyVisited) {
-        try {
-          localStorage.setItem('dr_vinish_appointments', JSON.stringify(updatedList));
-          window.dispatchEvent(new Event('storage'));
-        } catch (e) { }
-      }
-      return updatedList;
-    });
-
-    if (isAlreadyVisited) return;
-
-    try {
-      if (typeof id === 'string' && id.length === 24) {
-        try {
-          await updateAppointmentStatusApi(id, newStatus, targetApt);
-        } catch (apiErr) {
-          if (targetApt) {
-            await notifyAppointmentEmailApi(targetApt, newStatus);
-          }
-        }
-      } else if (targetApt) {
-        await notifyAppointmentEmailApi(targetApt, newStatus);
-      }
-    } catch (err) {
-      console.error('Error sending appointment status notification:', err.message);
-    }
+      })
+    );
   };
 
-  const deleteAppointment = async (id) => {
+  // deleteAppointment: ab localStorage nahi, sirf state
+  const deleteAppointment = (id) => {
     setAppointments(prev => prev.filter(item => item.id !== id && item._id !== id));
-    try {
-      const localAptsStr = localStorage.getItem('dr_vinish_appointments');
-      if (localAptsStr) {
-        const localApts = JSON.parse(localAptsStr);
-        const updated = localApts.filter(a => String(a.id) !== String(id) && String(a._id) !== String(id));
-        localStorage.setItem('dr_vinish_appointments', JSON.stringify(updated));
-        window.dispatchEvent(new Event('storage'));
-      }
-    } catch (e) { }
-
-    try {
-      if (typeof id === 'string' && id.length === 24) {
-        await deleteAppointmentApi(id);
-      }
-    } catch (err) {
-      console.error('Error deleting appointment API:', err.message);
-    }
   };
 
-  const updateEnquiryStatus = async (id, newStatus) => {
+  const updateEnquiryStatus = (id, newStatus) => {
     const realId = id._id || id;
     setEnquiries(prev => prev.map(item => (item.id === realId || item._id === realId) ? { ...item, status: newStatus } : item));
-
-    try {
-      if (typeof realId === 'string' && realId.length === 24) {
-        await updateEnquiryStatusApi(realId, newStatus);
-      }
-    } catch (err) {
-      console.error('Error updating enquiry status:', err.message);
-    }
   };
 
-  const deleteEnquiry = async (id) => {
+  const deleteEnquiry = (id) => {
     const realId = id._id || id;
     setEnquiries(prev => prev.filter(item => item.id !== realId && item._id !== realId));
     setStats(prev => ({
       ...prev,
       enquiries: { ...prev.enquiries, count: Math.max(0, prev.enquiries.count - 1) }
     }));
-
-    try {
-      if (typeof realId === 'string' && realId.length === 24) {
-        await deleteEnquiryApi(realId);
-      }
-    } catch (err) {
-      console.error('Error deleting enquiry:', err.message);
-    }
   };
 
   const toggleTestimonialApproval = (id) => {
@@ -486,78 +244,26 @@ export const AdminDataProvider = ({ children }) => {
     setServices(prev => prev.filter(s => s.id !== id));
   };
 
-  // Clinics CRUD handlers
-  const addClinic = async (newClinic) => {
+  // Clinics are fetched from the backend; these handlers keep the UI in sync with API results.
+  const addClinic = (newClinic) => {
     const clinicWithId = {
       ...newClinic,
       id: Date.now(),
       active: true
     };
-    setClinics(prev => {
-      const updated = [...prev, clinicWithId];
-      try {
-        localStorage.setItem('dr_vinish_clinics', JSON.stringify(updated));
-        window.dispatchEvent(new Event('storage'));
-      } catch (e) { }
-      return updated;
-    });
-
-    try {
-      await createClinicApi(newClinic);
-    } catch (err) {
-      console.warn('Error saving clinic to backend API:', err.message);
-    }
+    setClinics(prev => [...prev, clinicWithId]);
   };
 
-  const updateClinic = async (id, updatedFields) => {
-    setClinics(prev => {
-      const updated = prev.map(c => c.id === id ? { ...c, ...updatedFields } : c);
-      try {
-        localStorage.setItem('dr_vinish_clinics', JSON.stringify(updated));
-        window.dispatchEvent(new Event('storage'));
-      } catch (e) { }
-      return updated;
-    });
-
-    try {
-      await updateClinicApi(id, updatedFields);
-    } catch (err) {
-      console.warn('Error updating clinic on backend API:', err.message);
-    }
+  const updateClinic = (id, updatedFields) => {
+    setClinics(prev => prev.map(c => c.id === id ? { ...c, ...updatedFields } : c));
   };
 
-  const toggleClinicStatus = async (id) => {
-    setClinics(prev => {
-      const updated = prev.map(c => c.id === id ? { ...c, active: !c.active } : c);
-      try {
-        localStorage.setItem('dr_vinish_clinics', JSON.stringify(updated));
-        window.dispatchEvent(new Event('storage'));
-      } catch (e) { }
-      return updated;
-    });
-
-    try {
-      await toggleClinicStatusApi(id);
-    } catch (err) {
-      console.warn('Error toggling clinic status on backend API:', err.message);
-    }
+  const toggleClinicStatus = (id) => {
+    setClinics(prev => prev.map(c => c.id === id ? { ...c, active: !c.active } : c));
   };
 
-  const deleteClinic = async (id) => {
-    setClinics(prev => {
-      const updated = prev.filter(c => c.id !== id);
-      try {
-        localStorage.setItem('dr_vinish_clinics', JSON.stringify(updated));
-        window.dispatchEvent(new Event('storage'));
-      } catch (e) { }
-      return updated;
-    });
-
-    try {
-      await deleteClinicApi(id);
-    } catch (err) {
-      console.warn('Error deleting clinic on backend API:', err.message);
-    }
+  const deleteClinic = (id) => {
+    setClinics(prev => prev.filter(c => c.id !== id));
   };
 
   return (

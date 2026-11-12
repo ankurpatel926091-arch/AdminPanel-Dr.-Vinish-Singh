@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import useDebouncedValue from '../hooks/useDebouncedValue';
 import { useAdminData } from '../context/AdminDataContext';
+import { getAdminEnquiriesApi, updateEnquiryStatusApi, deleteEnquiryApi } from '../api/enquiryApi';
 import Modal from '../components/common/Modal';
 import { Mail, Search, Eye, CheckCircle, Clock, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'react-toastify';
@@ -49,9 +50,14 @@ export default function ContactEnquiries() {
     return [1, '...', current - 1, current, current + 1, '...', total];
   };
 
-  const handleStatusToggle = (id, currentStatus) => {
+  const handleStatusToggle = async (id, currentStatus) => {
     const newStatus = currentStatus === 'New' ? 'Responded' : 'New';
     updateEnquiryStatus(id, newStatus);
+    try {
+      await updateEnquiryStatusApi(id, newStatus);
+    } catch (e) {
+      console.warn('Enquiry status API:', e.message);
+    }
     toast.info(`Enquiry status updated to ${newStatus}`);
   };
 

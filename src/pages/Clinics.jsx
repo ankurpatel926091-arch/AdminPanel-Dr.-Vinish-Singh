@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAdminData } from '../context/AdminDataContext';
+import { updateClinicApi, toggleClinicStatusApi, deleteClinicApi } from '../api/clinicApi';
 import useDebouncedValue from '../hooks/useDebouncedValue';
 import {
   MapPin,
@@ -91,6 +92,7 @@ export default function Clinics() {
 
     if (editingClinic) {
       updateClinic(editingClinic.id, formData);
+      updateClinicApi(editingClinic.id, formData).catch((err) => console.warn('Clinic update API:', err.message));
       toast.success('Clinic details updated successfully!');
     }
     setShowModal(false);
@@ -100,6 +102,7 @@ export default function Clinics() {
   const handleDelete = (id, name) => {
     if (window.confirm(`Are you sure you want to delete "${name}"?`)) {
       deleteClinic(id);
+      deleteClinicApi(id).catch((err) => console.warn('Clinic delete API:', err.message));
     }
   };
 

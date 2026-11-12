@@ -1,6 +1,11 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useAdminData } from '../context/AdminDataContext';
+import {
+  createAdminAppointmentApi,
+  updateAppointmentStatusApi,
+  notifyAppointmentEmailApi
+} from '../api/appointmentApi';
 import { toast } from 'react-toastify';
 import useDebouncedValue from '../hooks/useDebouncedValue';
 import SpecialityConditionSelect from '../components/SpecialityConditionSelect';
@@ -242,7 +247,10 @@ export default function Appointments() {
 
     setIsSavingAppointment(true);
     try {
-      await addAppointment(newAptObj);
+      await createAdminAppointmentApi(newAptObj);
+      if (typeof addAppointment === 'function') {
+        addAppointment(newAptObj);
+      }
       toast.success('Appointment created successfully!');
       setFormData({
         name: '',
@@ -280,6 +288,7 @@ export default function Appointments() {
     }
 
     updateAppointmentStatus(aptId, newStatus);
+    updateAppointmentStatusApi(aptId, newStatus, aptObj).catch((e) => console.warn('Status API update:', e.message));
     if (newStatus === 'Confirmed') {
       toast.success(`Appointment Confirmed! Confirmation email sent to patient.`);
     } else if (newStatus === 'Cancelled') {
@@ -296,6 +305,14 @@ export default function Appointments() {
         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/80 text-xs font-bold">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
           <span>Confirmed</span>
+        </span>
+      );
+    }
+    if (s === 'checked-in') {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-teal-50 text-teal-700 border border-teal-200/80 text-xs font-bold">
+          <span className="w-1.5 h-1.5 rounded-full bg-teal-500"></span>
+          <span>Checked-in</span>
         </span>
       );
     }
@@ -380,7 +397,7 @@ export default function Appointments() {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         {/* Status Filters (Left) */}
         <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
-          {['All', 'Pending', 'Confirmed', 'Visited', 'Missed', 'Cancelled'].map(tab => {
+          {['All', 'Pending', 'Confirmed', 'Checked-in', 'Visited', 'Missed', 'Cancelled'].map(tab => {
             const isActive = filter === tab;
             return (
               <button

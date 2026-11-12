@@ -1,6 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useAdminData } from '../../context/AdminDataContext';
+import {
+  createAdminAppointmentApi,
+  getAdminAppointmentsApi,
+  updateAppointmentStatusApi,
+  notifyAppointmentEmailApi
+} from '../../api/appointmentApi';
 import useDebouncedValue from '../../hooks/useDebouncedValue';
 import SpecialityConditionSelect from '../../components/SpecialityConditionSelect';
 import { toast } from 'react-toastify';
@@ -179,6 +185,7 @@ export default function ReceptionAppointments() {
   const { appointments, clinics, addAppointment, updateAppointmentStatus } = useAdminData();
   const [filter, setFilter] = useState('All');
   const [consultationTypeFilter, setConsultationTypeFilter] = useState('All');
+  const [sourceFilter, setSourceFilter] = useState('All');
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebouncedValue(search);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -205,19 +212,31 @@ export default function ReceptionAppointments() {
     status: 'Confirmed'
   });
 
-  const filtered = appointments.filter(apt => {
-    const matchesFilter = filter === 'All' || (apt.status || '').toLowerCase() === filter.toLowerCase();
-    const aptType = getAppointmentConsultationType(apt);
-    const matchesType = consultationTypeFilter === 'All' || aptType.toLowerCase() === consultationTypeFilter.toLowerCase();
-    const aptEmail = getAppointmentEmail(apt);
-    const clinicName = apt.clinic?.name || (typeof apt.clinic === 'string' ? apt.clinic : (apt.centre || ''));
-    const matchesSearch = (apt.name || '').toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-                          (apt.phone || '').includes(debouncedSearch) ||
-                          aptEmail.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-                          (apt.problem || '').toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-                          clinicName.toLowerCase().includes(debouncedSearch.toLowerCase());
-    return matchesFilter && matchesType && matchesSearch;
-  });
+  const [filtered, setFiltered] = useState([]);
+  const [loadingAppointments, setLoadingAppointments] = useState(true);
+
+  const fetchFilteredAppointments = useCallback(async () => {
+    setLoadingAppointments(true);
+    try {
+      const res = await getAdminAppointmentsApi({
+        status: filter,
+        consultationType: consultationTypeFilter,
+        source: sourceFilter,
+        search: debouncedSearch
+      });
+      const list = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
+      setFiltered(list.map(item => ({ ...item, id: item._id || item.id })));
+    } catch (error) {
+      console.error('Failed to fetch filtered appointments:', error);
+      toast.error(error?.response?.data?.message || 'Failed to load appointments');
+    } finally {
+      setLoadingAppointments(false);
+    }
+  }, [filter, consultationTypeFilter, sourceFilter, debouncedSearch]);
+
+  useEffect(() => {
+    fetchFilteredAppointments();
+  }, [fetchFilteredAppointments]);
 
   // Pagination logic
   const totalPages = Math.ceil(filtered.length / itemsPerPage) || 1;
@@ -257,7 +276,11 @@ export default function ReceptionAppointments() {
 
     setIsSavingAppointment(true);
     try {
-      await addAppointment(newAptObj);
+      await createAdminAppointmentApi(newAptObj);
+      if (typeof addAppointment === 'function') {
+        addAppointment(newAptObj);
+      }
+      await fetchFilteredAppointments();
       toast.success('Appointment created successfully!');
       setFormData({
         name: '',
@@ -295,6 +318,9 @@ export default function ReceptionAppointments() {
     }
 
     updateAppointmentStatus(aptId, newStatus);
+    updateAppointmentStatusApi(aptId, newStatus, aptObj)
+      .then(() => fetchFilteredAppointments())
+      .catch((e) => console.warn('Status API update:', e.message));
     if (newStatus === 'Confirmed') {
       toast.success(`Appointment Confirmed! Confirmation email sent to patient.`);
     } else if (newStatus === 'Cancelled') {
@@ -311,6 +337,14 @@ export default function ReceptionAppointments() {
         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/80 text-xs font-bold">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
           <span>Confirmed</span>
+        </span>
+      );
+    }
+    if (s === 'checked-in') {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-teal-50 text-teal-700 border border-teal-200/80 text-xs font-bold">
+          <span className="w-1.5 h-1.5 rounded-full bg-teal-500"></span>
+          <span>Checked-in</span>
         </span>
       );
     }
@@ -401,80 +435,90 @@ export default function ReceptionAppointments() {
         </div>
       </div>
 
-      {/* ================= 2. FILTER PILLS BAR ================= */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        {/* Status Filters (Left) */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
-          {['All', 'Pending', 'Confirmed', 'Visited', 'Missed', 'Cancelled'].map(tab => {
-            const isActive = filter === tab;
-            return (
-              <button
-                key={tab}
-                onClick={() => {
-                  setFilter(tab);
-                  setCurrentPage(1);
-                }}
-                className={`px-5 py-2 text-xs font-extrabold rounded-xl whitespace-nowrap transition-all cursor-pointer ${
-                  isActive
-                    ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
-                    : 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-200/90 shadow-2xs'
-                }`}
-              >
-                {tab}
-              </button>
-            );
-          })}
+      {/* ================= 2. FILTER DROPDOWNS (DDL) BAR ================= */}
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-white border border-slate-200/80 rounded-2xl p-3.5 shadow-2xs">
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Status DDL */}
+          <div className="flex items-center gap-2">
+            <label htmlFor="status-filter" className="text-xs font-bold text-slate-500 whitespace-nowrap">
+              Status:
+            </label>
+            <select
+              id="status-filter"
+              value={filter}
+              onChange={(e) => {
+                setFilter(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="px-3.5 py-2 bg-slate-50 hover:bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:ring-2 focus:ring-blue-600 focus:outline-none cursor-pointer transition-all"
+            >
+              <option value="All">All Statuses</option>
+              <option value="Pending">Pending</option>
+              <option value="Confirmed">Confirmed</option>
+              <option value="Checked-in">Checked-in</option>
+              <option value="Visited">Visited</option>
+              <option value="Missed">Missed</option>
+              <option value="Cancelled">Cancelled</option>
+            </select>
+          </div>
+
+          {/* Consultation Type DDL */}
+          <div className="flex items-center gap-2">
+            <label htmlFor="type-filter" className="text-xs font-bold text-slate-500 whitespace-nowrap">
+              Consultation Type:
+            </label>
+            <select
+              id="type-filter"
+              value={consultationTypeFilter}
+              onChange={(e) => {
+                setConsultationTypeFilter(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="px-3.5 py-2 bg-slate-50 hover:bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:ring-2 focus:ring-blue-600 focus:outline-none cursor-pointer transition-all"
+            >
+              <option value="All">All Types</option>
+              <option value="First Visit">First Visit</option>
+              <option value="Follow-up">Follow-up</option>
+            </select>
+          </div>
+
+          {/* Patient Source DDL (Online / Walk-in) */}
+          <div className="flex items-center gap-2">
+            <label htmlFor="source-filter" className="text-xs font-bold text-slate-500 whitespace-nowrap">
+              Patient Source:
+            </label>
+            <select
+              id="source-filter"
+              value={sourceFilter}
+              onChange={(e) => {
+                setSourceFilter(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="px-3.5 py-2 bg-slate-50 hover:bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:ring-2 focus:ring-blue-600 focus:outline-none cursor-pointer transition-all"
+            >
+              <option value="All">All Patients (Online & Walk-in)</option>
+              <option value="Online">🌐 Online</option>
+              <option value="Walk-in">🏥 Walk-in</option>
+            </select>
+          </div>
         </div>
 
-        {/* Consultation Type Filter (Right) */}
-        <div className="flex items-center gap-2 flex-wrap shrink-0">
-          <span className="text-xs font-bold text-slate-500 whitespace-nowrap">Consultation Type:</span>
+        {(filter !== 'All' || consultationTypeFilter !== 'All' || sourceFilter !== 'All' || search.trim() !== '') && (
           <button
             type="button"
             onClick={() => {
+              setFilter('All');
               setConsultationTypeFilter('All');
+              setSourceFilter('All');
+              setSearch('');
               setCurrentPage(1);
             }}
-            className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-black transition-all cursor-pointer ${
-              consultationTypeFilter === 'All'
-                ? 'bg-white border-2 border-slate-900 text-blue-700 shadow-xs'
-                : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 font-bold'
-            }`}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200/70 transition-all cursor-pointer"
           >
-            <Layers className="w-3.5 h-3.5 text-blue-600" />
-            <span>All Types</span>
+            <X className="w-3.5 h-3.5" />
+            <span>Reset Filters</span>
           </button>
-          <button
-            type="button"
-            onClick={() => {
-              setConsultationTypeFilter('First Visit');
-              setCurrentPage(1);
-            }}
-            className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-black transition-all cursor-pointer ${
-              consultationTypeFilter === 'First Visit'
-                ? 'bg-emerald-50 border-2 border-slate-900 text-emerald-800 shadow-xs'
-                : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 font-bold'
-            }`}
-          >
-            <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
-            <span>First Visit</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setConsultationTypeFilter('Follow-up');
-              setCurrentPage(1);
-            }}
-            className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-black transition-all cursor-pointer ${
-              consultationTypeFilter === 'Follow-up'
-                ? 'bg-purple-50 border-2 border-slate-900 text-purple-800 shadow-xs'
-                : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 font-bold'
-            }`}
-          >
-            <RotateCw className="w-3.5 h-3.5 text-purple-600" />
-            <span>Follow-up</span>
-          </button>
-        </div>
+        )}
       </div>
 
       {/* ================= 3. APPOINTMENTS TABLE CARD ================= */}
@@ -1137,6 +1181,9 @@ export default function ReceptionAppointments() {
                 onClick={() => {
                   const aptId = confirmVisitedApt.id || confirmVisitedApt._id;
                   updateAppointmentStatus(aptId, 'Visited');
+                  updateAppointmentStatusApi(aptId, 'Visited', confirmVisitedApt)
+                    .then(() => fetchFilteredAppointments())
+                    .catch((e) => console.warn('Visited status API update:', e.message));
                   toast.success(`Appointment for "${confirmVisitedApt.name || 'Patient'}" marked as Visited! No further changes allowed.`);
                   setConfirmVisitedApt(null);
                 }}
