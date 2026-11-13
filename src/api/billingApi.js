@@ -1,69 +1,64 @@
 import API from './axios';
 
-const BILLS_STORAGE_KEY = 'dr_vinish_bills';
-
-// Fetch all OPD bills (from backend API or local storage fallback)
+// Fetch all OPD bills from MongoDB database via backend API
 export const getAdminBillsApi = async () => {
   try {
     const res = await API.get('/billing/admin/all');
-    if (res?.data && Array.isArray(res.data)) {
-      return res.data;
+    if (res?.data) {
+      if (Array.isArray(res.data)) return res.data;
+      if (Array.isArray(res.data.data)) return res.data.data;
     }
+    return [];
   } catch (error) {
-    // If backend route is not mounted yet, fallback to persistent local storage
+    console.error('Fetch Admin Bills Error:', error);
+    return [];
   }
-
-  try {
-    const stored = localStorage.getItem(BILLS_STORAGE_KEY);
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      if (Array.isArray(parsed)) return parsed;
-    }
-  } catch (e) {
-    console.warn('Unable to read bills from local storage', e);
-  }
-
-  return [];
 };
 
-// Create a new OPD Bill
+// Create a new OPD Bill in MongoDB
 export const createAdminBillApi = async (billData) => {
   try {
     const res = await API.post('/billing/admin', billData);
-    if (res?.data) return res.data;
+    if (res?.data) {
+      return res.data;
+    }
+    return { success: false, message: 'No response data from server' };
   } catch (error) {
-    // Fallback: save to localStorage list
-  }
-
-  try {
-    const currentBills = JSON.parse(localStorage.getItem(BILLS_STORAGE_KEY) || '[]');
-    const updatedBills = [billData, ...currentBills];
-    localStorage.setItem(BILLS_STORAGE_KEY, JSON.stringify(updatedBills));
-    window.dispatchEvent(new Event('storage'));
-    return { success: true, data: billData };
-  } catch (e) {
-    console.warn('Fallback bill save error', e);
-    return { success: false, data: billData };
+    console.error('Create Admin Bill Error:', error);
+    return {
+      success: false,
+      message: error.response?.data?.message || error.message
+    };
   }
 };
 
-// Update an existing OPD Bill
+// Update an existing OPD Bill in MongoDB
 export const updateAdminBillApi = async (billId, updatedFields) => {
   try {
     const res = await API.put(`/billing/admin/${billId}`, updatedFields);
-    if (res?.data) return res.data;
+    if (res?.data) {
+      return res.data;
+    }
+    return { success: false, message: 'No response data from server' };
   } catch (error) {
-    // Fallback
-  }
-
-  try {
-    const currentBills = JSON.parse(localStorage.getItem(BILLS_STORAGE_KEY) || '[]');
-    const updatedBills = currentBills.map((b) => (b.billId === billId ? { ...b, ...updatedFields } : b));
-    localStorage.setItem(BILLS_STORAGE_KEY, JSON.stringify(updatedBills));
-    window.dispatchEvent(new Event('storage'));
-    return { success: true };
-  } catch (e) {
-    return { success: false };
+    console.error('Update Admin Bill Error:', error);
+    return {
+      success: false,
+      message: error.response?.data?.message || error.message
+    };
   }
 };
 
+// Delete an OPD Bill from MongoDB
+export const deleteAdminBillApi = async (billId) => {
+  try {
+    const res = await API.delete(`/billing/admin/${billId}`);
+    return res.data;
+  } catch (error) {
+    console.error('Delete Admin Bill Error:', error);
+    return {
+      success: false,
+      message: error.response?.data?.message || error.message
+    };
+  }
+};

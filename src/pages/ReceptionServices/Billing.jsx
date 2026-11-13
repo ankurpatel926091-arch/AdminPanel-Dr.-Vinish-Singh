@@ -11,6 +11,13 @@ import { toast } from "react-toastify";
 import { useAdminData } from "../../context/AdminDataContext";
 
 import {
+  getAdminBillsApi,
+  createAdminBillApi,
+  updateAdminBillApi,
+  deleteAdminBillApi,
+} from "../../api/billingApi";
+
+import {
   Search,
   Filter,
   Receipt,
@@ -41,11 +48,9 @@ import {
 
 /* =========================================
 
-   Storage Key & Master Presets
+   Master Presets
 
 ========================================= */
-
-const STORAGE_KEY = "dr_vinish_hospital_opd_bills_v2";
 
 const UROLOGY_CONDITIONS = [
   "Kidney Stones (Renal Calculi)",
@@ -97,247 +102,11 @@ const CLINIC_CENTRES = [
 
 /* =========================================
 
-   Initial Mock Billing Data
+   Initial Billing Data (Loaded dynamically from MongoDB Database)
 
 ========================================= */
 
-const initialBills = [
-  {
-    billId: "BILL-1001",
-
-    visitId: "V-20052",
-
-    patientId: "UHID-10245",
-
-    patientName: "Rahul Sharma",
-
-    phone: "9876543210",
-
-    age: 42,
-
-    gender: "Male",
-
-    doctor: "Dr. Vinish Kumar Singh",
-
-    department: "Urology",
-
-    hospital: "Rudraksh IVF & Urology Centre (Sharda Nagar)",
-
-    visitDate: "12 Sep 2026",
-
-    diagnosis: "Kidney Stones (Renal Calculi)",
-
-    consultationFee: 1000,
-
-    services: [
-      { name: "OPD Consultation", amount: 1000 },
-
-      { name: "Ultrasound KUB", amount: 800 },
-    ],
-
-    discount: 0,
-
-    totalAmount: 1800,
-
-    paidAmount: 1800,
-
-    dueAmount: 0,
-
-    paymentMode: "UPI",
-
-    paymentStatus: "Paid",
-
-    invoiceStatus: "Paid",
-  },
-
-  {
-    billId: "BILL-1002",
-
-    visitId: "V-20053",
-
-    patientId: "UHID-10246",
-
-    patientName: "Amit Verma",
-
-    phone: "9834567890",
-
-    age: 36,
-
-    gender: "Male",
-
-    doctor: "Dr. Vinish Kumar Singh",
-
-    department: "Urology",
-
-    hospital: "Dr. Shilpi Maternity & Urology Centre (Pakkabag)",
-
-    visitDate: "12 Sep 2026",
-
-    diagnosis: "Urinary Tract Infection (UTI)",
-
-    consultationFee: 1000,
-
-    services: [
-      { name: "OPD Consultation", amount: 1000 },
-
-      { name: "Urine Routine", amount: 250 },
-    ],
-
-    discount: 100,
-
-    totalAmount: 1150,
-
-    paidAmount: 0,
-
-    dueAmount: 1150,
-
-    paymentMode: null,
-
-    paymentStatus: "Pending",
-
-    invoiceStatus: "Unpaid",
-  },
-
-  {
-    billId: "BILL-1003",
-
-    visitId: "V-20054",
-
-    patientId: "UHID-10247",
-
-    patientName: "Suresh Kumar",
-
-    phone: "9721098765",
-
-    age: 58,
-
-    gender: "Male",
-
-    doctor: "Dr. Vinish Kumar Singh",
-
-    department: "Urology",
-
-    hospital: "Rudraksh IVF & Urology Centre (Sharda Nagar)",
-
-    visitDate: "12 Sep 2026",
-
-    diagnosis: "Prostate Enlargement (BPH)",
-
-    consultationFee: 1200,
-
-    services: [
-      { name: "OPD Consultation", amount: 1200 },
-
-      { name: "USG Prostate", amount: 900 },
-    ],
-
-    discount: 0,
-
-    totalAmount: 2100,
-
-    paidAmount: 1000,
-
-    dueAmount: 1100,
-
-    paymentMode: "Cash",
-
-    paymentStatus: "Partial",
-
-    invoiceStatus: "Partial",
-  },
-
-  {
-    billId: "BILL-1004",
-
-    visitId: "V-20055",
-
-    patientId: "UHID-10248",
-
-    patientName: "Mohit Singh",
-
-    phone: "9918234567",
-
-    age: 29,
-
-    gender: "Male",
-
-    doctor: "Dr. Vinish Kumar Singh",
-
-    department: "Andrology",
-
-    hospital: "Rudraksh IVF & Urology Centre (Sharda Nagar)",
-
-    visitDate: "11 Sep 2026",
-
-    diagnosis: "Male Infertility & Andrology",
-
-    consultationFee: 1200,
-
-    services: [{ name: "OPD Consultation", amount: 1200 }],
-
-    discount: 200,
-
-    totalAmount: 1000,
-
-    paidAmount: 1000,
-
-    dueAmount: 0,
-
-    paymentMode: "Card",
-
-    paymentStatus: "Paid",
-
-    invoiceStatus: "Paid",
-  },
-
-  {
-    billId: "BILL-1005",
-
-    visitId: "V-20056",
-
-    patientId: "UHID-10249",
-
-    patientName: "Rakesh Yadav",
-
-    phone: "9450123456",
-
-    age: 47,
-
-    gender: "Male",
-
-    doctor: "Dr. Vinish Kumar Singh",
-
-    department: "Urology",
-
-    hospital: "Dr. Shilpi Maternity & Urology Centre (Pakkabag)",
-
-    visitDate: "11 Sep 2026",
-
-    diagnosis: "Hematuria / Recurrent UTI",
-
-    consultationFee: 1000,
-
-    services: [
-      { name: "OPD Consultation", amount: 1000 },
-
-      { name: "Urine Culture", amount: 600 },
-    ],
-
-    discount: 0,
-
-    totalAmount: 1600,
-
-    paidAmount: 0,
-
-    dueAmount: 1600,
-
-    paymentMode: null,
-
-    paymentStatus: "Pending",
-
-    invoiceStatus: "Unpaid",
-  },
-];
+const initialBills = [];
 
 /* =========================================
 
@@ -366,31 +135,27 @@ export default function Billing() {
 
   const appointments = adminData?.appointments || [];
 
-  // Persisted Bills
+  // Persisted Bills from MongoDB Database
+  const [bills, setBills] = useState([]);
+  const [loadingBills, setLoadingBills] = useState(true);
 
-  const [bills, setBills] = useState(() => {
+  const fetchBillsFromDB = async () => {
     try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-
-      if (stored) {
-        const parsed = JSON.parse(stored);
-
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      setLoadingBills(true);
+      const data = await getAdminBillsApi();
+      if (Array.isArray(data)) {
+        setBills(data);
       }
     } catch (e) {
-      console.warn("Could not parse saved bills:", e);
+      console.warn("Could not fetch bills from MongoDB:", e);
+    } finally {
+      setLoadingBills(false);
     }
-
-    return initialBills;
-  });
+  };
 
   useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(bills));
-    } catch (e) {
-      console.warn("Could not save bills:", e);
-    }
-  }, [bills]);
+    fetchBillsFromDB();
+  }, []);
 
   // Search & Filter
 
@@ -586,6 +351,7 @@ export default function Billing() {
   }, [formTotalAmount]);
 
   /* Handle incoming state from Check-in flow */
+  const processedVisitRef = useRef({});
 
   useEffect(() => {
     if (location.state) {
@@ -611,74 +377,60 @@ export default function Billing() {
         if (existing) {
           if (autoOpenPayment && existing.dueAmount > 0) {
             setPaymentBill(existing);
-
             setPaymentAmount(existing.dueAmount.toString());
-
             setPaymentMode("Cash");
           }
-        } else {
+        } else if (!processedVisitRef.current[targetVisitId] && !loadingBills) {
+          processedVisitRef.current[targetVisitId] = true;
           const generatedBillId = `BILL-${Math.floor(1000 + Math.random() * 9000)}`;
 
           const newBill = {
             billId: generatedBillId,
-
             visitId: targetVisitId,
-
+            appointment: appointment?._id || appointment?.id || null,
             patientId: patientId || appointment?.patientId || "UHID-10245",
-
             patientName: patientName || appointment?.patientName || "Patient",
-
             phone: appointment?.phone || appointment?.mobile || "",
-
-            age: appointment?.age || 34,
-
+            age: Number(appointment?.age) || 34,
             gender: appointment?.gender || "Male",
-
             doctor: appointment?.doctorName || "Dr. Vinish Kumar Singh",
-
             department: appointment?.department || "Urology",
-
             hospital:
               appointment?.clinic ||
               "Rudraksh IVF & Urology Centre (Sharda Nagar)",
-
             visitDate: appointment?.appointmentDate || "Today",
-
             diagnosis:
               appointment?.speciality || "General Urology Consultation",
-
             consultationFee: 1000,
-
             services: [{ name: "OPD Consultation", amount: 1000 }],
-
             discount: 0,
-
             totalAmount: 1000,
-
             paidAmount: 0,
-
             dueAmount: 1000,
-
             paymentMode: null,
-
             paymentStatus: "Pending",
-
             invoiceStatus: "Unpaid",
           };
 
           setBills((prev) => [newBill, ...prev]);
 
+          createAdminBillApi(newBill).then((res) => {
+            if (res?.data) {
+              setBills((prev) =>
+                prev.map((b) => (b.visitId === targetVisitId ? res.data : b)),
+              );
+            }
+          });
+
           if (autoOpenPayment) {
             setPaymentBill(newBill);
-
             setPaymentAmount("1000");
-
             setPaymentMode("Cash");
           }
         }
       }
     }
-  }, [location.state]);
+  }, [location.state, bills, loadingBills]);
 
   /* =========================================
 
@@ -1167,12 +919,11 @@ export default function Billing() {
     }
   };
 
-  const handleCreateBill = (e) => {
+  const handleCreateBill = async (e) => {
     e.preventDefault();
 
     if (!newBillForm.patientName.trim()) {
       toast.error("Please enter patient name.");
-
       return;
     }
 
@@ -1180,7 +931,6 @@ export default function Billing() {
       newBillForm.services.some((s) => !s.name.trim() || Number(s.amount) < 0)
     ) {
       toast.error("Each service must have a valid name and amount.");
-
       return;
     }
 
@@ -1190,21 +940,15 @@ export default function Billing() {
         : newBillForm.diagnosis;
 
     const now = new Date();
-
     const dateFormatted = now.toLocaleDateString("en-GB", {
       day: "2-digit",
-
       month: "short",
-
       year: "numeric",
     });
 
     const billNumber = Math.floor(1000 + Math.random() * 9000);
-
     const billId = `BILL-${billNumber}`;
-
     const visitId = `V-${Math.floor(20000 + Math.random() * 90000)}`;
-
     const patientId = `UHID-${Math.floor(10000 + Math.random() * 90000)}`;
 
     const paymentStatus =
@@ -1212,87 +956,63 @@ export default function Billing() {
 
     const createdBill = {
       billId,
-
       visitId,
-
+      appointment: newBillForm.selectedAppointmentId || null,
       patientId,
-
       patientName: newBillForm.patientName.trim(),
-
       phone: newBillForm.phone.trim(),
-
       age: Number(newBillForm.age) || 35,
-
       gender: newBillForm.gender,
-
       doctor: newBillForm.doctor,
-
       department: newBillForm.department,
-
       hospital: newBillForm.hospital,
-
       visitDate: dateFormatted,
-
       diagnosis: finalDiagnosis,
-
       consultationFee: newBillForm.services[0]?.amount || 1000,
-
       services: newBillForm.services.map((s) => ({
         name: s.name.trim(),
-
         amount: Number(s.amount) || 0,
       })),
-
       discount: formDiscount,
-
       totalAmount: formTotalAmount,
-
       paidAmount: formPaidAmount,
-
       dueAmount: formDueAmount,
-
       paymentMode: formPaidAmount > 0 ? newBillForm.paymentMode : null,
-
       paymentStatus,
-
       invoiceStatus: paymentStatus,
-
       notes: newBillForm.notes?.trim() || "",
     };
 
     // If bill is Paid or Partial, automatically push to Doctor Queue
-
     let assignedToken = null;
-
     if (paymentStatus === "Paid" || paymentStatus === "Partial") {
       assignedToken = addPatientToDoctorQueue(createdBill);
-
       if (assignedToken) {
         createdBill.tokenNumber = assignedToken;
       }
     }
 
-    setBills((prev) => [createdBill, ...prev]);
+    try {
+      const res = await createAdminBillApi(createdBill);
+      const savedBill = res?.data || createdBill;
+      setBills((prev) => [savedBill, ...prev]);
 
-    if (assignedToken) {
-      toast.success(
-        `Bill ${billId} generated! Patient added to Doctor Queue with Token ${assignedToken}`,
+      if (assignedToken) {
+        toast.success(
+          `Bill ${billId} saved in database! Patient added to Doctor Queue with Token ${assignedToken}`,
+          { autoClose: 4500 },
+        );
+      } else {
+        toast.success(`Bill ${billId} saved successfully in database!`);
+      }
 
-        { autoClose: 4500 },
-      );
-    } else {
-      toast.success(`Bill ${billId} generated successfully!`);
+      setShowCreateModal(false);
+      setNewBillForm(defaultBillForm);
+      setSelectedBill(savedBill);
+    } catch (err) {
+      console.error("Save bill error:", err);
+      toast.error("Failed to save bill in database.");
     }
-
-    setShowCreateModal(false);
-
-    // Reset Form
-
-    setNewBillForm(defaultBillForm);
-
-    // Open view modal for preview & printing
-
-    setSelectedBill(createdBill);
   };
 
   /* =========================================
@@ -1463,50 +1183,40 @@ export default function Billing() {
 
     const updated = {
       ...editingBill,
-
       patientName: editFormData.patientName.trim(),
-
       phone: editFormData.phone.trim(),
-
       age: Number(editFormData.age) || 35,
-
       gender: editFormData.gender,
-
       hospital: editFormData.hospital,
-
       diagnosis: finalDiagnosis,
-
       services: editFormData.services.map((s) => ({
         name: s.name.trim(),
-
         amount: Number(s.amount) || 0,
       })),
-
       discount: editDiscount,
-
       totalAmount: editTotalAmount,
-
       paidAmount: editPaidAmount,
-
       dueAmount: editDueAmount,
-
       paymentMode: editPaidAmount > 0 ? editFormData.paymentMode : null,
-
       paymentStatus,
-
       invoiceStatus: paymentStatus,
-
       notes: editFormData.notes?.trim() || "",
     };
+
+    updateAdminBillApi(editingBill.billId, updated)
+      .then(() => {
+        toast.success(`Bill ${editingBill.billId} updated successfully in database!`);
+      })
+      .catch((err) => {
+        console.error("Update bill error:", err);
+        toast.error("Failed to update bill in database.");
+      });
 
     setBills((prev) =>
       prev.map((b) => (b.billId === editingBill.billId ? updated : b)),
     );
 
-    toast.success(`Bill ${editingBill.billId} updated successfully!`);
-
     setEditingBill(null);
-
     setEditFormData(null);
   };
 
@@ -1516,77 +1226,68 @@ export default function Billing() {
 
   ========================================= */
 
-  const handleCollectPayment = () => {
+  const handleCollectPayment = async () => {
     if (!paymentBill) return;
 
     const amount = Number(paymentAmount);
 
     if (!amount || amount <= 0) {
       toast.error("Please enter a valid payment amount.");
-
       return;
     }
 
     if (amount > paymentBill.dueAmount) {
       toast.error("Payment amount cannot be greater than due amount.");
-
       return;
     }
 
+    const newPaidAmount = paymentBill.paidAmount + amount;
+    const newDueAmount = paymentBill.totalAmount - newPaidAmount;
+    const newStatus = newDueAmount === 0 ? "Paid" : "Partial";
+
+    const updatePayload = {
+      paidAmount: newPaidAmount,
+      dueAmount: newDueAmount,
+      paymentMode,
+      paymentStatus: newStatus,
+      invoiceStatus: newStatus,
+    };
+
     let assignedToken = null;
+    const updated = {
+      ...paymentBill,
+      ...updatePayload,
+    };
 
-    setBills((prev) =>
-      prev.map((bill) => {
-        if (bill.billId !== paymentBill.billId) {
-          return bill;
-        }
-
-        const newPaidAmount = bill.paidAmount + amount;
-
-        const newDueAmount = bill.totalAmount - newPaidAmount;
-
-        const newStatus = newDueAmount === 0 ? "Paid" : "Partial";
-
-        const updated = {
-          ...bill,
-
-          paidAmount: newPaidAmount,
-
-          dueAmount: newDueAmount,
-
-          paymentMode,
-
-          paymentStatus: newStatus,
-
-          invoiceStatus: newStatus,
-        };
-
-        assignedToken = addPatientToDoctorQueue(updated);
-
-        if (assignedToken) {
-          updated.tokenNumber = assignedToken;
-        }
-
-        return updated;
-      }),
-    );
-
+    assignedToken = addPatientToDoctorQueue(updated);
     if (assignedToken) {
-      toast.success(
-        `Payment of ₹${amount.toLocaleString(
-          "en-IN",
-        )} collected! Token ${assignedToken} added to Doctor Queue.`,
+      updated.tokenNumber = assignedToken;
+      updatePayload.tokenNumber = assignedToken;
+    }
 
-        { autoClose: 4500 },
+    try {
+      await updateAdminBillApi(paymentBill.billId, updatePayload);
+      setBills((prev) =>
+        prev.map((bill) => (bill.billId === paymentBill.billId ? updated : bill)),
       );
-    } else {
-      toast.success(`Payment of ₹${amount.toLocaleString("en-IN")} collected!`);
+
+      if (assignedToken) {
+        toast.success(
+          `Payment of ₹${amount.toLocaleString(
+            "en-IN",
+          )} collected! Saved to database & Token ${assignedToken} added to Doctor Queue.`,
+          { autoClose: 4500 },
+        );
+      } else {
+        toast.success(`Payment of ₹${amount.toLocaleString("en-IN")} collected & saved to database!`);
+      }
+    } catch (err) {
+      console.error("Payment collection error:", err);
+      toast.error("Failed to update payment in database.");
     }
 
     setPaymentBill(null);
-
     setPaymentAmount("");
-
     setPaymentMode("UPI");
   };
 
@@ -1857,7 +1558,18 @@ export default function Billing() {
             </thead>
 
             <tbody className="divide-y divide-slate-100">
-              {filteredBills.length > 0 ? (
+              {loadingBills ? (
+                <tr>
+                  <td colSpan="8" className="px-5 py-14 text-center">
+                    <div className="flex flex-col items-center justify-center gap-3">
+                      <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
+                      <p className="text-sm font-medium text-slate-600">
+                        Loading bills from database...
+                      </p>
+                    </div>
+                  </td>
+                </tr>
+              ) : filteredBills.length > 0 ? (
                 filteredBills.map((bill) => (
                   <tr
                     key={bill.billId}

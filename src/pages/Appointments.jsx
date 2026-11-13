@@ -183,6 +183,7 @@ export default function Appointments() {
   const [formData, setFormData] = useState({
     name: '',
     age: '',
+    gender: 'Male',
     phone: '',
     email: '',
     consultationType: 'First Visit',
@@ -234,6 +235,7 @@ export default function Appointments() {
     const newAptObj = {
       name: formData.name.trim(),
       age: formData.age === '' ? '' : Number(formData.age),
+      gender: formData.gender || 'Male',
       phone: formData.phone.trim(),
       email: formData.email.trim(),
       consultationType: formData.consultationType || 'First Visit',
@@ -255,6 +257,7 @@ export default function Appointments() {
       setFormData({
         name: '',
         age: '',
+        gender: 'Male',
         phone: '',
         email: '',
         consultationType: 'First Visit',
@@ -755,41 +758,62 @@ export default function Appointments() {
       {/* ================= 5. ADD APPOINTMENT MODAL ================= */}
       {showAddModal && createPortal(
         <div className="fixed inset-0 z-[9999] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 cursor-pointer" onClick={() => setShowAddModal(false)}>
-          <div className="bg-white rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-2xl border border-slate-200 relative cursor-default" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-7 shadow-2xl border border-slate-200 relative cursor-default max-h-[92vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <button
               type="button"
               disabled={isSavingAppointment}
               onClick={() => setShowAddModal(false)}
-              className="absolute top-5 right-5 text-slate-400 hover:text-slate-600 p-1 rounded-full cursor-pointer"
+              className="absolute top-5 right-5 text-slate-400 hover:text-slate-600 p-1.5 rounded-full hover:bg-slate-100 transition-all cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
 
-            <div className="mb-5">
-              <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">Book Appointment</h2>
-              <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1 leading-relaxed">
-                Select hospital centre and submit request for direct OPD confirmation.
-              </p>
+            <div className="mb-6 flex items-center gap-3">
+              <div className="w-11 h-11 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 border border-blue-100">
+                <CalendarCheck className="w-6 h-6" />
+              </div>
+              <div>
+                <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">Book Appointment</h2>
+                <p className="text-xs text-slate-500 font-medium">Select hospital centre and submit request for direct OPD confirmation</p>
+              </div>
             </div>
 
             <form onSubmit={handleFormSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              {/* Row 1: Patient Name & Phone Number */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
                     Patient Name <span className="text-rose-500">*</span>
                   </label>
                   <input
                     type="text"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    placeholder="Full Patient Name"
-                    className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all"
+                    placeholder="Enter Full Patient Name"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all placeholder:text-slate-400"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    Phone Number <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="tel"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    placeholder="Enter 10-Digit Mobile Number"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all placeholder:text-slate-400"
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Row 2: Age, Gender, Email */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
                     Age (Optional)
                   </label>
                   <input
@@ -801,47 +825,49 @@ export default function Appointments() {
                     value={formData.age}
                     onChange={(e) => setFormData({ ...formData, age: e.target.value })}
                     placeholder="Age in years"
-                    className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all placeholder:text-slate-400"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Phone Number <span className="text-rose-500">*</span>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    Gender <span className="text-rose-500">*</span>
                   </label>
-                  <input
-                    type="text"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    placeholder="Phone Number"
-                    className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all"
-                    required
-                  />
+                  <select
+                    value={formData.gender}
+                    onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all cursor-pointer"
+                  >
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                  </select>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Gmail / Email
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    Gmail / Email Address
                   </label>
                   <input
                     type="email"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    placeholder="Gmail / Email Address"
-                    className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all"
+                    placeholder="e.g. user@gmail.com"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all placeholder:text-slate-400"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Row 3: Consultation Type & Select Doctor */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
                     Consultation Type <span className="text-rose-500">*</span>
                   </label>
                   <select
                     value={formData.consultationType}
                     onChange={(e) => setFormData({ ...formData, consultationType: e.target.value })}
-                    className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all cursor-pointer"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all cursor-pointer"
                   >
                     <option value="First Visit">First Visit</option>
                     <option value="Follow-up">Follow-up</option>
@@ -849,7 +875,7 @@ export default function Appointments() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
                     Preferred Clinic Centre <span className="text-rose-500">*</span>
                   </label>
                   <select
@@ -863,7 +889,7 @@ export default function Appointments() {
                         problem: newOptions[0]
                       }));
                     }}
-                    className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all cursor-pointer"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all cursor-pointer"
                     required
                   >
                     {(clinics && clinics.length > 0 ? clinics.filter((c, index, self) => 
@@ -877,8 +903,9 @@ export default function Appointments() {
                 </div>
               </div>
 
+              {/* Row 4: Speciality / Condition */}
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
                   Select Speciality / Condition
                 </label>
                 <SpecialityConditionSelect
@@ -888,28 +915,29 @@ export default function Appointments() {
                 />
               </div>
 
-              <div className="grid grid-cols-3 gap-3">
+              {/* Row 5: Date, Time & Status */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
                     Date <span className="text-rose-500">*</span>
                   </label>
                   <input
                     type="date"
                     value={formData.date}
                     onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                    className="w-full px-2.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
                     Time
                   </label>
                   <select
                     value={formData.time}
                     onChange={(e) => setFormData({ ...formData, time: e.target.value })}
-                    className="w-full px-2 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white cursor-pointer"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all cursor-pointer"
                   >
                     <option value="10:30 AM">10:30 AM</option>
                     <option value="11:20 AM">11:20 AM</option>
@@ -922,13 +950,13 @@ export default function Appointments() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
                     Status
                   </label>
                   <select
                     value={formData.status}
                     onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                    className="w-full px-2 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white cursor-pointer"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all cursor-pointer"
                   >
                     <option value="Confirmed">Confirmed</option>
                     <option value="Pending">Pending</option>
@@ -939,8 +967,9 @@ export default function Appointments() {
                 </div>
               </div>
 
+              {/* Row 6: Message / Notes */}
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
                   Message / Notes (Optional)
                 </label>
                 <textarea
@@ -948,7 +977,7 @@ export default function Appointments() {
                   value={formData.message}
                   onChange={(e) => setFormData({ ...formData, message: e.target.value })}
                   placeholder="Describe symptoms or query..."
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white resize-none"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all placeholder:text-slate-400 resize-none"
                 />
               </div>
 
@@ -956,7 +985,7 @@ export default function Appointments() {
                 <button
                   type="submit"
                   disabled={isSavingAppointment}
-                  className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed active:scale-[0.99] text-white font-bold text-xs rounded-xl shadow-md flex items-center justify-center gap-2 transition-all cursor-pointer"
+                  className="w-full py-3.5 px-4 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed active:scale-[0.99] text-white font-bold text-xs rounded-xl shadow-md shadow-blue-600/20 flex items-center justify-center gap-2 transition-all cursor-pointer"
                 >
                   <Send className="w-4 h-4" />
                   <span>{isSavingAppointment ? 'Saving Appointment...' : 'Submit Appointment Request'}</span>
@@ -1022,6 +1051,14 @@ export default function Appointments() {
                       {viewAppointment.age !== undefined && viewAppointment.age !== null && viewAppointment.age !== ''
                         ? `${viewAppointment.age} years`
                         : 'Not provided'}
+                    </div>
+                  </div>
+
+                  {/* Gender */}
+                  <div>
+                    <div className="text-[11px] font-semibold text-slate-400 mb-0.5">Gender:</div>
+                    <div className="text-xs sm:text-sm font-semibold text-slate-800">
+                      {viewAppointment.gender || 'Male'}
                     </div>
                   </div>
 
