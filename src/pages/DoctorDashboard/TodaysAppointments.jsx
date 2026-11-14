@@ -1,4 +1,6 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
 import useDebouncedValue from "../../hooks/useDebouncedValue";
 import {
   Search,
@@ -11,108 +13,272 @@ import {
   Play,
   CheckCircle2,
   Users,
+  RefreshCw,
+  Loader2,
 } from "lucide-react";
+import { getAdminAppointmentsApi } from "../../api/appointmentApi";
+import { getTodayQueueApi, updateQueueStatusApi } from "../../api/queueApi";
+import { CURRENT_CONSULTATION_STORAGE_KEY } from "../../utils/staticAppointmentFlow";
+
+const isToday = (dateStr, createdAt) => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  const day = now.getDate();
+
+  if (createdAt) {
+    const cDate = new Date(createdAt);
+    if (
+      !isNaN(cDate.getTime()) &&
+      cDate.getFullYear() === year &&
+      cDate.getMonth() === month &&
+      cDate.getDate() === day
+    ) {
+      return true;
+    }
+  }
+
+  if (!dateStr) return false;
+
+  const ymd = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+  if (typeof dateStr === "string" && dateStr.includes(ymd)) return true;
+
+  const pDate = new Date(dateStr);
+  if (!isNaN(pDate.getTime())) {
+    if (
+      pDate.getFullYear() === year &&
+      pDate.getMonth() === month &&
+      pDate.getDate() === day
+    ) {
+      return true;
+    }
+  }
+
+  const dayStr = String(day).padStart(2, "0");
+  const monthShort = now.toLocaleString("en-US", { month: "short" }).toLowerCase();
+  const lower = String(dateStr).toLowerCase();
+  if (
+    lower.includes(String(year)) &&
+    lower.includes(monthShort) &&
+    (lower.includes(dayStr) || lower.includes(String(day)))
+  ) {
+    return true;
+  }
+
+  return false;
+};
 
 const TodaysAppointments = () => {
+  const navigate = useNavigate();
+  const [appointments, setAppointments] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebouncedValue(search);
   const [statusFilter, setStatusFilter] = useState("All");
   const [selectedPatient, setSelectedPatient] = useState(null);
 
-  // ---------------------------------------
-  // Temporary data
-  // Replace this with API data later
-  // ---------------------------------------
-  const appointments = [
-    {
-      appointmentId: "APT-1001",
-      tokenNumber: "01",
-      patientName: "Rahul Kumar",
-      patientId: "UHID-1001",
-      age: 32,
-      gender: "Male",
-      mobile: "+91 9876543210",
-      appointmentTime: "10:00 AM",
-      checkInTime: "09:48 AM",
-      queueStatus: "Waiting",
-      appointmentStatus: "Confirmed",
-      doctor: "Dr. Vinish Kumar Singh",
-      department: "Urology",
-    },
-    {
-      appointmentId: "APT-1002",
-      tokenNumber: "02",
-      patientName: "Amit Sharma",
-      patientId: "UHID-1002",
-      age: 45,
-      gender: "Male",
-      mobile: "+91 9123456780",
-      appointmentTime: "10:30 AM",
-      checkInTime: "10:12 AM",
-      queueStatus: "In Consultation",
-      appointmentStatus: "Confirmed",
-      doctor: "Dr. Vinish Kumar Singh",
-      department: "Urology",
-    },
-    {
-      appointmentId: "APT-1003",
-      tokenNumber: "03",
-      patientName: "Priya Singh",
-      patientId: "UHID-1003",
-      age: 29,
-      gender: "Female",
-      mobile: "+91 9988776655",
-      appointmentTime: "11:00 AM",
-      checkInTime: "10:42 AM",
-      queueStatus: "Waiting",
-      appointmentStatus: "Confirmed",
-      doctor: "Dr. Vinish Kumar Singh",
-      department: "Andrology",
-    },
-    {
-      appointmentId: "APT-1004",
-      tokenNumber: "04",
-      patientName: "Suresh Verma",
-      patientId: "UHID-1004",
-      age: 51,
-      gender: "Male",
-      mobile: "+91 9001122334",
-      appointmentTime: "11:30 AM",
-      checkInTime: "11:15 AM",
-      queueStatus: "Completed",
-      appointmentStatus: "Confirmed",
-      doctor: "Dr. Vinish Kumar Singh",
-      department: "Urology",
-    },
-    {
-      appointmentId: "APT-1005",
-      tokenNumber: "05",
-      patientName: "Neha Gupta",
-      patientId: "UHID-1005",
-      age: 36,
-      gender: "Female",
-      mobile: "+91 9876123456",
-      appointmentTime: "12:00 PM",
-      checkInTime: null,
-      queueStatus: "Not Checked-in",
-      appointmentStatus: "Confirmed",
-      doctor: "Dr. Vinish Kumar Singh",
-      department: "Urology",
-    },
-  ];
+  // Fetch real appointments & queue from database
+  const fetchTodaysAppointments = useCallback(async (showToast = false) => {
+    try {
+      setLoading(true);
+      const [allAppointments, todayQueue] = await Promise.all([
+        getAdminAppointmentsApi().catch((err) => {
+          console.warn("Failed to fetch appointments:", err);
+          return [];
+        }),
+        getTodayQueueApi().catch((err) => {
+          console.warn("Failed to fetch queue:", err);
+          return [];
+        }),
+      ]);
+
+      const aptList = Array.isArray(allAppointments)
+        ? allAppointments
+        : Array.isArray(allAppointments?.data)
+        ? allAppointments.data
+        : [];
+
+      const queueList = Array.isArray(todayQueue) ? todayQueue : [];
+
+      // Filter appointments for today
+      const todaysBookedApts = aptList.filter((apt) =>
+        isToday(apt.date, apt.createdAt)
+      );
+
+      const mergedList = [];
+      const matchedQueueIds = new Set();
+
+      // Process today's booked appointments
+      todaysBookedApts.forEach((apt) => {
+        const matchedQueue = queueList.find((q) => {
+          if (q.appointment && String(q.appointment) === String(apt._id)) return true;
+          if (apt.visitId && q.visitId && q.visitId === apt.visitId) return true;
+          if (apt.phone && q.mobile && q.mobile.replace(/\D/g, "") === apt.phone.replace(/\D/g, "")) return true;
+          if (apt.name && q.patientName && q.patientName.trim().toLowerCase() === apt.name.trim().toLowerCase()) return true;
+          return false;
+        });
+
+        if (matchedQueue) {
+          matchedQueueIds.add(matchedQueue._id || matchedQueue.id);
+        }
+
+        let qStatus = "Not Checked-in";
+        if (matchedQueue) {
+          if (matchedQueue.status === "Consulting") qStatus = "In Consultation";
+          else if (matchedQueue.status === "Waiting") qStatus = "Waiting";
+          else if (matchedQueue.status === "Completed") qStatus = "Completed";
+          else if (matchedQueue.status === "Skipped") qStatus = "Skipped";
+          else qStatus = matchedQueue.status;
+        } else if (apt.status === "Visited") {
+          qStatus = "Completed";
+        } else if (apt.status === "Checked-in") {
+          qStatus = "Waiting";
+        }
+
+        const tokenNum = matchedQueue?.tokenNumber || (apt.tokenNumber ? String(apt.tokenNumber).padStart(2, "0") : "—");
+        const checkIn = matchedQueue?.checkInTime || apt.checkInAt || null;
+
+        mergedList.push({
+          appointmentId: apt.visitId || (apt._id ? `APT-${apt._id.slice(-4).toUpperCase()}` : "APT-0000"),
+          rawId: apt._id,
+          tokenNumber: tokenNum,
+          patientName: apt.name,
+          patientId: apt.visitId ? `UHID-${apt.visitId.replace(/\D/g, "") || "1001"}` : (apt._id ? `UHID-${apt._id.slice(-4).toUpperCase()}` : "UHID-1001"),
+          age: apt.age || 35,
+          gender: apt.gender || "Male",
+          mobile: apt.phone || "—",
+          appointmentTime: apt.time || "11:00 AM",
+          checkInTime: checkIn,
+          queueStatus: qStatus,
+          appointmentStatus: apt.status || "Confirmed",
+          doctor: "Dr. Vinish Kumar Singh",
+          department: "Urology",
+          clinic: typeof apt.clinic === "object" ? apt.clinic?.name : "Rudraksh IVF & Urology Centre",
+          problem: apt.problem || "General Consultation",
+          queueId: matchedQueue ? (matchedQueue._id || matchedQueue.id) : null,
+          rawAppointment: apt,
+        });
+      });
+
+      // Also include any walk-in queue patients not matched to booked appointments
+      queueList.forEach((q) => {
+        const qId = q._id || q.id;
+        if (!matchedQueueIds.has(qId)) {
+          let qStatus = "Waiting";
+          if (q.status === "Consulting") qStatus = "In Consultation";
+          else if (q.status === "Waiting") qStatus = "Waiting";
+          else if (q.status === "Completed") qStatus = "Completed";
+          else if (q.status === "Skipped") qStatus = "Skipped";
+          else qStatus = q.status;
+
+          mergedList.push({
+            appointmentId: q.visitId || `OPD-${q.tokenNumber}`,
+            rawId: qId,
+            tokenNumber: String(q.tokenNumber || "—").padStart(2, "0"),
+            patientName: q.patientName,
+            patientId: q.patientId || (q.visitId ? `UHID-${q.visitId.replace(/\D/g, "")}` : "UHID-WALKIN"),
+            age: q.age || 35,
+            gender: q.gender || "Male",
+            mobile: q.mobile || "—",
+            appointmentTime: q.checkInTime || "Walk-in",
+            checkInTime: q.checkInTime || "—",
+            queueStatus: qStatus,
+            appointmentStatus: "Walk-in OPD",
+            doctor: q.doctorName || "Dr. Vinish Kumar Singh",
+            department: q.department || "Urology",
+            clinic: q.clinic || "Rudraksh IVF & Urology Centre",
+            problem: q.notes || "General Consultation",
+            queueId: qId,
+            rawQueue: q,
+          });
+        }
+      });
+
+      // Sort by token if available
+      mergedList.sort((a, b) => {
+        const numA = parseInt(a.tokenNumber, 10);
+        const numB = parseInt(b.tokenNumber, 10);
+        if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+        if (!isNaN(numA)) return -1;
+        if (!isNaN(numB)) return 1;
+        return 0;
+      });
+
+      setAppointments(mergedList);
+      if (showToast) toast.success("Today's appointments refreshed");
+    } catch (err) {
+      console.error("Error fetching today's appointments:", err);
+      toast.error("Could not load today's appointments");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchTodaysAppointments();
+    const interval = setInterval(() => {
+      fetchTodaysAppointments();
+    }, 15000);
+    return () => clearInterval(interval);
+  }, [fetchTodaysAppointments]);
+
+  // Handle Starting Consultation
+  const handleStartConsultation = async (appointment) => {
+    try {
+      if (appointment.queueId) {
+        await updateQueueStatusApi(appointment.queueId, { status: "Consulting" });
+      }
+
+      const patientForConsultation = {
+        id: appointment.queueId || appointment.rawId,
+        patientName: appointment.patientName,
+        patientId: appointment.patientId,
+        age: appointment.age,
+        gender: appointment.gender,
+        visitId: appointment.appointmentId,
+        tokenNumber: appointment.tokenNumber,
+        appointmentDate: new Date().toLocaleDateString("en-GB", {
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+        }),
+        appointmentTime: appointment.appointmentTime,
+        phone: appointment.mobile,
+        clinic: appointment.clinic,
+        problem: appointment.problem,
+      };
+
+      localStorage.setItem(
+        CURRENT_CONSULTATION_STORAGE_KEY,
+        JSON.stringify(patientForConsultation)
+      );
+
+      toast.success(`Starting consultation for ${appointment.patientName}`);
+      navigate("/doctor/consultation", { state: { patient: patientForConsultation } });
+    } catch (err) {
+      console.error("Start consultation error:", err);
+      navigate("/doctor/consultation", { state: { patient: appointment } });
+    }
+  };
 
   // ---------------------------------------
   // Filter
   // ---------------------------------------
   const filteredAppointments = useMemo(() => {
+    const searchText = (debouncedSearch || "").toLowerCase().trim();
+
     return appointments.filter((appointment) => {
-      const searchText = debouncedSearch.toLowerCase();
+      const patientName = String(appointment.patientName || "").toLowerCase();
+      const patientId = String(appointment.patientId || "").toLowerCase();
+      const appointmentId = String(appointment.appointmentId || "").toLowerCase();
+      const tokenNumber = String(appointment.tokenNumber || "").toLowerCase();
 
       const matchesSearch =
-        appointment.patientName.toLowerCase().includes(searchText) ||
-        appointment.patientId.toLowerCase().includes(searchText) ||
-        appointment.appointmentId.toLowerCase().includes(searchText) ||
-        appointment.tokenNumber.includes(searchText);
+        !searchText ||
+        patientName.includes(searchText) ||
+        patientId.includes(searchText) ||
+        appointmentId.includes(searchText) ||
+        tokenNumber.includes(searchText);
 
       const matchesStatus =
         statusFilter === "All" ||
@@ -120,7 +286,7 @@ const TodaysAppointments = () => {
 
       return matchesSearch && matchesStatus;
     });
-  }, [debouncedSearch, statusFilter]);
+  }, [appointments, debouncedSearch, statusFilter]);
 
   // ---------------------------------------
   // Status Styling
@@ -160,12 +326,28 @@ const TodaysAppointments = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl">
-          <CalendarDays className="w-4 h-4 text-blue-600" />
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => fetchTodaysAppointments(true)}
+            disabled={loading}
+            className="flex items-center gap-1.5 px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-600 hover:text-blue-600 hover:border-blue-200 text-sm font-medium transition disabled:opacity-50 shadow-sm"
+            title="Refresh list"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-blue-600' : ''}`} />
+            <span className="hidden sm:inline">Refresh</span>
+          </button>
 
-          <span className="text-sm font-medium text-slate-700">
-            12 September 2026
-          </span>
+          <div className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl shadow-sm">
+            <CalendarDays className="w-4 h-4 text-blue-600" />
+
+            <span className="text-sm font-medium text-slate-700">
+              {new Date().toLocaleDateString("en-IN", {
+                day: "numeric",
+                month: "long",
+                year: "numeric",
+              })}
+            </span>
+          </div>
         </div>
 
       </div>
@@ -406,12 +588,21 @@ const TodaysAppointments = () => {
 
             <tbody className="divide-y divide-slate-100">
 
-              {filteredAppointments.length > 0 ? (
+              {loading ? (
+                <tr>
+                  <td colSpan="7" className="px-5 py-12 text-center">
+                    <Loader2 className="w-8 h-8 mx-auto text-blue-600 animate-spin mb-3" />
+                    <p className="text-sm font-medium text-slate-600">
+                      Loading today's OPD appointments...
+                    </p>
+                  </td>
+                </tr>
+              ) : filteredAppointments.length > 0 ? (
 
-                filteredAppointments.map((appointment) => (
+                filteredAppointments.map((appointment, idx) => (
 
                   <tr
-                    key={appointment.appointmentId}
+                    key={appointment.rawId || appointment.appointmentId || idx}
                     className="hover:bg-slate-50 transition"
                   >
 
@@ -586,6 +777,7 @@ const TodaysAppointments = () => {
 
                         {appointment.queueStatus === "Waiting" && (
                           <button
+                            onClick={() => handleStartConsultation(appointment)}
                             className="
                               inline-flex
                               items-center
@@ -598,10 +790,36 @@ const TodaysAppointments = () => {
                               text-sm
                               font-medium
                               hover:bg-blue-700
+                              transition
+                              shadow-sm
                             "
                           >
                             <Play size={15} />
                             Start
+                          </button>
+                        )}
+
+                        {appointment.queueStatus === "In Consultation" && (
+                          <button
+                            onClick={() => handleStartConsultation(appointment)}
+                            className="
+                              inline-flex
+                              items-center
+                              gap-1.5
+                              px-3
+                              py-2
+                              rounded-lg
+                              bg-emerald-600
+                              text-white
+                              text-sm
+                              font-medium
+                              hover:bg-emerald-700
+                              transition
+                              shadow-sm
+                            "
+                          >
+                            <Stethoscope size={15} />
+                            Resume
                           </button>
                         )}
 
@@ -808,6 +1026,18 @@ const TodaysAppointments = () => {
                   </span>
                 </div>
 
+                {selectedPatient.problem && (
+                  <div className="md:col-span-2">
+                    <p className="text-xs text-slate-400">
+                      Chief Complaint / Condition
+                    </p>
+
+                    <p className="text-sm font-semibold text-slate-800 mt-1">
+                      {selectedPatient.problem}
+                    </p>
+                  </div>
+                )}
+
               </div>
 
             </div>
@@ -820,8 +1050,40 @@ const TodaysAppointments = () => {
               border-t
               border-slate-200
               flex
-              justify-end
+              items-center
+              justify-between
             ">
+
+              <div>
+                {(selectedPatient.queueStatus === "Waiting" || selectedPatient.queueStatus === "In Consultation") && (
+                  <button
+                    onClick={() => {
+                      const pt = selectedPatient;
+                      setSelectedPatient(null);
+                      handleStartConsultation(pt);
+                    }}
+                    className="
+                      inline-flex
+                      items-center
+                      gap-1.5
+                      px-4
+                      py-2
+                      rounded-lg
+                      bg-blue-600
+                      text-white
+                      text-sm
+                      font-medium
+                      hover:bg-blue-700
+                      transition
+                    "
+                  >
+                    <Play size={15} />
+                    {selectedPatient.queueStatus === "In Consultation"
+                      ? "Resume Consultation"
+                      : "Start Consultation"}
+                  </button>
+                )}
+              </div>
 
               <button
                 onClick={() => setSelectedPatient(null)}

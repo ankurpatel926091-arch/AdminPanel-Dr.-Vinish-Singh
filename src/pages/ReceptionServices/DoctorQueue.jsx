@@ -1,6 +1,11 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { toast } from "react-toastify";
 import useDebouncedValue from "../../hooks/useDebouncedValue";
+import {
+  getTodayQueueApi,
+  updateQueueStatusApi,
+  callNextPatientApi,
+} from "../../api/queueApi";
 import {
   Users,
   Clock,
@@ -18,112 +23,40 @@ import {
   CheckSquare,
 } from "lucide-react";
 
-// Default Initial Queue Data (Receptionist Flow)
-const DEFAULT_QUEUE = [
-  {
-    id: "Q-101",
-    tokenNumber: "T-001",
-    patientId: "UHID-10245",
-    patientName: "Rahul Sharma",
-    age: 34,
-    gender: "Male",
-    mobile: "9876543210",
-    doctorName: "Dr. Vinish Kumar Singh",
-    department: "Urology",
-    clinic: "Rudraksh IVF & Urology Centre",
-    checkInTime: "09:30 AM",
-    status: "Consulting",
-    priority: "Normal",
-    startTime: "09:55 AM",
-  },
-  {
-    id: "Q-102",
-    tokenNumber: "T-002",
-    patientId: "UHID-10246",
-    patientName: "Priya Verma",
-    age: 31,
-    gender: "Female",
-    mobile: "9123456780",
-    doctorName: "Dr. Vinish Kumar Singh",
-    department: "Urology",
-    clinic: "Rudraksh IVF & Urology Centre",
-    checkInTime: "09:45 AM",
-    status: "Waiting",
-    priority: "Urgent",
-    startTime: null,
-  },
-  {
-    id: "Q-103",
-    tokenNumber: "T-003",
-    patientId: "UHID-10247",
-    patientName: "Suresh Kumar",
-    age: 52,
-    gender: "Male",
-    mobile: "9988776655",
-    doctorName: "Dr. Vinish Kumar Singh",
-    department: "Urology",
-    clinic: "Rudraksh IVF & Urology Centre",
-    checkInTime: "10:00 AM",
-    status: "Waiting",
-    priority: "Normal",
-    startTime: null,
-  },
-  {
-    id: "Q-104",
-    tokenNumber: "T-004",
-    patientId: "UHID-10248",
-    patientName: "Mohit Singh",
-    age: 28,
-    gender: "Male",
-    mobile: "9123456789",
-    doctorName: "Dr. Vinish Kumar Singh",
-    department: "Urology",
-    clinic: "Rudraksh IVF & Urology Centre",
-    checkInTime: "10:12 AM",
-    status: "Waiting",
-    priority: "Normal",
-    startTime: null,
-  },
-  {
-    id: "Q-105",
-    tokenNumber: "T-005",
-    patientId: "UHID-10240",
-    patientName: "Rajesh Chandra",
-    age: 60,
-    gender: "Male",
-    mobile: "9765432109",
-    doctorName: "Dr. Vinish Kumar Singh",
-    department: "Urology",
-    clinic: "Rudraksh IVF & Urology Centre",
-    checkInTime: "09:00 AM",
-    status: "Completed",
-    priority: "Normal",
-    startTime: "09:30 AM",
-    endTime: "09:52 AM",
-  },
-];
+// Initial Queue Data (Loaded dynamically from MongoDB Database)
+const DEFAULT_QUEUE = [];
 
 export default function DoctorQueue() {
-  const [queue, setQueue] = useState(() => {
+  const [queue, setQueue] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchQueueFromDB = useCallback(async () => {
     try {
-      const saved = localStorage.getItem("dr_vinish_doctor_queue");
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        // Normalize status names if coming from older schema
-        return parsed.map((item) => {
+      setLoading(true);
+      const data = await getTodayQueueApi();
+      if (Array.isArray(data)) {
+        const normalized = data.map((item) => {
           let st = item.status;
           if (st === "IN_CONSULTATION") st = "Consulting";
           else if (st === "WAITING") st = "Waiting";
           else if (st === "COMPLETED") st = "Completed";
           else if (st === "SKIPPED" || st === "CANCELLED") st = "Cancelled";
-          return { ...item, status: st };
+          return { ...item, status: st || "Waiting" };
         });
+        setQueue(normalized);
+        localStorage.setItem("dr_vinish_doctor_queue", JSON.stringify(normalized));
+        localStorage.setItem("dr_vinish_queue", JSON.stringify(normalized));
       }
     } catch (e) {
-      console.warn("Failed to load queue from storage", e);
+      console.warn("Failed to load queue from database", e);
+    } finally {
+      setLoading(false);
     }
-    return DEFAULT_QUEUE;
-  });
+  }, []);
+
+  useEffect(() => {
+    fetchQueueFromDB();
+  }, [fetchQueueFromDB]);
 
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearchQuery = useDebouncedValue(searchQuery);
@@ -223,75 +156,51 @@ export default function DoctorQueue() {
     });
   }, [queue, debouncedSearchQuery, statusFilter, doctorFilter]);
 
-  // Operational Actions
-  const handleCallNextPatient = () => {
+  // Operational Actions (MongoDB Sync)
+  const handleCallNextPatient = async () => {
     if (!nextWaitingPatient) {
       toast.info("No waiting patients in queue!");
       return;
     }
 
-    const nowStr = new Date().toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-
-    setQueue((prev) =>
-      prev.map((item) => {
-        if (item.status === "Consulting") {
-          return { ...item, status: "Completed", endTime: nowStr };
-        }
-        if (item.id === nextWaitingPatient.id) {
-          return { ...item, status: "Consulting", startTime: nowStr };
-        }
-        return item;
-      })
-    );
-
-    toast.success(
-      `Called Token ${nextWaitingPatient.tokenNumber} (${nextWaitingPatient.patientName}) to Doctor Consultation.`
-    );
+    try {
+      const res = await callNextPatientApi();
+      await fetchQueueFromDB();
+      if (res?.success) {
+        toast.success(
+          `Called Token ${nextWaitingPatient.tokenNumber} (${nextWaitingPatient.patientName}) to Doctor Consultation.`
+        );
+      }
+    } catch (e) {
+      toast.error("Failed to call next patient.");
+    }
   };
 
-  const handleCallSpecificPatient = (id) => {
-    const nowStr = new Date().toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-
-    setQueue((prev) =>
-      prev.map((item) => {
-        if (item.status === "Consulting" && item.id !== id) {
-          return { ...item, status: "Completed", endTime: nowStr };
-        }
-        if (item.id === id) {
-          return { ...item, status: "Consulting", startTime: nowStr };
-        }
-        return item;
-      })
-    );
-
-    const pt = queue.find((q) => q.id === id);
-    toast.success(`Token ${pt?.tokenNumber || ""} (${pt?.patientName || ""}) is now Consulting.`);
+  const handleCallSpecificPatient = async (id) => {
+    try {
+      await updateQueueStatusApi(id, { status: "Consulting" });
+      await fetchQueueFromDB();
+      const pt = queue.find((q) => q.id === id || q._id === id);
+      toast.success(`Token ${pt?.tokenNumber || ""} (${pt?.patientName || ""}) is now Consulting.`);
+    } catch (e) {
+      toast.error("Failed to update status.");
+    }
   };
 
-  const handleFinishConsultation = (id) => {
-    const nowStr = new Date().toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-
-    setQueue((prev) =>
-      prev.map((item) =>
-        item.id === id ? { ...item, status: "Completed", endTime: nowStr } : item
-      )
-    );
-
-    const pt = queue.find((q) => q.id === id);
-    toast.success(`Consultation finished for Token ${pt?.tokenNumber || id}`);
+  const handleFinishConsultation = async (id) => {
+    try {
+      await updateQueueStatusApi(id, { status: "Completed" });
+      await fetchQueueFromDB();
+      const pt = queue.find((q) => q.id === id || q._id === id);
+      toast.success(`Consultation finished for Token ${pt?.tokenNumber || id}`);
+    } catch (e) {
+      toast.error("Failed to finish consultation.");
+    }
   };
 
-  const handleRefresh = () => {
-    toast.info("Queue refreshed");
+  const handleRefresh = async () => {
+    await fetchQueueFromDB();
+    toast.info("Queue refreshed from database");
   };
 
   return (
@@ -400,49 +309,49 @@ export default function DoctorQueue() {
       )}
 
       {/* 4. Basic Queue Summary (Only 3 cards: Total Patients, Waiting, Completed) */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-3 gap-2 sm:gap-4">
         {/* Card 1: Total Patients */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex items-center justify-between">
-          <div>
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
-              Total Patients
+        <div className="bg-white rounded-xl sm:rounded-2xl p-2.5 sm:p-5 border border-slate-200 shadow-xs flex items-center justify-between">
+          <div className="min-w-0 pr-1">
+            <span className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider block truncate">
+              Total
             </span>
-            <span className="text-3xl font-black text-slate-800 mt-1 block">
+            <span className="text-lg sm:text-3xl font-black text-slate-800 mt-0.5 sm:mt-1 block">
               {summary.total}
             </span>
           </div>
-          <div className="p-3 rounded-xl bg-slate-100 text-slate-600">
-            <Users className="w-6 h-6" />
+          <div className="p-2 sm:p-3 rounded-lg sm:rounded-xl bg-slate-100 text-slate-600 shrink-0">
+            <Users className="w-4 h-4 sm:w-6 sm:h-6" />
           </div>
         </div>
 
         {/* Card 2: Waiting */}
-        <div className="bg-white rounded-2xl p-5 border border-amber-200 bg-amber-50/20 shadow-sm flex items-center justify-between">
-          <div>
-            <span className="text-xs font-bold text-amber-700 uppercase tracking-wider block">
-              Waiting Patients
+        <div className="bg-white rounded-xl sm:rounded-2xl p-2.5 sm:p-5 border border-amber-200 bg-amber-50/20 shadow-xs flex items-center justify-between">
+          <div className="min-w-0 pr-1">
+            <span className="text-[10px] sm:text-xs font-bold text-amber-700 uppercase tracking-wider block truncate">
+              Waiting
             </span>
-            <span className="text-3xl font-black text-amber-700 mt-1 block">
+            <span className="text-lg sm:text-3xl font-black text-amber-700 mt-0.5 sm:mt-1 block">
               {summary.waiting}
             </span>
           </div>
-          <div className="p-3 rounded-xl bg-amber-100 text-amber-700">
-            <Clock className="w-6 h-6" />
+          <div className="p-2 sm:p-3 rounded-lg sm:rounded-xl bg-amber-100 text-amber-700 shrink-0">
+            <Clock className="w-4 h-4 sm:w-6 sm:h-6" />
           </div>
         </div>
 
         {/* Card 3: Completed */}
-        <div className="bg-white rounded-2xl p-5 border border-emerald-200 bg-emerald-50/20 shadow-sm flex items-center justify-between">
-          <div>
-            <span className="text-xs font-bold text-emerald-700 uppercase tracking-wider block">
+        <div className="bg-white rounded-xl sm:rounded-2xl p-2.5 sm:p-5 border border-emerald-200 bg-emerald-50/20 shadow-xs flex items-center justify-between">
+          <div className="min-w-0 pr-1">
+            <span className="text-[10px] sm:text-xs font-bold text-emerald-700 uppercase tracking-wider block truncate">
               Completed
             </span>
-            <span className="text-3xl font-black text-emerald-700 mt-1 block">
+            <span className="text-lg sm:text-3xl font-black text-emerald-700 mt-0.5 sm:mt-1 block">
               {summary.completed}
             </span>
           </div>
-          <div className="p-3 rounded-xl bg-emerald-100 text-emerald-700">
-            <CheckCircle2 className="w-6 h-6" />
+          <div className="p-2 sm:p-3 rounded-lg sm:rounded-xl bg-emerald-100 text-emerald-700 shrink-0">
+            <CheckCircle2 className="w-4 h-4 sm:w-6 sm:h-6" />
           </div>
         </div>
       </div>

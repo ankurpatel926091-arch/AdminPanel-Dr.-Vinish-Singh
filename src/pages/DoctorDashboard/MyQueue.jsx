@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import useDebouncedValue from "../../hooks/useDebouncedValue";
@@ -31,125 +31,14 @@ import {
   saveQueue,
   SHARED_QUEUE_STORAGE_KEY,
 } from "../../utils/staticAppointmentFlow";
+import {
+  getTodayQueueApi,
+  updateQueueStatusApi,
+  callNextPatientApi,
+} from "../../api/queueApi";
 
 // Default Doctor Queue Initial State if localStorage is empty
-const DEFAULT_QUEUE = [
-  {
-    id: "Q-101",
-    tokenNumber: "T-001",
-    patientId: "UHID-10245",
-    patientName: "Rahul Sharma",
-    age: 34,
-    gender: "Male",
-    mobile: "9876543210",
-    doctorName: "Dr. Vinish Kumar Singh",
-    department: "Urology",
-    clinic: "Rudraksh IVF & Urology Centre (Sharda Nagar)",
-    checkInTime: "09:30 AM",
-    estimatedTime: "10:00 AM",
-    status: "IN_CONSULTATION",
-    priority: "NORMAL",
-    vitals: "BP: 124/82, Temp: 98.4°F, Pulse: 74 bpm",
-    notes: "Follow-up for Laser Kidney Stone (RIRS) post-op evaluation.",
-    startTime: "09:55 AM",
-  },
-  {
-    id: "Q-102",
-    tokenNumber: "T-002",
-    patientId: "UHID-10246",
-    patientName: "Priya Verma",
-    age: 31,
-    gender: "Female",
-    mobile: "9123456780",
-    doctorName: "Dr. Vinish Kumar Singh",
-    department: "Urology",
-    clinic: "Rudraksh IVF & Urology Centre (Sharda Nagar)",
-    checkInTime: "09:45 AM",
-    estimatedTime: "10:15 AM",
-    status: "WAITING",
-    priority: "EMERGENCY",
-    vitals: "BP: 138/90, Temp: 99.1°F, Pulse: 88 bpm",
-    notes: "Severe right flank pain, acute renal colic evaluation.",
-    startTime: null,
-  },
-  {
-    id: "Q-103",
-    tokenNumber: "T-003",
-    patientId: "UHID-10247",
-    patientName: "Suresh Kumar",
-    age: 52,
-    gender: "Male",
-    mobile: "9988776655",
-    doctorName: "Dr. Vinish Kumar Singh",
-    department: "Andrology & Urology",
-    clinic: "Rudraksh IVF & Urology Centre (Sharda Nagar)",
-    checkInTime: "10:00 AM",
-    estimatedTime: "10:30 AM",
-    status: "WAITING",
-    priority: "HIGH",
-    vitals: "BP: 130/85, Temp: 98.6°F, Pulse: 78 bpm",
-    notes: "Elderly patient with BPH urinary frequency complaints.",
-    startTime: null,
-  },
-  {
-    id: "Q-104",
-    tokenNumber: "T-004",
-    patientId: "UHID-10248",
-    patientName: "Mohit Singh",
-    age: 28,
-    gender: "Male",
-    mobile: "9123456789",
-    doctorName: "Dr. Vinish Kumar Singh",
-    department: "Urology",
-    clinic: "Rudraksh IVF & Urology Centre (Sharda Nagar)",
-    checkInTime: "10:12 AM",
-    estimatedTime: "10:45 AM",
-    status: "WAITING",
-    priority: "NORMAL",
-    vitals: "BP: 120/80, Temp: 98.2°F, Pulse: 72 bpm",
-    notes: "Routine check-up & ultrasound report review.",
-    startTime: null,
-  },
-  {
-    id: "Q-105",
-    tokenNumber: "T-005",
-    patientId: "UHID-10249",
-    patientName: "Sunita Gupta",
-    age: 45,
-    gender: "Female",
-    mobile: "9811223344",
-    doctorName: "Dr. Vinish Kumar Singh",
-    department: "Urology",
-    clinic: "Dr. Shilpi Maternity & Urology Centre (Pakkabag)",
-    checkInTime: "10:25 AM",
-    estimatedTime: "11:00 AM",
-    status: "SKIPPED",
-    priority: "NORMAL",
-    vitals: "BP: 122/78, Temp: 98.4°F, Pulse: 76 bpm",
-    notes: "Sent for lab blood test & urine routine check before consultation.",
-    startTime: null,
-  },
-  {
-    id: "Q-106",
-    tokenNumber: "T-000",
-    patientId: "UHID-10240",
-    patientName: "Rajesh Chandra",
-    age: 60,
-    gender: "Male",
-    mobile: "9765432109",
-    doctorName: "Dr. Vinish Kumar Singh",
-    department: "Urology",
-    clinic: "Rudraksh IVF & Urology Centre (Sharda Nagar)",
-    checkInTime: "09:00 AM",
-    estimatedTime: "09:30 AM",
-    status: "COMPLETED",
-    priority: "NORMAL",
-    vitals: "BP: 126/82, Temp: 98.6°F, Pulse: 70 bpm",
-    notes: "Prescription issued, advised follow-up after 2 weeks.",
-    startTime: "09:30 AM",
-    endTime: "09:52 AM",
-  },
-];
+const DEFAULT_QUEUE = [];
 
 export default function MyQueue() {
   const navigate = useNavigate();
@@ -170,6 +59,23 @@ export default function MyQueue() {
     const savedQueue = sharedQueue.length ? sharedQueue : doctorQueue;
     return savedQueue.length ? savedQueue.map(normalizeQueueItem) : DEFAULT_QUEUE;
   });
+
+  const fetchQueueFromDB = useCallback(async () => {
+    try {
+      const data = await getTodayQueueApi();
+      if (Array.isArray(data)) {
+        const normalized = data.map((item) => normalizeQueueItem(item));
+        setQueue(normalized);
+        saveQueue(normalized);
+      }
+    } catch (e) {
+      console.warn("Failed to load queue from database", e);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchQueueFromDB();
+  }, [fetchQueueFromDB]);
 
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearchQuery = useDebouncedValue(searchQuery);
@@ -268,18 +174,17 @@ export default function MyQueue() {
     });
   }, [queue, debouncedSearchQuery, statusFilter]);
 
-  // ACTIONS
-  const handleResetDefaultQueue = () => {
+  // ACTIONS (MongoDB Sync)
+  const handleResetDefaultQueue = async () => {
     try {
-      saveQueue(DEFAULT_QUEUE);
-      setQueue(DEFAULT_QUEUE);
-      toast.success("Doctor Queue reset with fresh waiting patients!");
+      await fetchQueueFromDB();
+      toast.info("Doctor Queue refreshed from database!");
     } catch (e) {
-      console.warn("Reset queue error", e);
+      console.warn("Refresh queue error", e);
     }
   };
 
-  const handleCallNextPatient = () => {
+  const handleCallNextPatient = async () => {
     if (currentConsultation) {
       toast.info("Complete the current consultation before calling the next patient.");
       return;
@@ -290,46 +195,38 @@ export default function MyQueue() {
       return;
     }
 
-    const nowStr = new Date().toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-
-    setQueue((prev) =>
-      prev.map((item) => item.id === nextWaitingPatient.id
-        ? { ...item, status: "IN_CONSULTATION", startTime: nowStr }
-        : item)
-    );
-
-    toast.success(
-      `Called Token ${nextWaitingPatient.tokenNumber} (${nextWaitingPatient.patientName}) into your consultation room!`,
-      { icon: "🩺" }
-    );
+    try {
+      const res = await callNextPatientApi();
+      await fetchQueueFromDB();
+      if (res?.success) {
+        toast.success(
+          `Called Token ${nextWaitingPatient.tokenNumber} (${nextWaitingPatient.patientName}) into your consultation room!`,
+          { icon: "🩺" }
+        );
+      }
+    } catch (e) {
+      toast.error("Failed to call next patient.");
+    }
   };
 
-  const handleStartConsultation = (id) => {
+  const handleStartConsultation = async (id) => {
     if (currentConsultation && currentConsultation.id !== id) {
       toast.info("Complete the current consultation before starting another patient.");
       return;
     }
 
-    const nowStr = new Date().toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-
-    setQueue((prev) =>
-      prev.map((item) => item.id === id
-        ? { ...item, status: "IN_CONSULTATION", startTime: nowStr }
-        : item)
-    );
-
-    const pt = queue.find((q) => q.id === id);
-    toast.success(`Started consultation for Token ${pt?.tokenNumber || id}`);
+    try {
+      await updateQueueStatusApi(id, { status: "Consulting" });
+      await fetchQueueFromDB();
+      const pt = queue.find((q) => q.id === id || q._id === id);
+      toast.success(`Started consultation for Token ${pt?.tokenNumber || id}`);
+    } catch (e) {
+      toast.error("Failed to start consultation.");
+    }
   };
 
   const handleOpenConsultation = (id) => {
-    const pt = queue.find((q) => q.id === id);
+    const pt = queue.find((q) => q.id === id || q._id === id);
     if (!pt) {
       toast.error("Patient not found in the current queue.");
       return;
@@ -344,22 +241,24 @@ export default function MyQueue() {
     }
   };
 
-  const handleSkipPatient = (id) => {
-    setQueue((prev) =>
-      prev.map((item) =>
-        item.id === id ? { ...item, status: "SKIPPED" } : item
-      )
-    );
-    toast.warn("Patient marked as Skipped / Lab Hold");
+  const handleSkipPatient = async (id) => {
+    try {
+      await updateQueueStatusApi(id, { status: "Skipped" });
+      await fetchQueueFromDB();
+      toast.warn("Patient marked as Skipped / Lab Hold");
+    } catch (e) {
+      toast.error("Failed to skip patient.");
+    }
   };
 
-  const handleRecallPatient = (id) => {
-    setQueue((prev) =>
-      prev.map((item) =>
-        item.id === id ? { ...item, status: "WAITING" } : item
-      )
-    );
-    toast.success("Patient recalled back to Waiting Queue");
+  const handleRecallPatient = async (id) => {
+    try {
+      await updateQueueStatusApi(id, { status: "Waiting" });
+      await fetchQueueFromDB();
+      toast.success("Patient recalled back to Waiting Queue");
+    } catch (e) {
+      toast.error("Failed to recall patient.");
+    }
   };
 
   return (
@@ -458,60 +357,60 @@ export default function MyQueue() {
       </div>
 
       {/* Quick Stats Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm flex items-center justify-between">
-          <div>
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
-              Waiting in Queue
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-4">
+        <div className="bg-white rounded-xl sm:rounded-2xl p-2.5 sm:p-4 border border-slate-200 shadow-xs flex items-center justify-between">
+          <div className="min-w-0 pr-1">
+            <span className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider block truncate">
+              Waiting Queue
             </span>
-            <span className="text-2xl font-black text-amber-600 mt-1 block">
+            <span className="text-lg sm:text-2xl font-black text-amber-600 mt-0.5 sm:mt-1 block">
               {stats.waiting}
             </span>
           </div>
-          <div className="p-3 rounded-xl bg-amber-50 text-amber-600">
-            <Clock className="w-6 h-6" />
+          <div className="p-2 sm:p-3 rounded-lg sm:rounded-xl bg-amber-50 text-amber-600 shrink-0">
+            <Clock className="w-4 h-4 sm:w-6 sm:h-6" />
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm flex items-center justify-between">
-          <div>
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
+        <div className="bg-white rounded-xl sm:rounded-2xl p-2.5 sm:p-4 border border-slate-200 shadow-xs flex items-center justify-between">
+          <div className="min-w-0 pr-1">
+            <span className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider block truncate">
               Priority Cases
             </span>
-            <span className="text-2xl font-black text-rose-600 mt-1 block">
+            <span className="text-lg sm:text-2xl font-black text-rose-600 mt-0.5 sm:mt-1 block">
               {stats.emergency}
             </span>
           </div>
-          <div className="p-3 rounded-xl bg-rose-50 text-rose-600">
-            <ShieldAlert className="w-6 h-6" />
+          <div className="p-2 sm:p-3 rounded-lg sm:rounded-xl bg-rose-50 text-rose-600 shrink-0">
+            <ShieldAlert className="w-4 h-4 sm:w-6 sm:h-6" />
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm flex items-center justify-between">
-          <div>
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
-              Skipped / Lab Hold
+        <div className="bg-white rounded-xl sm:rounded-2xl p-2.5 sm:p-4 border border-slate-200 shadow-xs flex items-center justify-between">
+          <div className="min-w-0 pr-1">
+            <span className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider block truncate">
+              Skipped / Hold
             </span>
-            <span className="text-2xl font-black text-purple-600 mt-1 block">
+            <span className="text-lg sm:text-2xl font-black text-purple-600 mt-0.5 sm:mt-1 block">
               {stats.skipped}
             </span>
           </div>
-          <div className="p-3 rounded-xl bg-purple-50 text-purple-600">
-            <AlertTriangle className="w-6 h-6" />
+          <div className="p-2 sm:p-3 rounded-lg sm:rounded-xl bg-purple-50 text-purple-600 shrink-0">
+            <AlertTriangle className="w-4 h-4 sm:w-6 sm:h-6" />
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm flex items-center justify-between">
-          <div>
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
+        <div className="bg-white rounded-xl sm:rounded-2xl p-2.5 sm:p-4 border border-slate-200 shadow-xs flex items-center justify-between">
+          <div className="min-w-0 pr-1">
+            <span className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider block truncate">
               Consulted Today
             </span>
-            <span className="text-2xl font-black text-emerald-600 mt-1 block">
+            <span className="text-lg sm:text-2xl font-black text-emerald-600 mt-0.5 sm:mt-1 block">
               {stats.completed}
             </span>
           </div>
-          <div className="p-3 rounded-xl bg-emerald-50 text-emerald-600">
-            <CheckCircle2 className="w-6 h-6" />
+          <div className="p-2 sm:p-3 rounded-lg sm:rounded-xl bg-emerald-50 text-emerald-600 shrink-0">
+            <CheckCircle2 className="w-4 h-4 sm:w-6 sm:h-6" />
           </div>
         </div>
       </div>

@@ -36,6 +36,7 @@ import {
   getAdminAppointmentsApi,
   checkInAppointmentApi,
 } from "../../api/appointmentApi";
+import { addToQueueApi } from "../../api/queueApi";
 
 /* =========================================================
    Mock Appointment Data
@@ -287,6 +288,25 @@ export default function CheckIn() {
       }
 
       try {
+        const queuePayload = {
+          tokenNumber: `T-${String(updatedApt.tokenNumber).padStart(3, "0")}`,
+          visitId: updatedApt.visitId,
+          appointment: updatedApt.appointmentId || null,
+          patientId: updatedApt.patientId,
+          patientName: updatedApt.patientName,
+          age: Number(updatedApt.age) || 35,
+          gender: updatedApt.gender || "Male",
+          mobile: updatedApt.mobile || "",
+          doctorName: updatedApt.doctorName,
+          department: updatedApt.department,
+          clinic: updatedApt.clinic,
+          checkInTime: updatedApt.checkInAt,
+          status: "Waiting",
+          priority: "Normal",
+        };
+        // Persist to MongoDB Queue
+        addToQueueApi(queuePayload).catch((e) => console.warn("Queue API sync error:", e));
+
         const existingQueue =
           readStoredArray(SHARED_QUEUE_STORAGE_KEY).length > 0
             ? readStoredArray(SHARED_QUEUE_STORAGE_KEY)
@@ -298,17 +318,7 @@ export default function CheckIn() {
         const newQueueItem = {
           id: `Q-${updatedApt.visitId}`,
           appointmentId,
-          tokenNumber: `T-${String(updatedApt.tokenNumber).padStart(3, "0")}`,
-          visitId: updatedApt.visitId,
-          patientId: updatedApt.patientId,
-          patientName: updatedApt.patientName,
-          age: updatedApt.age,
-          gender: updatedApt.gender,
-          mobile: updatedApt.mobile,
-          doctorName: updatedApt.doctorName,
-          department: updatedApt.department,
-          clinic: updatedApt.clinic,
-          checkInTime: updatedApt.checkInAt,
+          ...queuePayload,
           status: "WAITING",
           priority: "NORMAL",
           startTime: null,
@@ -392,10 +402,10 @@ export default function CheckIn() {
           STAT CARDS
       ===================================================== */}
 
-      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="mb-4 sm:mb-6 grid grid-cols-3 gap-2 sm:gap-4">
         {/* Total Confirmed */}
         <StatCard
-          title="Confirmed Appointments"
+          title="Confirmed"
           value={totalAppointments}
           icon={Calendar}
           iconClass="bg-blue-50 text-blue-600"
@@ -403,7 +413,7 @@ export default function CheckIn() {
 
         {/* Confirmed / Ready */}
         <StatCard
-          title="Ready for Check-in"
+          title="Ready Check-in"
           value={confirmedCount}
           icon={UserCheck}
           iconClass="bg-amber-50 text-amber-600"
@@ -411,7 +421,7 @@ export default function CheckIn() {
 
         {/* Checked In */}
         <StatCard
-          title="Checked-in Today"
+          title="Checked-in"
           value={checkedInCount}
           icon={CheckCircle2}
           iconClass="bg-green-50 text-green-600"
@@ -1021,15 +1031,15 @@ export default function CheckIn() {
 
 function StatCard({ title, value, icon: Icon, iconClass }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="rounded-xl border border-slate-200 bg-white p-2.5 sm:p-4 shadow-xs">
       <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm text-slate-500">{title}</p>
-          <h2 className="mt-1 text-2xl font-bold text-slate-900">{value}</h2>
+        <div className="min-w-0 pr-1">
+          <p className="text-[10px] sm:text-xs text-slate-500 font-medium truncate">{title}</p>
+          <h2 className="mt-0.5 sm:mt-1 text-base sm:text-2xl font-bold text-slate-900">{value}</h2>
         </div>
 
-        <div className={`rounded-xl p-3 ${iconClass}`}>
-          <Icon size={22} />
+        <div className={`rounded-lg sm:rounded-xl p-2 sm:p-3 ${iconClass} shrink-0`}>
+          <Icon className="w-4 h-4 sm:w-5.5 sm:h-5.5" />
         </div>
       </div>
     </div>

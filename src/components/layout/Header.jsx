@@ -45,26 +45,26 @@ export default function Header({ onToggleSidebar, onOpenSearch }) {
   };
 
   return (
-    <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-3 sm:px-6 lg:px-8 py-2.5 flex items-center justify-between shadow-2xs">
+    <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-2.5 sm:px-6 lg:px-8 py-2 sm:py-2.5 flex items-center justify-between shadow-2xs">
       {/* Left: Mobile Sidebar Toggle + Greeting Header */}
-      <div className="flex items-center gap-2.5 sm:gap-4">
+      <div className="flex items-center gap-2 sm:gap-4 min-w-0">
         <button
           onClick={onToggleSidebar}
-          className="p-2 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors shrink-0"
+          className="p-1.5 sm:p-2 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors shrink-0"
           aria-label="Toggle Navigation"
         >
           <Menu className="w-5 h-5" />
         </button>
 
-        <div className="text-left">
-          <h2 className="text-sm sm:text-base md:text-lg font-bold text-slate-900 tracking-tight flex items-center gap-1.5 leading-tight">
+        <div className="text-left min-w-0">
+          <h2 className="text-xs sm:text-base md:text-lg font-bold text-slate-900 tracking-tight flex items-center gap-1 leading-tight truncate">
             {isDoctorPortal ? (
               <>
-                {getGreeting()}, Dr. Vinish Kumar Singh <span className="inline-block"></span>
+                <span className="hidden sm:inline">{getGreeting()}, </span>Dr. Vinish Singh
               </>
             ) : (
               <>
-                {getGreeting()}, Administrator <span className="inline-block"></span>
+                <span className="hidden sm:inline">{getGreeting()}, </span>Admin
               </>
             )}
           </h2>

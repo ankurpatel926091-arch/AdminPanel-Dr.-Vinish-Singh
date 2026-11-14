@@ -62,3 +62,138 @@
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.5);
 }
+
+/* ==========================================================================
+   Mobile Phone Responsive Scaling & Compact Optimization
+   ========================================================================== */
+
+/* Tablet / Large Mobile (≤ 768px) */
+@media (max-width: 768px) {
+  html {
+    font-size: 13.5px;
+  }
+}
+
+/* Standard Mobile Screens (≤ 640px) */
+@media (max-width: 640px) {
+  /* Scale root font-size so rem-based tailwind classes shrink uniformly across the whole admin panel */
+  html {
+    font-size: 12.2px; /* Sleek compact base font for clean mobile view */
+  }
+
+  /* Compact headings on phone view */
+  h1 {
+    font-size: 1.15rem !important;
+    line-height: 1.25 !important;
+  }
+  h2 {
+    font-size: 1.02rem !important;
+    line-height: 1.25 !important;
+  }
+  h3 {
+    font-size: 0.92rem !important;
+    line-height: 1.25 !important;
+  }
+
+  /* Compact rounded corners on mobile */
+  .rounded-3xl {
+    border-radius: 1rem !important;
+  }
+  .rounded-2xl {
+    border-radius: 0.75rem !important;
+  }
+  .rounded-xl {
+    border-radius: 0.55rem !important;
+  }
+
+  /* Compact table cells for phone screens */
+  table {
+    font-size: 0.72rem !important;
+  }
+  th {
+    padding-left: 0.45rem !important;
+    padding-right: 0.45rem !important;
+    padding-top: 0.35rem !important;
+    padding-bottom: 0.35rem !important;
+    font-size: 0.68rem !important;
+    letter-spacing: 0.02em !important;
+  }
+  td {
+    padding-left: 0.45rem !important;
+    padding-right: 0.45rem !important;
+    padding-top: 0.35rem !important;
+    padding-bottom: 0.35rem !important;
+    font-size: 0.72rem !important;
+  }
+
+  /* Compact buttons, inputs & select fields */
+  input, select, textarea {
+    font-size: 0.78rem !important;
+    padding-top: 0.35rem !important;
+    padding-bottom: 0.35rem !important;
+    padding-left: 0.55rem !important;
+    padding-right: 0.55rem !important;
+    border-radius: 0.55rem !important;
+  }
+
+  /* Compact buttons */
+  button {
+    font-size: 0.78rem;
+  }
+
+  /* Badges & Status Tags on mobile */
+  .inline-flex.rounded-full,
+  .inline-flex.rounded-xl {
+    font-size: 0.7rem !important;
+    padding-top: 0.2rem !important;
+    padding-bottom: 0.2rem !important;
+    padding-left: 0.45rem !important;
+    padding-right: 0.45rem !important;
+  }
+
+  /* Compact shadows on mobile to look clean */
+  .shadow-2xl, .shadow-xl {
+    box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.08) !important;
+  }
+
+  /* Smooth horizontal touch scroll for tables & data grids with thin scrollbar */
+  .overflow-x-auto {
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 #f8fafc;
+  }
+  .overflow-x-auto::-webkit-scrollbar {
+    height: 4px;
+  }
+  .overflow-x-auto::-webkit-scrollbar-track {
+    background: #f8fafc;
+  }
+  .overflow-x-auto::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 9999px;
+  }
+  .overflow-x-auto::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+  }
+}
+
+/* Narrow Mobile Screens (≤ 420px, e.g. iPhone SE, Galaxy S) */
+@media (max-width: 420px) {
+  html {
+    font-size: 11.5px; /* Super sleek & compact for narrow phone screens */
+  }
+
+  h1 {
+    font-size: 1.08rem !important;
+  }
+  h2 {
+    font-size: 0.98rem !important;
+  }
+
+  th, td {
+    padding-left: 0.35rem !important;
+    padding-right: 0.35rem !important;
+    padding-top: 0.3rem !important;
+    padding-bottom: 0.3rem !important;
+  }
+}

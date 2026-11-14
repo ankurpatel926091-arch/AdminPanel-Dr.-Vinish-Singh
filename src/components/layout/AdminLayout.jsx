@@ -54,7 +54,7 @@ export default function AdminLayout() {
           onOpenSearch={() => setSearchOpen(true)}
         />
         
-        <main className="flex-1 p-4 lg:p-8 max-w-7xl w-full mx-auto">
+        <main className="flex-1 p-2.5 sm:p-4 lg:p-8 max-w-7xl w-full mx-auto overflow-x-hidden">
           <Suspense fallback={<PageLoader />}>
             <Outlet />
           </Suspense>

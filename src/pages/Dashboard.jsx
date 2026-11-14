@@ -25,26 +25,26 @@ export default function Dashboard() {
   return (
     <div className="space-y-5 font-sans">
       
-      {/* 1. Main Banner (Reduced Height) */}
-      <div className="bg-gradient-to-r from-[#031B38] via-[#092B57] to-[#1A3B70] rounded-2xl px-5 py-2.5 sm:px-6 sm:py-3 text-white shadow-xl relative overflow-hidden flex items-center justify-between">
+      {/* 1. Main Banner (Compact on Mobile) */}
+      <div className="bg-gradient-to-r from-[#031B38] via-[#092B57] to-[#1A3B70] rounded-xl sm:rounded-2xl p-2.5 sm:px-6 sm:py-3 text-white shadow-md sm:shadow-xl relative overflow-hidden flex items-center justify-between">
         {/* Decorative background glows */}
         <div className="absolute -top-24 -right-24 w-72 h-72 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute -bottom-24 -left-24 w-72 h-72 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
 
-        <div className="flex items-center gap-4 relative z-10">
+        <div className="flex items-center gap-2.5 sm:gap-4 relative z-10">
           {/* Left Icon Box */}
-          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-blue-500/20 border border-blue-400/30 flex items-center justify-center text-blue-400 shrink-0 shadow-inner">
-            <svg className="w-6 h-6 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.6">
+          <div className="w-8 h-8 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-blue-500/20 border border-blue-400/30 flex items-center justify-center text-blue-400 shrink-0 shadow-inner">
+            <svg className="w-4 h-4 sm:w-6 sm:h-6 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.6">
               <path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5m0 0v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 7.5v3m-1.5-1.5h3" strokeWidth="2" />
             </svg>
           </div>
 
           <div>
-            <span className="text-[10px] sm:text-[11px] font-bold text-blue-300 uppercase tracking-wider block mb-0.5">
+            <span className="text-[9px] sm:text-[11px] font-bold text-blue-300 uppercase tracking-wider block mb-0.5">
               HOSPITAL ADMIN PANEL
             </span>
-            <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-white tracking-tight">
+            <h2 className="text-sm sm:text-xl lg:text-2xl font-bold text-white tracking-tight">
               Welcome back, Administrator
             </h2>
           </div>
@@ -61,32 +61,32 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* 2. Top Stat Cards Grid (Custom Layout: Number shifted to top right) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* 2. Top Stat Cards Grid (2 cols on phone, 4 on desktop) */}
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
         {cardData.map((item, index) => {
           const Icon = item.icon;
           return (
             <div
               key={index}
-              className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow relative"
+              className="bg-white border border-slate-100 rounded-xl sm:rounded-2xl p-2.5 sm:p-5 shadow-2xs hover:shadow-md transition-shadow relative"
             >
               {/* Colored dot top right */}
-              <div className={`absolute top-5 right-5 w-2 h-2 rounded-full ${item.dotColor}`} />
+              <div className={`absolute top-2.5 right-2.5 sm:top-5 sm:right-5 w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${item.dotColor}`} />
 
-              <div className="flex justify-between items-start">
+              <div className="flex flex-col sm:flex-row justify-between sm:items-start">
                 {/* Left: Icon & Title */}
                 <div>
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${item.iconBg} mb-3`}>
-                    <Icon className={`w-5 h-5 ${item.iconColor}`} />
+                  <div className={`w-7 h-7 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl flex items-center justify-center ${item.iconBg} mb-1.5 sm:mb-3`}>
+                    <Icon className={`w-3.5 h-3.5 sm:w-5 sm:h-5 ${item.iconColor}`} />
                   </div>
-                  <p className="text-[11px] font-bold text-slate-500 tracking-wider uppercase">
+                  <p className="text-[9px] sm:text-[11px] font-bold text-slate-500 tracking-wider uppercase leading-tight line-clamp-1">
                     {item.title}
                   </p>
                 </div>
 
                 {/* Right: Number */}
-                <div className="mt-6">
-                  <h2 className="text-3xl sm:text-4xl font-black text-slate-800">
+                <div className="mt-1 sm:mt-6 text-right sm:text-right">
+                  <h2 className="text-xl sm:text-3xl lg:text-4xl font-black text-slate-800">
                     {item.value}
                   </h2>
                 </div>

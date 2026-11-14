@@ -757,8 +757,8 @@ export default function Appointments() {
 
       {/* ================= 5. ADD APPOINTMENT MODAL ================= */}
       {showAddModal && createPortal(
-        <div className="fixed inset-0 z-[9999] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 cursor-pointer" onClick={() => setShowAddModal(false)}>
-          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-7 shadow-2xl border border-slate-200 relative cursor-default max-h-[92vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-[9999] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 cursor-pointer" onClick={() => setShowAddModal(false)}>
+          <div className="bg-white rounded-2xl sm:rounded-3xl max-w-2xl w-full p-3.5 sm:p-7 shadow-2xl border border-slate-200 relative cursor-default max-h-[92vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <button
               type="button"
               disabled={isSavingAppointment}

@@ -17,6 +17,8 @@ import {
   deleteAdminBillApi,
 } from "../../api/billingApi";
 
+import { addToQueueApi } from "../../api/queueApi";
+
 import {
   Search,
   Filter,
@@ -565,334 +567,63 @@ export default function Billing() {
 
   /* =========================================
 
-     Auto-add Patient to Doctor Queue on Payment
+     Auto-add Patient to Doctor Queue on Payment (MongoDB Sync)
 
   ========================================= */
 
   const addPatientToDoctorQueue = (bill) => {
     try {
-      const queueKey = "dr_vinish_doctor_queue";
+      const tokenNumber =
+        bill.tokenNumber || `T-${Math.floor(100 + Math.random() * 900)}`;
 
-      const existingStr = localStorage.getItem(queueKey);
-
-      let existingQueue = [];
-
-      if (existingStr) {
-        try {
-          const parsed = JSON.parse(existingStr);
-
-          if (Array.isArray(parsed)) existingQueue = parsed;
-        } catch (e) {
-          console.warn("Error parsing existing queue", e);
-        }
-      }
-
-      // If storage was empty, seed with initial mock queue so existing patients aren't wiped
-
-      if (existingQueue.length === 0) {
-        existingQueue = [
-          {
-            id: "Q-101",
-
-            tokenNumber: "T-001",
-
-            patientId: "UHID-10245",
-
-            patientName: "Rahul Sharma",
-
-            age: 34,
-
-            gender: "Male",
-
-            mobile: "9876543210",
-
-            doctorName: "Dr. Vinish Kumar Singh",
-
-            department: "Urology",
-
-            clinic: "Rudraksh IVF & Urology Centre (Sharda Nagar)",
-
-            checkInTime: "09:30 AM",
-
-            estimatedTime: "10:00 AM",
-
-            status: "IN_CONSULTATION",
-
-            priority: "NORMAL",
-
-            notes:
-              "Follow-up for Laser Kidney Stone (RIRS) post-op evaluation.",
-
-            startTime: "09:55 AM",
-          },
-
-          {
-            id: "Q-102",
-
-            tokenNumber: "T-002",
-
-            patientId: "UHID-10246",
-
-            patientName: "Priya Verma",
-
-            age: 31,
-
-            gender: "Female",
-
-            mobile: "9123456780",
-
-            doctorName: "Dr. Vinish Kumar Singh",
-
-            department: "Urology",
-
-            clinic: "Rudraksh IVF & Urology Centre (Sharda Nagar)",
-
-            checkInTime: "09:45 AM",
-
-            estimatedTime: "10:15 AM",
-
-            status: "WAITING",
-
-            priority: "EMERGENCY",
-
-            notes: "Severe right flank pain, acute renal colic evaluation.",
-
-            startTime: null,
-          },
-
-          {
-            id: "Q-103",
-
-            tokenNumber: "T-003",
-
-            patientId: "UHID-10247",
-
-            patientName: "Suresh Kumar",
-
-            age: 52,
-
-            gender: "Male",
-
-            mobile: "9988776655",
-
-            doctorName: "Dr. Vinish Kumar Singh",
-
-            department: "Andrology & Urology",
-
-            clinic: "Rudraksh IVF & Urology Centre (Sharda Nagar)",
-
-            checkInTime: "10:00 AM",
-
-            estimatedTime: "10:30 AM",
-
-            status: "WAITING",
-
-            priority: "HIGH",
-
-            notes: "Elderly patient with BPH urinary frequency complaints.",
-
-            startTime: null,
-          },
-
-          {
-            id: "Q-104",
-
-            tokenNumber: "T-004",
-
-            patientId: "UHID-10248",
-
-            patientName: "Mohit Singh",
-
-            age: 28,
-
-            gender: "Male",
-
-            mobile: "9123456789",
-
-            doctorName: "Dr. Vinish Kumar Singh",
-
-            department: "Urology",
-
-            clinic: "Rudraksh IVF & Urology Centre (Sharda Nagar)",
-
-            checkInTime: "10:12 AM",
-
-            estimatedTime: "10:45 AM",
-
-            status: "WAITING",
-
-            priority: "NORMAL",
-
-            notes: "Routine check-up & ultrasound report review.",
-
-            startTime: null,
-          },
-
-          {
-            id: "Q-105",
-
-            tokenNumber: "T-005",
-
-            patientId: "UHID-10249",
-
-            patientName: "Sunita Gupta",
-
-            age: 45,
-
-            gender: "Female",
-
-            mobile: "9811223344",
-
-            doctorName: "Dr. Vinish Kumar Singh",
-
-            department: "Urology",
-
-            clinic: "Dr. Shilpi Maternity & Urology Centre (Pakkabag)",
-
-            checkInTime: "10:25 AM",
-
-            estimatedTime: "11:00 AM",
-
-            status: "SKIPPED",
-
-            priority: "NORMAL",
-
-            notes:
-              "Sent for lab blood test & urine routine check before consultation.",
-
-            startTime: null,
-          },
-
-          {
-            id: "Q-106",
-
-            tokenNumber: "T-000",
-
-            patientId: "UHID-10240",
-
-            patientName: "Rajesh Chandra",
-
-            age: 60,
-
-            gender: "Male",
-
-            mobile: "9765432109",
-
-            doctorName: "Dr. Vinish Kumar Singh",
-
-            department: "Urology",
-
-            clinic: "Rudraksh IVF & Urology Centre (Sharda Nagar)",
-
-            checkInTime: "09:00 AM",
-
-            estimatedTime: "09:30 AM",
-
-            status: "COMPLETED",
-
-            priority: "NORMAL",
-
-            notes: "Prescription issued, advised follow-up after 2 weeks.",
-
-            startTime: "09:30 AM",
-
-            endTime: "09:52 AM",
-          },
-        ];
-      }
-
-      // Check if this specific bill is already active in doctor queue today
-
-      const existingItem = existingQueue.find(
-        (item) => item.billId && item.billId === bill.billId,
-      );
-
-      if (existingItem) {
-        return existingItem.tokenNumber || null;
-      }
-
-      // Calculate next sequential token number (e.g. T-006, T-007)
-
-      let nextNum = existingQueue.length + 1;
-
-      const tokens = existingQueue
-
-        .map((item) => {
-          const match = String(item.tokenNumber || "").match(/\d+/);
-
-          return match ? parseInt(match[0], 10) : 0;
-        })
-
-        .filter((n) => !isNaN(n));
-
-      if (tokens.length > 0) {
-        nextNum = Math.max(...tokens) + 1;
-      }
-
-      const tokenNumber = `T-${String(nextNum).padStart(3, "0")}`;
-
-      const now = new Date();
-
-      const timeFormatted = now.toLocaleTimeString("en-US", {
-        hour: "2-digit",
-
-        minute: "2-digit",
-
-        hour12: true,
-      });
-
-      const queueItem = {
-        id: `Q-${Math.floor(100 + Math.random() * 900)}`,
-
+      const payload = {
         tokenNumber,
-
-        patientId:
-          bill.patientId || `UHID-${Math.floor(10000 + Math.random() * 90000)}`,
-
+        patientId: bill.patientId,
         patientName: bill.patientName,
-
         age: Number(bill.age) || 35,
-
         gender: bill.gender || "Male",
-
         mobile: bill.phone || "",
-
         doctorName: bill.doctor || "Dr. Vinish Kumar Singh",
-
         department: bill.department || "Urology",
-
-        clinic: bill.hospital || "Rudraksh IVF & Urology Centre (Sharda Nagar)",
-
-        checkInTime: timeFormatted,
-
-        estimatedTime: "Today",
-
-        status: "WAITING",
-
-        priority: "NORMAL",
-
-        notes: `Diagnosis: ${bill.diagnosis || "General"}. Bill: ${bill.billId
-          } Paid (₹${bill.paidAmount || bill.totalAmount})`,
-
-        billId: bill.billId,
-
-        visitId: bill.visitId,
-
-        startTime: null,
+        clinic: bill.hospital || "Rudraksh IVF & Urology Centre",
+        visitId: bill.visitId || "",
+        bill: bill._id || null,
+        notes: `Diagnosis: ${bill.diagnosis || "General"}. Bill: ${
+          bill.billId
+        } (₹${bill.paidAmount || bill.totalAmount})`,
       };
 
-      const updatedQueue = [queueItem, ...existingQueue];
+      // Save to MongoDB DoctorQueue collection
+      addToQueueApi(payload).catch((err) =>
+        console.warn("Queue API Error:", err),
+      );
 
-      localStorage.setItem(queueKey, JSON.stringify(updatedQueue));
-
-      localStorage.setItem("dr_vinish_queue", JSON.stringify(updatedQueue));
-
-      window.dispatchEvent(new Event("storage"));
+      // Mirror to storage so open tabs detect it synchronously
+      try {
+        const queueKey = "dr_vinish_doctor_queue";
+        const existing = JSON.parse(localStorage.getItem(queueKey) || "[]");
+        const queueItem = {
+          id: `Q-${Math.floor(100 + Math.random() * 900)}`,
+          ...payload,
+          checkInTime: new Date().toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+          status: "Waiting",
+          priority: "Normal",
+        };
+        const updated = [
+          queueItem,
+          ...existing.filter((i) => i.visitId !== bill.visitId),
+        ];
+        localStorage.setItem(queueKey, JSON.stringify(updated));
+        localStorage.setItem("dr_vinish_queue", JSON.stringify(updated));
+        window.dispatchEvent(new Event("storage"));
+      } catch (e) {}
 
       return tokenNumber;
     } catch (err) {
       console.warn("Failed to add patient to doctor queue:", err);
-
       return null;
     }
   };
@@ -1292,29 +1023,29 @@ export default function Billing() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 p-4 md:p-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* =========================================
 
           Header
 
       ========================================= */}
 
-      <div className="mb-6 flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
+      <div className="flex flex-col justify-between gap-3 sm:gap-4 sm:flex-row sm:items-center">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
             Billing & Payment
           </h1>
 
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-0.5 text-xs sm:text-sm text-slate-500">
             Manage OPD bills, patient invoices, payments and receipts.
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 shadow-sm">
-            <Calendar size={18} className="text-blue-600" />
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-1.5 sm:gap-2 rounded-lg border border-slate-200 bg-white px-2.5 sm:px-4 py-1.5 sm:py-2.5 shadow-xs">
+            <Calendar size={16} className="text-blue-600 sm:w-4.5 sm:h-4.5" />
 
-            <span className="text-sm font-medium text-slate-700">
+            <span className="text-xs sm:text-sm font-medium text-slate-700">
               Today's Billing
             </span>
           </div>
@@ -1329,9 +1060,9 @@ export default function Billing() {
 
               setShowCreateModal(true);
             }}
-            className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 active:scale-95"
+            className="flex items-center gap-1.5 sm:gap-2 rounded-lg bg-blue-600 px-3 sm:px-4 py-1.5 sm:py-2.5 text-xs sm:text-sm font-semibold text-white shadow-xs transition hover:bg-blue-700 active:scale-95"
           >
-            <Plus size={18} />
+            <Plus size={16} className="sm:w-4.5 sm:h-4.5" />
 
             <span>Create New Bill</span>
           </button>
@@ -1340,84 +1071,84 @@ export default function Billing() {
 
       {/* =========================================
 
-          Stats
+          Stats (2 cols on phone, 4 on desktop)
 
       ========================================= */}
 
-      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-4">
         {/* Total Bills */}
 
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="rounded-xl border border-slate-200 bg-white p-3 sm:p-4 shadow-xs">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-slate-500">Total Bills</p>
+              <p className="text-[11px] sm:text-sm text-slate-500 font-medium">Total Bills</p>
 
-              <h2 className="mt-1 text-2xl font-bold text-slate-900">
+              <h2 className="mt-0.5 sm:mt-1 text-lg sm:text-2xl font-bold text-slate-900">
                 {totalBills}
               </h2>
             </div>
 
-            <div className="rounded-xl bg-blue-50 p-3 text-blue-600">
-              <FileText size={22} />
+            <div className="rounded-lg sm:rounded-xl bg-blue-50 p-2 sm:p-3 text-blue-600 shrink-0">
+              <FileText className="w-4 h-4 sm:w-5.5 sm:h-5.5" />
             </div>
           </div>
         </div>
 
         {/* Paid */}
 
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="rounded-xl border border-slate-200 bg-white p-3 sm:p-4 shadow-xs">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-slate-500">Paid Bills</p>
+              <p className="text-[11px] sm:text-sm text-slate-500 font-medium">Paid Bills</p>
 
-              <h2 className="mt-1 text-2xl font-bold text-slate-900">
+              <h2 className="mt-0.5 sm:mt-1 text-lg sm:text-2xl font-bold text-slate-900">
                 {paidBills}
               </h2>
             </div>
 
-            <div className="rounded-xl bg-green-50 p-3 text-green-600">
-              <CheckCircle2 size={22} />
+            <div className="rounded-lg sm:rounded-xl bg-green-50 p-2 sm:p-3 text-green-600 shrink-0">
+              <CheckCircle2 className="w-4 h-4 sm:w-5.5 sm:h-5.5" />
             </div>
           </div>
         </div>
 
         {/* Pending */}
 
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="rounded-xl border border-slate-200 bg-white p-3 sm:p-4 shadow-xs">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-slate-500">Pending / Due</p>
+              <p className="text-[11px] sm:text-sm text-slate-500 font-medium">Pending / Due</p>
 
-              <h2 className="mt-1 text-2xl font-bold text-slate-900">
+              <h2 className="mt-0.5 sm:mt-1 text-lg sm:text-2xl font-bold text-slate-900">
                 {pendingBills}
               </h2>
               {partialBills > 0 && (
-                <p className="text-[11px] font-medium text-amber-600 mt-0.5">
+                <p className="text-[10px] sm:text-[11px] font-medium text-amber-600 mt-0.5">
                   ({pendingBills - partialBills} Unpaid • {partialBills} Partial)
                 </p>
               )}
             </div>
 
-            <div className="rounded-xl bg-amber-50 p-3 text-amber-600">
-              <Clock size={22} />
+            <div className="rounded-lg sm:rounded-xl bg-amber-50 p-2 sm:p-3 text-amber-600 shrink-0">
+              <Clock className="w-4 h-4 sm:w-5.5 sm:h-5.5" />
             </div>
           </div>
         </div>
 
         {/* Due */}
 
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="rounded-xl border border-slate-200 bg-white p-3 sm:p-4 shadow-xs">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-slate-500">Total Due</p>
+              <p className="text-[11px] sm:text-sm text-slate-500 font-medium">Total Due</p>
 
-              <h2 className="mt-1 text-2xl font-bold text-slate-900">
+              <h2 className="mt-0.5 sm:mt-1 text-lg sm:text-2xl font-bold text-slate-900">
                 ₹{totalDue.toLocaleString("en-IN")}
               </h2>
             </div>
 
-            <div className="rounded-xl bg-red-50 p-3 text-red-600">
-              <IndianRupee size={22} />
+            <div className="rounded-lg sm:rounded-xl bg-red-50 p-2 sm:p-3 text-red-600 shrink-0">
+              <IndianRupee className="w-4 h-4 sm:w-5.5 sm:h-5.5" />
             </div>
           </div>
         </div>
@@ -1429,18 +1160,18 @@ export default function Billing() {
 
       ========================================= */}
 
-      <div className="mb-6 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="rounded-xl border border-slate-200 bg-white p-3.5 sm:p-5 shadow-xs">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-sm text-slate-500">Today's Collection</p>
+            <p className="text-xs sm:text-sm text-slate-500 font-medium">Today's Collection</p>
 
-            <h2 className="mt-1 text-2xl font-bold text-slate-900">
+            <h2 className="mt-0.5 sm:mt-1 text-lg sm:text-2xl font-bold text-slate-900">
               ₹{totalCollected.toLocaleString("en-IN")}
             </h2>
           </div>
 
-          <div className="flex items-center gap-2 rounded-lg bg-green-50 px-4 py-2 text-sm font-medium text-green-700">
-            <Banknote size={18} />
+          <div className="inline-flex items-center gap-1.5 sm:gap-2 rounded-lg bg-green-50 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-green-700 w-fit">
+            <Banknote size={16} className="sm:w-4.5 sm:h-4.5" />
             Payment Collection
           </div>
         </div>
