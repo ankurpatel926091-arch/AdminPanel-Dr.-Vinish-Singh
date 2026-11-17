@@ -128,38 +128,28 @@ export default function Sidebar({ isOpen, isCollapsed, onClose }) {
     role === "doctor"
       ? [
           { path: "/doctor", label: "Doctor Dashboard", icon: LayoutDashboard },
-          { path: "/doctor/my-queue", label: "My Queue", icon: Users },
+          { path: "/doctor/my-queue", label: "My OPD Queue", icon: Users },
           {
             path: "/doctor/todays-appointments",
             label: "Today's Appointments",
             icon: Calendar,
           },
-          {
-            path: "/doctor/all-appointments",
-            label: "All Appointments",
-            icon: Calendar,
-          },
-          {
-            path: "/doctor/consultation",
-            label: "Consultation",
-            icon: MessageSquare,
-          },
+          ...(location.pathname.startsWith("/doctor/consultation")
+            ? [
+                {
+                  path: "/doctor/consultation",
+                  label: "In Consultation",
+                  icon: Stethoscope,
+                  badge: "Active",
+                },
+              ]
+            : []),
           {
             path: "/doctor/medical-records",
             label: "Medical Records",
             icon: FileText,
           },
-          {
-            path: "/doctor/prescriptions",
-            label: "Prescriptions",
-            icon: FileText,
-          },
-          {
-            path: "/doctor/follow-ups",
-            label: "Follow-ups",
-            icon: CalendarCheck,
-          },
-          { path: "/doctor/reports", label: "Reports", icon: BarChart2 },
+          { path: "/doctor/reports", label: "OPD Reports", icon: BarChart2 },
         ]
       : [];
 
@@ -691,6 +681,12 @@ export default function Sidebar({ isOpen, isCollapsed, onClose }) {
                             {item.label}
                           </span>
                         </div>
+
+                        {item.badge && !isCollapsed && (
+                          <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 animate-pulse">
+                            {item.badge}
+                          </span>
+                        )}
                       </NavLink>
                     );
                   })}

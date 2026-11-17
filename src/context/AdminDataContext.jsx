@@ -19,10 +19,13 @@ export const AdminDataProvider = ({ children }) => {
     const seen = new Set();
     return list.filter(item => {
       if (!item) return false;
-      const nameKey = (item.name || item.title || '').trim().toLowerCase();
-      if (!nameKey) return true;
-      if (seen.has(nameKey)) return false;
-      seen.add(nameKey);
+      const raw = (item.name || item.title || '').trim().toLowerCase();
+      let key = raw;
+      if (raw.includes('rudraksh')) key = 'rudraksh';
+      else if (raw.includes('shilpi')) key = 'shilpi';
+      if (!key) return true;
+      if (seen.has(key)) return false;
+      seen.add(key);
       return true;
     });
   };

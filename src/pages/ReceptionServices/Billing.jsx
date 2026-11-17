@@ -598,29 +598,6 @@ export default function Billing() {
         console.warn("Queue API Error:", err),
       );
 
-      // Mirror to storage so open tabs detect it synchronously
-      try {
-        const queueKey = "dr_vinish_doctor_queue";
-        const existing = JSON.parse(localStorage.getItem(queueKey) || "[]");
-        const queueItem = {
-          id: `Q-${Math.floor(100 + Math.random() * 900)}`,
-          ...payload,
-          checkInTime: new Date().toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          }),
-          status: "Waiting",
-          priority: "Normal",
-        };
-        const updated = [
-          queueItem,
-          ...existing.filter((i) => i.visitId !== bill.visitId),
-        ];
-        localStorage.setItem(queueKey, JSON.stringify(updated));
-        localStorage.setItem("dr_vinish_queue", JSON.stringify(updated));
-        window.dispatchEvent(new Event("storage"));
-      } catch (e) {}
-
       return tokenNumber;
     } catch (err) {
       console.warn("Failed to add patient to doctor queue:", err);

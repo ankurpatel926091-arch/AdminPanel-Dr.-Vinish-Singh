@@ -137,12 +137,12 @@ const AllAppointments = () => {
       <div className="mb-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-slate-800">
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-800 tracking-tight">
               All Appointments
             </h1>
 
-            <p className="text-sm text-slate-500 mt-1">
-              View and manage your assigned patient appointments
+            <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+              Assigned Patient Bookings
             </p>
           </div>
 

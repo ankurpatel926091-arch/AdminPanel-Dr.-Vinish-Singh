@@ -1,4 +1,4 @@
-import React, { lazy, Suspense } from "react";
+import React, { lazy, Suspense, useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -7,7 +7,6 @@ import AdminLayout from "./components/layout/AdminLayout";
 import { Loader2 } from "lucide-react";
 import { isLoggedIn } from "./utils/auth";
 import DoctorDashboard from "./pages/Dashboard";
-import AllAppointments from "./pages/DoctorDashboard/AllAppointments";
 // import DoctorDash from "./pages/DoctorDashboard/DoctorDash";
 import TodaysAppointments from "./pages/DoctorDashboard/TodaysAppointments";
 import MedicalRecords from "./pages/DoctorDashboard/MedicalRecords";
@@ -66,6 +65,21 @@ function RootRedirect() {
 }
 
 export default function App() {
+  // Purge legacy mock/business keys so data lives strictly in MongoDB
+  useEffect(() => {
+    try {
+      const keysToRemove = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        // Retain only admin authentication credentials
+        if (key && !key.startsWith("dr_vinish_admin_")) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach((k) => localStorage.removeItem(k));
+    } catch (e) {}
+  }, []);
+
   return (
     <AdminDataProvider>
       <ToastContainer
@@ -146,7 +160,10 @@ export default function App() {
                 path="todays-appointments"
                 element={<TodaysAppointments />}
               />
-              <Route path="all-appointments" element={<AllAppointments />} />
+              <Route
+                path="all-appointments"
+                element={<Navigate to="/doctor/todays-appointments" replace />}
+              />
               <Route path="medical-records" element={<MedicalRecords />} />
               <Route path="prescriptions" element={<Prescriptions />} />
               <Route path="reports" element={<DoctorReports />} />

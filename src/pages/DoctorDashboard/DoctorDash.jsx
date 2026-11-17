@@ -104,67 +104,26 @@ const DoctorDash = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 p-4 sm:p-6 lg:p-8">
-      {/* Doctor Portal Welcome Banner */}
-      <div className="mb-6 bg-gradient-to-r from-[#03234b] via-[#073b75] to-[#1e2a78] rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden flex items-center justify-between">
-        {/* Subtle Decorative Backdrop Elements */}
-        <div className="absolute -top-24 -right-24 w-72 h-72 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-24 -left-24 w-72 h-72 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
-
-        <div className="flex items-center gap-5 relative z-10">
-          {/* Left Stethoscope Icon Box */}
-          <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-blue-500/20 border border-blue-400/30 flex items-center justify-center text-blue-400 shrink-0 shadow-inner">
-            <Stethoscope className="w-8 h-8 text-blue-400" />
-          </div>
-
-          <div>
-            <span className="text-[11px] font-bold text-blue-300 uppercase tracking-wider block mb-1">
-              DOCTOR PORTAL
-            </span>
-            <h2 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-white tracking-tight flex items-center gap-2">
-              Welcome back, Dr. Vinish Kumar Singh <span className="inline-block"></span>
-            </h2>
-            <p className="text-xs sm:text-sm text-blue-200/80 font-medium mt-1">
-              Here's your OPD and patient overview for today.
-            </p>
-          </div>
-        </div>
-
-        {/* Right Doctor Vector Illustration */}
-        <div className="hidden md:block relative z-10 shrink-0 opacity-90">
-          <svg className="w-24 h-24 sm:w-28 sm:h-28 text-cyan-400/70" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.2">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 11v3m-1.5-1.5h3" strokeWidth="1.5" />
-          </svg>
-        </div>
-      </div>
-
       {/* Header */}
-      <div className="mb-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-slate-800">
-              Doctor Dashboard
-            </h1>
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-800 tracking-tight">
+            Doctor Dashboard
+          </h1>
+          <p className="mt-0.5 text-xs sm:text-sm text-slate-500">
+            Dr. Vinish Kumar Singh • Today's OPD Overview
+          </p>
+        </div>
 
-            <p className="mt-1 text-sm text-slate-500">
-              Overview of today's OPD and patient queue
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-4 py-2.5 shadow-sm">
-            <CalendarDays className="w-5 h-5 text-blue-600" />
-
-            <div>
-              <p className="text-xs text-slate-400">Today</p>
-              <p className="text-sm font-semibold text-slate-700">
-                {new Date().toLocaleDateString("en-IN", {
-                  day: "2-digit",
-                  month: "short",
-                  year: "numeric",
-                })}
-              </p>
-            </div>
-          </div>
+        <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3.5 py-2 shadow-sm self-start sm:self-auto">
+          <CalendarDays className="w-4 h-4 text-blue-600" />
+          <span className="text-xs sm:text-sm font-semibold text-slate-700">
+            {new Date().toLocaleDateString("en-IN", {
+              day: "2-digit",
+              month: "short",
+              year: "numeric",
+            })}
+          </span>
         </div>
       </div>
 

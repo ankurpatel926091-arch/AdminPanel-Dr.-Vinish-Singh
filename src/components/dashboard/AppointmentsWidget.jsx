@@ -15,7 +15,7 @@ export default function AppointmentsWidget() {
           <h3 className="text-base font-extrabold text-slate-800 tracking-tight">Upcoming Appointments</h3>
           <p className="text-xs text-slate-400 font-medium">Scheduled patient consultations</p>
         </div>
-        <Link to="/admin/appointments" className="text-xs font-bold text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1 transition-colors">
+        <Link to="/admin/All-Appointments" className="text-xs font-bold text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1 transition-colors">
           <span>View all</span>
           <ChevronRight className="w-3.5 h-3.5" />
         </Link>
@@ -115,7 +115,7 @@ export default function AppointmentsWidget() {
       {/* Footer Button */}
       <div className="px-6 py-4 border-t border-slate-100 flex justify-center bg-slate-50/50">
         <Link
-          to="/admin/appointments"
+          to="/admin/All-Appointments"
           className="py-2 px-6 bg-slate-100 hover:bg-blue-600 hover:text-white font-bold text-xs rounded-lg inline-flex items-center justify-center transition-all duration-200 text-slate-700 shadow-sm"
         >
           View All Appointments

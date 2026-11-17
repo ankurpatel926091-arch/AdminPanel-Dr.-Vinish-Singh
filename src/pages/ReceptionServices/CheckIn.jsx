@@ -546,14 +546,15 @@ export default function CheckIn() {
                       className="transition hover:bg-slate-50/80"
                     >
                       {/* Appointment */}
-                      <td className="px-3.5 py-2.5">
-                        <p className="font-mono text-xs font-semibold text-slate-800" title={appointment.appointmentId}>
-                          {appointment.appointmentId && appointment.appointmentId.length > 14
-                            ? `${appointment.appointmentId.slice(0, 8)}...${appointment.appointmentId.slice(-4)}`
-                            : appointment.appointmentId}
+                      <td className="px-3.5 py-2.5 whitespace-nowrap">
+                        <p
+                          className="font-mono text-[11px] font-semibold text-slate-800 tracking-tight select-all leading-tight"
+                          title={appointment.appointmentId}
+                        >
+                          {appointment.appointmentId}
                         </p>
                         <p className="mt-0.5 flex items-center gap-1 text-[11px] text-slate-500 font-medium">
-                          <Hash size={11} className="text-slate-400" />
+                          <Hash size={11} className="text-slate-400 shrink-0" />
                           {appointment.patientId}
                         </p>
                         {alreadyChecked && appointment.visitId && (
@@ -631,13 +632,6 @@ export default function CheckIn() {
                         >
                           {appointment.status === "NO_SHOW" || appointment.status === "MISSED" ? "Missed" : appointment.status}
                         </span>
-
-                        {alreadyChecked && appointment.tokenNumber && (
-                          <p className="mt-0.5 flex items-center gap-1 text-[11px] font-semibold text-blue-600">
-                            <Ticket size={11} />
-                            Token #{appointment.tokenNumber}
-                          </p>
-                        )}
                       </td>
 
                       {/* Action */}

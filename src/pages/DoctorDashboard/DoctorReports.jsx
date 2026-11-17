@@ -321,17 +321,13 @@ export default function DoctorReports() {
   return (
     <div className="space-y-6 pb-12">
       {/* 1. Header Section */}
-      <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div>
-          <div className="flex items-center gap-2 text-xs font-semibold text-blue-600">
-            <Stethoscope className="w-4 h-4" />
-            <span>Dr. Vinish Kumar Singh • Doctor OPD Portal</span>
-          </div>
-          <h1 className="text-2xl font-bold text-slate-900 mt-1 tracking-tight">
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
             Consultation & OPD Reports
           </h1>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            View and analyze your OPD consultation activity, patient visit history, and follow-up schedules.
+          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+            OPD Analytics & Patient History
           </p>
         </div>
 

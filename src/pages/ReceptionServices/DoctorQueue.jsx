@@ -26,6 +26,17 @@ import {
 // Initial Queue Data (Loaded dynamically from MongoDB Database)
 const DEFAULT_QUEUE = [];
 
+// Helper to remove billing/charge info from clinical notes
+const getCleanComplaint = (notes, dept) => {
+  if (!notes) return dept || "General Urology Consultation";
+  const cleaned = String(notes)
+    .replace(/\.?\s*Bill:.*$/i, "")
+    .replace(/^Diagnosis:\s*/i, "")
+    .replace(/^["']|["']$/g, "")
+    .trim();
+  return cleaned || dept || "General Urology Consultation";
+};
+
 export default function DoctorQueue() {
   const [queue, setQueue] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -44,8 +55,6 @@ export default function DoctorQueue() {
           return { ...item, status: st || "Waiting" };
         });
         setQueue(normalized);
-        localStorage.setItem("dr_vinish_doctor_queue", JSON.stringify(normalized));
-        localStorage.setItem("dr_vinish_queue", JSON.stringify(normalized));
       }
     } catch (e) {
       console.warn("Failed to load queue from database", e);
@@ -55,7 +64,31 @@ export default function DoctorQueue() {
   }, []);
 
   useEffect(() => {
+    // Initial fetch on mount
     fetchQueueFromDB();
+
+    // Instant fetch when tab regains focus or becomes visible
+    const handleFocusOrVisible = () => {
+      if (document.visibilityState === "visible") {
+        fetchQueueFromDB();
+      }
+    };
+
+    window.addEventListener("focus", handleFocusOrVisible);
+    document.addEventListener("visibilitychange", handleFocusOrVisible);
+
+    // Smart Polling: every 30s only when tab is actively visible
+    const interval = setInterval(() => {
+      if (document.visibilityState === "visible") {
+        fetchQueueFromDB();
+      }
+    }, 30000);
+
+    return () => {
+      window.removeEventListener("focus", handleFocusOrVisible);
+      document.removeEventListener("visibilitychange", handleFocusOrVisible);
+      clearInterval(interval);
+    };
   }, [fetchQueueFromDB]);
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -63,52 +96,6 @@ export default function DoctorQueue() {
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [doctorFilter, setDoctorFilter] = useState("ALL");
   const [selectedPatientModal, setSelectedPatientModal] = useState(null);
-
-  // Sync state with LocalStorage
-  useEffect(() => {
-    try {
-      localStorage.setItem("dr_vinish_doctor_queue", JSON.stringify(queue));
-    } catch (e) {
-      console.warn("Failed to save queue state", e);
-    }
-  }, [queue]);
-
-  // Sync newly checked in patients from dr_vinish_doctor_queue and dr_vinish_queue
-  useEffect(() => {
-    const syncQueue = () => {
-      try {
-        const queueStr = localStorage.getItem("dr_vinish_doctor_queue") || localStorage.getItem("dr_vinish_queue");
-        if (queueStr) {
-          const items = JSON.parse(queueStr);
-          if (Array.isArray(items) && items.length > 0) {
-            const normalized = items.map((item) => {
-              let st = item.status;
-              if (st === "IN_CONSULTATION") st = "Consulting";
-              else if (st === "WAITING") st = "Waiting";
-              else if (st === "COMPLETED") st = "Completed";
-              else if (st === "SKIPPED" || st === "CANCELLED") st = "Cancelled";
-              return { ...item, status: st || "Waiting" };
-            });
-
-            setQueue((prev) => {
-              if (JSON.stringify(prev) !== JSON.stringify(normalized)) {
-                return normalized;
-              }
-              return prev;
-            });
-          }
-        }
-      } catch (e) {}
-    };
-
-    syncQueue();
-    window.addEventListener("storage", syncQueue);
-    const interval = setInterval(syncQueue, 1500);
-    return () => {
-      window.removeEventListener("storage", syncQueue);
-      clearInterval(interval);
-    };
-  }, []);
 
   // Basic Queue Summary (Total, Waiting, Completed)
   const summary = useMemo(() => {
@@ -138,9 +125,9 @@ export default function DoctorQueue() {
     return list.length > 0 ? list : ["Dr. Vinish Kumar Singh"];
   }, [queue]);
 
-  // Filtered Queue List
+  // Filtered & Sorted Queue List (Consulting first, then Waiting, then Completed)
   const filteredQueue = useMemo(() => {
-    return queue.filter((item) => {
+    const list = queue.filter((item) => {
       const query = debouncedSearchQuery.toLowerCase().trim();
       const matchesSearch =
         !query ||
@@ -153,6 +140,16 @@ export default function DoctorQueue() {
       const matchesDoctor = doctorFilter === "ALL" || item.doctorName === doctorFilter;
 
       return matchesSearch && matchesStatus && matchesDoctor;
+    });
+
+    const statusOrder = { Consulting: 1, Waiting: 2, Completed: 3, Cancelled: 4 };
+    return [...list].sort((a, b) => {
+      const orderA = statusOrder[a.status] || 5;
+      const orderB = statusOrder[b.status] || 5;
+      if (orderA !== orderB) return orderA - orderB;
+      if (a.priority === "Urgent" && b.priority !== "Urgent") return -1;
+      if (b.priority === "Urgent" && a.priority !== "Urgent") return 1;
+      return 0;
     });
   }, [queue, debouncedSearchQuery, statusFilter, doctorFilter]);
 
@@ -258,7 +255,7 @@ export default function DoctorQueue() {
       {currentConsulting ? (
         <div className="bg-gradient-to-r from-blue-900 to-slate-900 rounded-2xl p-5 text-white shadow-md border border-blue-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-xl bg-blue-600 text-white font-extrabold text-xl flex items-center justify-center shadow">
+            <div className="min-w-[56px] px-2.5 h-12 rounded-xl bg-blue-600 text-white font-extrabold text-base flex items-center justify-center shadow whitespace-nowrap tracking-tight shrink-0">
               {currentConsulting.tokenNumber}
             </div>
             <div>
@@ -285,17 +282,10 @@ export default function DoctorQueue() {
           <div className="flex items-center gap-2.5 self-end sm:self-center">
             <button
               onClick={() => setSelectedPatientModal(currentConsulting)}
-              className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold flex items-center gap-1.5 border border-slate-700"
+              className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold flex items-center gap-1.5 border border-slate-700 shadow-xs transition"
             >
               <Eye className="w-4 h-4 text-blue-400" />
               View Details
-            </button>
-            <button
-              onClick={() => handleFinishConsultation(currentConsulting.id)}
-              className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 shadow"
-            >
-              <CheckCircle2 className="w-4 h-4" />
-              Finish Consultation
             </button>
           </div>
         </div>
@@ -435,7 +425,7 @@ export default function DoctorQueue() {
                   <th className="py-3 px-4">Doctor</th>
                   <th className="py-3 px-4">Check-in Time</th>
                   <th className="py-3 px-4">Queue Status</th>
-                  <th className="py-3 px-4 text-right">Actions</th>
+                  <th className="py-3 px-4 text-center">Actions</th>
                 </tr>
               </thead>
 
@@ -453,7 +443,7 @@ export default function DoctorQueue() {
                       {/* Token # */}
                       <td className="py-3 px-4">
                         <span
-                          className={`inline-flex items-center justify-center px-2.5 py-1 rounded-lg font-extrabold text-xs ${
+                          className={`inline-flex items-center justify-center min-w-[50px] px-2 py-1 rounded-lg font-extrabold text-xs whitespace-nowrap tracking-tight ${
                             isConsulting
                               ? "bg-blue-600 text-white"
                               : item.priority === "Urgent"
@@ -498,64 +488,38 @@ export default function DoctorQueue() {
                       {/* Queue Status */}
                       <td className="py-3 px-4">
                         {item.status === "Consulting" && (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-700 border border-blue-200">
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-700 border border-blue-200">
                             <span className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse"></span>
-                            Consulting
+                            In Cabin
                           </span>
                         )}
                         {item.status === "Waiting" && (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
                             Waiting
                           </span>
                         )}
                         {item.status === "Completed" && (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
                             Completed
                           </span>
                         )}
                         {item.status === "Cancelled" && (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-500 border border-slate-200">
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-500 border border-slate-200">
                             Cancelled
                           </span>
                         )}
                       </td>
 
-                      {/* 7. Actions (Receptionist Level) */}
-                      <td className="py-3 px-4 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
-                          {/* Call Patient */}
-                          {item.status === "Waiting" && (
-                            <button
-                              onClick={() => handleCallSpecificPatient(item.id)}
-                              className="px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold flex items-center gap-1 transition"
-                              title="Call Patient into Consultation"
-                            >
-                              <Play className="w-3 h-3 fill-current" />
-                              Call Patient
-                            </button>
-                          )}
-
-                          {/* Finish Consultation */}
-                          {item.status === "Consulting" && (
-                            <button
-                              onClick={() => handleFinishConsultation(item.id)}
-                              className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold flex items-center gap-1 transition"
-                              title="Finish Consultation"
-                            >
-                              <CheckCircle2 className="w-3.5 h-3.5" />
-                              Finish
-                            </button>
-                          )}
-
-                          {/* View Details Modal */}
-                          <button
-                            onClick={() => setSelectedPatientModal(item)}
-                            className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 transition"
-                            title="View Patient Details"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </button>
-                        </div>
+                      {/* Actions (Monitor View) */}
+                      <td className="py-3 px-4 text-center">
+                        <button
+                          onClick={() => setSelectedPatientModal(item)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-2xs transition"
+                          title="View Patient Details"
+                        >
+                          <Eye className="w-3.5 h-3.5 text-blue-600" />
+                          View
+                        </button>
                       </td>
                     </tr>
                   );
@@ -568,61 +532,115 @@ export default function DoctorQueue() {
 
       {/* Patient Details Modal */}
       {selectedPatientModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-sm w-full p-5 shadow-2xl border border-slate-100 animate-in fade-in duration-150">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center gap-2.5">
-                <span className="w-9 h-9 rounded-xl bg-blue-600 text-white font-extrabold flex items-center justify-center text-xs">
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="min-w-[58px] px-2.5 h-12 rounded-xl bg-blue-600 text-white font-black text-base flex items-center justify-center shadow-xs shrink-0 whitespace-nowrap tracking-tight">
                   {selectedPatientModal.tokenNumber}
-                </span>
-                <div>
-                  <h3 className="font-bold text-slate-900 text-sm">
+                </div>
+                <div className="min-w-0">
+                  <h3 className="font-bold text-slate-900 text-base truncate">
                     {selectedPatientModal.patientName}
                   </h3>
-                  <p className="text-[11px] text-slate-500">
+                  <p className="text-xs font-mono text-slate-500 truncate">
                     {selectedPatientModal.patientId}
                   </p>
                 </div>
               </div>
-              <button
-                onClick={() => setSelectedPatientModal(null)}
-                className="text-slate-400 hover:text-slate-600 p-1"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
 
-            <div className="py-4 space-y-2.5 text-xs text-slate-700">
-              <div className="flex justify-between py-1 border-b border-slate-50">
-                <span className="text-slate-500">Age / Gender:</span>
-                <span className="font-semibold">{selectedPatientModal.age} yrs / {selectedPatientModal.gender}</span>
-              </div>
-              <div className="flex justify-between py-1 border-b border-slate-50">
-                <span className="text-slate-500">Mobile:</span>
-                <span className="font-semibold">{selectedPatientModal.mobile}</span>
-              </div>
-              <div className="flex justify-between py-1 border-b border-slate-50">
-                <span className="text-slate-500">Doctor:</span>
-                <span className="font-semibold">{selectedPatientModal.doctorName}</span>
-              </div>
-              <div className="flex justify-between py-1 border-b border-slate-50">
-                <span className="text-slate-500">Check-in Time:</span>
-                <span className="font-semibold">{selectedPatientModal.checkInTime}</span>
-              </div>
-              <div className="flex justify-between py-1 border-b border-slate-50">
-                <span className="text-slate-500">Priority:</span>
-                <span className="font-semibold text-amber-700">{selectedPatientModal.priority || "Normal"}</span>
-              </div>
-              <div className="flex justify-between py-1">
-                <span className="text-slate-500">Status:</span>
-                <span className="font-bold text-blue-700">{selectedPatientModal.status}</span>
+              <div className="flex items-center gap-3 shrink-0">
+                <span
+                  className={`px-3 py-1 rounded-full text-xs font-bold border ${
+                    selectedPatientModal.status === "In Cabin" || selectedPatientModal.status === "Consulting"
+                      ? "bg-blue-50 text-blue-700 border-blue-200"
+                      : selectedPatientModal.status === "Waiting"
+                      ? "bg-amber-50 text-amber-700 border-amber-200"
+                      : "bg-emerald-50 text-emerald-700 border-emerald-200"
+                  }`}
+                >
+                  {selectedPatientModal.status}
+                </span>
+                <button
+                  onClick={() => setSelectedPatientModal(null)}
+                  className="text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg p-1.5 transition"
+                  title="Close modal"
+                >
+                  <X className="w-5 h-5" />
+                </button>
               </div>
             </div>
 
-            <div className="pt-2 border-t border-slate-100 flex justify-end">
+            {/* Modal Body - 2x2 Clean Info Grid */}
+            <div className="py-5 space-y-4">
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                <div className="p-3 bg-slate-50/70 rounded-xl border border-slate-100 flex items-start gap-2.5">
+                  <div className="p-2 bg-blue-50 text-blue-600 rounded-lg shrink-0 mt-0.5">
+                    <User className="w-3.5 h-3.5" />
+                  </div>
+                  <div className="min-w-0">
+                    <span className="text-[11px] text-slate-400 font-medium block">Age & Gender</span>
+                    <span className="font-semibold text-slate-800 text-xs">
+                      {selectedPatientModal.age ? `${selectedPatientModal.age} yrs` : "N/A"} • {selectedPatientModal.gender || "N/A"}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="p-3 bg-slate-50/70 rounded-xl border border-slate-100 flex items-start gap-2.5">
+                  <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg shrink-0 mt-0.5">
+                    <Phone className="w-3.5 h-3.5" />
+                  </div>
+                  <div className="min-w-0">
+                    <span className="text-[11px] text-slate-400 font-medium block">Mobile</span>
+                    <span className="font-semibold text-slate-800 text-xs truncate block">
+                      {selectedPatientModal.mobile || "Not available"}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="p-3 bg-slate-50/70 rounded-xl border border-slate-100 flex items-start gap-2.5">
+                  <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg shrink-0 mt-0.5">
+                    <Stethoscope className="w-3.5 h-3.5" />
+                  </div>
+                  <div className="min-w-0">
+                    <span className="text-[11px] text-slate-400 font-medium block">Doctor</span>
+                    <span className="font-semibold text-slate-800 text-xs truncate block">
+                      {selectedPatientModal.doctorName || "Dr. Vinish Kumar Singh"}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="p-3 bg-slate-50/70 rounded-xl border border-slate-100 flex items-start gap-2.5">
+                  <div className="p-2 bg-amber-50 text-amber-600 rounded-lg shrink-0 mt-0.5">
+                    <Clock className="w-3.5 h-3.5" />
+                  </div>
+                  <div className="min-w-0">
+                    <span className="text-[11px] text-slate-400 font-medium block">Check-in Time</span>
+                    <span className="font-semibold text-slate-800 text-xs">
+                      {selectedPatientModal.checkInTime || "Today"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Clinical Reason / Diagnosis Box */}
+              <div className="p-3.5 bg-blue-50/40 rounded-xl border border-blue-100/80">
+                <span className="text-[10px] uppercase font-bold text-blue-700 tracking-wider flex items-center gap-1.5 mb-1.5">
+                  <AlertCircle className="w-3.5 h-3.5" />
+                  Chief Complaint / Department
+                </span>
+                <p className="text-xs text-slate-800 font-medium leading-relaxed">
+                  {getCleanComplaint(selectedPatientModal.notes, selectedPatientModal.department)}
+                </p>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="pt-3 border-t border-slate-100 flex justify-end">
               <button
                 onClick={() => setSelectedPatientModal(null)}
-                className="px-4 py-1.5 bg-slate-100 text-slate-700 rounded-xl font-semibold text-xs hover:bg-slate-200 transition"
+                className="px-5 py-2 bg-slate-800 hover:bg-slate-900 text-white font-semibold text-xs rounded-xl shadow-xs transition"
               >
                 Close
               </button>

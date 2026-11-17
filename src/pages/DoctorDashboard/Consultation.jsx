@@ -4,7 +4,6 @@ import { toast } from "react-toastify";
 import {
   User,
   Calendar,
-  Clock,
   Hash,
   HeartPulse,
   FileText,
@@ -16,15 +15,19 @@ import {
   CheckCircle,
   Plus,
   Trash2,
+  Printer,
+  X,
+  CheckCircle2,
+  AlertCircle,
 } from "lucide-react";
+import { updateQueueStatusApi } from "../../api/queueApi";
 import {
-  CURRENT_CONSULTATION_STORAGE_KEY,
-  DOCTOR_QUEUE_STORAGE_KEY,
+  saveConsultationApi,
+  getPatientConsultationsApi,
+  getConsultationByRecordKeyApi,
+} from "../../api/consultationApi";
+import {
   markAppointmentVisited,
-  readStoredArray,
-  saveQueue,
-  SHARED_QUEUE_STORAGE_KEY,
-  CONSULTATIONS_STORAGE_KEY,
 } from "../../utils/staticAppointmentFlow";
 
 const EMPTY_CONSULTATION = {
@@ -53,39 +56,31 @@ const EMPTY_MEDICINE = {
 };
 
 const getCurrentPatient = (locationPatient) => {
-  if (locationPatient) return locationPatient;
+  if (locationPatient) {
+    try {
+      sessionStorage.setItem("dr_vinish_active_consultation", JSON.stringify(locationPatient));
+    } catch (e) {}
+    return locationPatient;
+  }
 
   try {
-    const savedPatient = JSON.parse(
-      localStorage.getItem(CURRENT_CONSULTATION_STORAGE_KEY) || "null"
+    const sessionPatient = JSON.parse(
+      sessionStorage.getItem("dr_vinish_active_consultation") || "null"
     );
-    if (savedPatient && savedPatient.status !== "COMPLETED") return savedPatient;
-
-    const sharedQueue = JSON.parse(
-      localStorage.getItem(SHARED_QUEUE_STORAGE_KEY) || "[]"
-    );
-    const queue =
-      Array.isArray(sharedQueue) && sharedQueue.length
-        ? sharedQueue
-        : JSON.parse(localStorage.getItem(DOCTOR_QUEUE_STORAGE_KEY) || "[]");
-    const activePatient = Array.isArray(queue)
-      ? queue.find((item) => item.status === "IN_CONSULTATION")
-      : null;
-    if (activePatient) return activePatient;
+    if (sessionPatient) return sessionPatient;
   } catch (error) {
     console.warn("Unable to load current consultation patient:", error);
   }
 
   return {
-    id: "DEMO-CONSULTATION",
-    patientName: "Rahul Sharma",
-    patientId: "UHID-10245",
-    age: 42,
-    gender: "Male",
-    visitId: "V-20052",
-    tokenNumber: "18",
-    appointmentDate: "12 Sep 2026",
-    appointmentTime: "10:30 AM",
+    patientName: "",
+    patientId: "",
+    age: "",
+    gender: "",
+    visitId: "—",
+    tokenNumber: "—",
+    appointmentDate: "—",
+    appointmentTime: "—",
   };
 };
 
@@ -95,7 +90,7 @@ export default function Consultation() {
   const patient = getCurrentPatient(location.state?.patient);
   const currentPatient = {
     ...patient,
-    name: patient.patientName || patient.name || "Patient",
+    name: patient.patientName || patient.name || "",
     patientId: patient.patientId || "",
     visitId: patient.visitId || "—",
     token: patient.tokenNumber || patient.token || "—",
@@ -105,43 +100,86 @@ export default function Consultation() {
   const recordKey = String(
     currentPatient.visitId !== "—"
       ? currentPatient.visitId
-      : currentPatient.appointmentId || currentPatient.id || currentPatient.patientId
+      : currentPatient.appointmentId || currentPatient.id || currentPatient.patientId || ""
   );
   const [consultation, setConsultation] = useState(EMPTY_CONSULTATION);
   const [medicines, setMedicines] = useState([{ ...EMPTY_MEDICINE }]);
   const [isSaved, setIsSaved] = useState(false);
-  const previousHistory = useMemo(
-    () =>
-      readStoredArray(CONSULTATIONS_STORAGE_KEY)
-        .filter(
-          (record) =>
-            record.status === "CONSULTATION_COMPLETED" &&
-            String(record.patient?.patientId || "") === String(currentPatient.patientId) &&
-            record.recordKey !== recordKey
-        )
-        .sort((a, b) => String(b.completedAt).localeCompare(String(a.completedAt)))
-        .map((record) => ({
-          date: record.completedAt
-            ? new Date(record.completedAt).toLocaleDateString("en-IN")
-            : "Previous visit",
-          diagnosis: record.consultation?.diagnosis || "Consultation completed",
-          prescription:
-            record.medicines
-              ?.filter((medicine) => medicine.name)
-              .map((medicine) => medicine.name)
-              .join(", ") || "No medicines recorded",
-          notes: record.consultation?.clinicalNotes || record.consultation?.advice || "",
-        })),
-    [currentPatient.patientId, recordKey]
-  );
+  const [showPrescriptionModal, setShowPrescriptionModal] = useState(false);
+  const [previousHistory, setPreviousHistory] = useState([]);
 
+  // Fetch Patient Consultation History from MongoDB
   useEffect(() => {
-    const savedRecord = readStoredArray(CONSULTATIONS_STORAGE_KEY).find(
-      (record) => record.recordKey === recordKey
-    );
-    setConsultation(savedRecord?.consultation || EMPTY_CONSULTATION);
-    setMedicines(savedRecord?.medicines?.length ? savedRecord.medicines : [{ ...EMPTY_MEDICINE }]);
-    setIsSaved(Boolean(savedRecord));
+    let isMounted = true;
+    if (currentPatient.patientId) {
+      getPatientConsultationsApi(currentPatient.patientId)
+        .then((records) => {
+          if (!isMounted) return;
+          const history = records
+            .filter(
+              (rec) =>
+                rec.status === "COMPLETED" &&
+                rec.recordKey !== recordKey
+            )
+            .map((rec) => ({
+              date: rec.completedAt
+                ? new Date(rec.completedAt).toLocaleDateString("en-IN")
+                : "Previous visit",
+              diagnosis: rec.diagnosis || "Consultation completed",
+              prescription:
+                rec.medicines
+                  ?.filter((m) => m?.name)
+                  .map((m) => m.name)
+                  .join(", ") || "No medicines recorded",
+              notes: rec.clinicalNotes || rec.advice || "",
+            }));
+          setPreviousHistory(history);
+        })
+        .catch((err) => console.warn("Failed to fetch patient history:", err));
+    }
+    return () => {
+      isMounted = false;
+    };
+  }, [currentPatient.patientId, recordKey]);
+
+  // Load existing draft or completed consultation for this visit from MongoDB
+  useEffect(() => {
+    let isMounted = true;
+    if (recordKey && recordKey !== "—") {
+      getConsultationByRecordKeyApi(recordKey)
+        .then((record) => {
+          if (!isMounted) return;
+          if (record) {
+            setConsultation({
+              chiefComplaint: record.chiefComplaint || "",
+              clinicalNotes: record.clinicalNotes || "",
+              bp: record.vitals?.bp || "",
+              pulse: record.vitals?.pulse || "",
+              temperature: record.vitals?.temperature || "",
+              spo2: record.vitals?.spo2 || "",
+              weight: record.vitals?.weight || "",
+              height: record.vitals?.height || "",
+              diagnosis: record.diagnosis || "",
+              investigation: record.investigation || "",
+              advice: record.advice || "",
+              followUpDate: record.followUpDate ? String(record.followUpDate).split("T")[0] : "",
+              followUpInstructions: record.followUpInstructions || "",
+            });
+            setMedicines(
+              record.medicines?.length ? record.medicines : [{ ...EMPTY_MEDICINE }]
+            );
+            setIsSaved(true);
+          } else {
+            setConsultation(EMPTY_CONSULTATION);
+            setMedicines([{ ...EMPTY_MEDICINE }]);
+            setIsSaved(false);
+          }
+        })
+        .catch((err) => console.warn("Failed to fetch record:", err));
+    }
+    return () => {
+      isMounted = false;
+    };
   }, [recordKey]);
 
   const handleChange = (e) => {
@@ -183,69 +221,60 @@ export default function Consultation() {
     setMedicines((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handleSaveDraft = () => {
+  const persistConsultation = async (status) => {
+    const payload = {
+      recordKey,
+      patient: currentPatient,
+      consultation,
+      medicines: medicines.filter((m) => m && m.name && m.name.trim()),
+      status,
+    };
+    return await saveConsultationApi(payload);
+  };
+
+  const handleSaveDraft = async () => {
     try {
-      persistConsultation("DRAFT");
+      await persistConsultation("DRAFT");
       setIsSaved(true);
-      toast.success("Consultation draft saved.");
+      toast.success("Consultation draft saved to database.");
     } catch (error) {
       console.error("Unable to save consultation draft:", error);
-      toast.error("Unable to save the consultation draft.");
+      toast.error("Unable to save consultation draft.");
     }
   };
 
-  const handleCompleteConsultation = () => {
+  const handleCompleteConsultation = async () => {
     try {
-      persistConsultation("CONSULTATION_COMPLETED");
-      const queue = readStoredArray(SHARED_QUEUE_STORAGE_KEY);
-      const doctorQueue = queue.length ? queue : readStoredArray(DOCTOR_QUEUE_STORAGE_KEY);
-      const updatedQueue = doctorQueue.map((item) =>
-        String(item.visitId || item.appointmentId || item.id) ===
-        String(currentPatient.visitId || currentPatient.appointmentId || currentPatient.id)
-          ? {
-              ...item,
-              status: "COMPLETED",
-              endTime: new Date().toLocaleTimeString([], {
-                hour: "2-digit",
-                minute: "2-digit",
-              }),
-            }
-          : item
-      );
-      saveQueue(updatedQueue);
-      markAppointmentVisited(currentPatient.appointmentId);
-      localStorage.setItem(
-        CURRENT_CONSULTATION_STORAGE_KEY,
-        JSON.stringify({ ...currentPatient, status: "COMPLETED" })
-      );
+      await persistConsultation("COMPLETED");
+
+      // 1. Mark appointment visited if exists
+      if (currentPatient.appointmentId) {
+        markAppointmentVisited(currentPatient.appointmentId);
+      }
+
+      // 2. Update MongoDB queue status via API
+      const qId = currentPatient._id || currentPatient.id;
+      if (qId && !String(qId).startsWith("DEMO") && !String(qId).startsWith("Q-")) {
+        await updateQueueStatusApi(qId, { status: "Completed" }).catch((err) =>
+          console.warn("Queue status API update:", err.message)
+        );
+      }
+
+      // 3. Clear session storage active consultation
+      sessionStorage.removeItem("dr_vinish_active_consultation");
+      localStorage.removeItem("dr_vinish_current_consultation_patient");
+
       setIsSaved(true);
-      toast.success("Consultation completed and appointment marked as visited.");
-      navigate("/doctor/my-queue");
+      toast.success("Consultation completed and saved to database!");
+      setShowPrescriptionModal(true);
     } catch (error) {
       console.error("Unable to complete consultation:", error);
       toast.error("Unable to save the completed consultation.");
     }
   };
 
-  const persistConsultation = (status) => {
-    const records = readStoredArray(CONSULTATIONS_STORAGE_KEY);
-    const record = {
-      recordKey,
-      patient: currentPatient,
-      consultation,
-      medicines,
-      status,
-      updatedAt: new Date().toISOString(),
-      ...(status === "CONSULTATION_COMPLETED"
-        ? { completedAt: new Date().toISOString() }
-        : {}),
-    };
-    const updatedRecords = [
-      record,
-      ...records.filter((existing) => existing.recordKey !== recordKey),
-    ];
-    localStorage.setItem(CONSULTATIONS_STORAGE_KEY, JSON.stringify(updatedRecords));
-    window.dispatchEvent(new Event("storage"));
+  const handlePrintPrescription = () => {
+    window.print();
   };
 
   return (
@@ -274,6 +303,25 @@ export default function Consultation() {
           </div>
         </div>
 
+        {!currentPatient.name && (
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
+                <AlertCircle className="w-5 h-5 text-amber-600" />
+              </div>
+              <p className="text-sm text-amber-900 font-medium">
+                No active patient selected for consultation. Please start or select a patient from your OPD Queue.
+              </p>
+            </div>
+            <button
+              onClick={() => navigate("/doctor/my-queue")}
+              className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-semibold whitespace-nowrap transition-colors"
+            >
+              Open OPD Queue
+            </button>
+          </div>
+        )}
+
         {/* Patient Header */}
         <section className="bg-white rounded-2xl border border-slate-200 shadow-sm">
           <div className="p-5 border-b border-slate-200 flex items-center gap-3">
@@ -292,7 +340,13 @@ export default function Consultation() {
             </div>
           </div>
 
-          <div className="p-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+          <div className="p-5 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 sm:gap-5">
+            <InfoItem
+              icon={Hash}
+              label="Token Number"
+              value={currentPatient.token}
+            />
+
             <InfoItem
               icon={User}
               label="Patient Name"
@@ -317,24 +371,6 @@ export default function Consultation() {
               icon={Hash}
               label="Visit ID"
               value={currentPatient.visitId}
-            />
-
-            <InfoItem
-              icon={Hash}
-              label="Token Number"
-              value={currentPatient.token}
-            />
-
-            <InfoItem
-              icon={Calendar}
-              label="Appointment Date"
-              value={currentPatient.appointmentDate}
-            />
-
-            <InfoItem
-              icon={Clock}
-              label="Appointment Time"
-              value={currentPatient.appointmentTime}
             />
           </div>
         </section>
@@ -766,6 +802,215 @@ export default function Consultation() {
         </div>
       </div>
 
+      {/* Prescription Slip Preview & Print Modal */}
+      {showPrescriptionModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-3xl w-full shadow-2xl border border-slate-200 overflow-hidden my-auto flex flex-col max-h-[95vh]">
+            {/* Modal Action Header (Hidden during Print) */}
+            <div className="no-print p-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between gap-3 shrink-0">
+              <div className="flex items-center gap-2">
+                <FileText className="w-5 h-5 text-blue-600" />
+                <h3 className="font-bold text-slate-800 text-sm sm:text-base">
+                  Prescription Slip Preview (Rx)
+                </h3>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handlePrintPrescription}
+                  className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition active:scale-95"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  Print Slip
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowPrescriptionModal(false);
+                    navigate("/doctor/my-queue");
+                  }}
+                  className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold transition active:scale-95"
+                >
+                  Done & Go to Queue →
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowPrescriptionModal(false);
+                    navigate("/doctor/my-queue");
+                  }}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-200 transition"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Printable Prescription Body */}
+            <div className="p-6 sm:p-8 overflow-y-auto flex-1 bg-white" id="printable-prescription">
+              {/* Doctor & Clinic Letterhead */}
+              <div className="border-b-2 border-slate-800 pb-4 flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                <div>
+                  <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                    Dr. Vinish Kumar Singh
+                  </h1>
+                  <p className="text-xs font-semibold text-blue-800 mt-0.5">
+                    M.S. (Surgery), M.Ch. (Urology)
+                  </p>
+                  <p className="text-xs font-medium text-slate-600">
+                    Senior Consultant Urologist, Andrologist & Laser Surgeon
+                  </p>
+                </div>
+
+                <div className="sm:text-right text-xs text-slate-600">
+                  <p className="font-bold text-slate-800 text-sm">
+                    Rudraksh IVF & Urology Centre
+                  </p>
+                  <p>1/795, Ratan Khand, Sharda Nagar, Lucknow</p>
+                  <p className="font-semibold text-slate-700 mt-0.5">
+                    Helpline: +91 72759 81480
+                  </p>
+                </div>
+              </div>
+
+              {/* Patient Demographics Bar */}
+              <div className="my-4 p-3 bg-slate-50 rounded-xl border border-slate-200 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                <div>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase block">Patient Name</span>
+                  <span className="font-bold text-slate-800 text-sm">{currentPatient.name}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase block">Age / Gender</span>
+                  <span className="font-semibold text-slate-700">
+                    {currentPatient.age ? `${currentPatient.age} Yrs` : "—"} / {currentPatient.gender || "—"}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase block">UHID / Token</span>
+                  <span className="font-semibold text-slate-700 font-mono">
+                    {currentPatient.patientId || "—"} ({currentPatient.token})
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase block">Date</span>
+                  <span className="font-semibold text-slate-700">
+                    {new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+                  </span>
+                </div>
+              </div>
+
+              {/* Vitals (Only if entered) */}
+              {(consultation.bp || consultation.pulse || consultation.weight || consultation.spo2 || consultation.temperature) && (
+                <div className="mb-4 text-xs text-slate-600 flex flex-wrap items-center gap-x-4 gap-y-1 bg-slate-50/60 px-3 py-2 rounded-lg border border-slate-100">
+                  <span className="font-bold text-slate-700">Vitals:</span>
+                  {consultation.bp && <span>BP: <b>{consultation.bp} mmHg</b></span>}
+                  {consultation.pulse && <span>Pulse: <b>{consultation.pulse} bpm</b></span>}
+                  {consultation.temperature && <span>Temp: <b>{consultation.temperature} °F</b></span>}
+                  {consultation.spo2 && <span>SpO2: <b>{consultation.spo2}%</b></span>}
+                  {consultation.weight && <span>Weight: <b>{consultation.weight} kg</b></span>}
+                </div>
+              )}
+
+              {/* Chief Complaints & Diagnosis */}
+              {(consultation.chiefComplaint || consultation.diagnosis) && (
+                <div className="mb-4 space-y-1.5 text-xs">
+                  {consultation.chiefComplaint && (
+                    <p className="text-slate-700">
+                      <span className="font-bold text-slate-800">Chief Complaint:</span> {consultation.chiefComplaint}
+                    </p>
+                  )}
+                  {consultation.diagnosis && (
+                    <p className="text-slate-800 text-sm">
+                      <span className="font-black text-blue-950 uppercase tracking-wide text-xs">Diagnosis:</span>{" "}
+                      <span className="font-bold text-blue-900">{consultation.diagnosis}</span>
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Rx Medicines Table */}
+              <div className="my-5">
+                <div className="flex items-center gap-1.5 mb-2 font-black text-slate-900 text-base">
+                  <span className="text-blue-600 font-serif text-xl italic font-bold">℞</span>
+                  <span>Prescription (Medicines)</span>
+                </div>
+
+                {medicines.filter((m) => m.name && m.name.trim()).length > 0 ? (
+                  <div className="border border-slate-200 rounded-xl overflow-hidden">
+                    <table className="w-full text-left text-xs border-collapse">
+                      <thead>
+                        <tr className="bg-slate-100/80 text-slate-700 border-b border-slate-200">
+                          <th className="py-2 px-3 font-bold w-8 text-center">#</th>
+                          <th className="py-2 px-3 font-bold">Medicine Name</th>
+                          <th className="py-2 px-3 font-bold">Dosage</th>
+                          <th className="py-2 px-3 font-bold">Frequency</th>
+                          <th className="py-2 px-3 font-bold">Duration</th>
+                          <th className="py-2 px-3 font-bold">Instructions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {medicines
+                          .filter((m) => m.name && m.name.trim())
+                          .map((med, idx) => (
+                            <tr key={idx} className="hover:bg-slate-50/50">
+                              <td className="py-2.5 px-3 text-slate-500 font-mono text-center">{idx + 1}</td>
+                              <td className="py-2.5 px-3 font-bold text-slate-900">{med.name}</td>
+                              <td className="py-2.5 px-3 text-slate-700">{med.dosage || "—"}</td>
+                              <td className="py-2.5 px-3 text-slate-700">{med.frequency || "—"}</td>
+                              <td className="py-2.5 px-3 text-slate-700">{med.duration || "—"}</td>
+                              <td className="py-2.5 px-3 text-slate-600 italic">{med.instructions || "After food"}</td>
+                            </tr>
+                          ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p className="text-xs text-slate-500 italic p-3 bg-slate-50 rounded-lg">
+                    No oral medicines prescribed for this visit.
+                  </p>
+                )}
+              </div>
+
+              {/* Advice */}
+              {consultation.advice && (
+                <div className="my-4 text-xs">
+                  <p className="font-bold text-slate-800 mb-1">General Advice & Dietary Instructions:</p>
+                  <p className="text-slate-700 whitespace-pre-line bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+                    {consultation.advice}
+                  </p>
+                </div>
+              )}
+
+              {/* Follow-up */}
+              {consultation.followUpDate && (
+                <div className="my-4 p-2.5 rounded-lg bg-blue-50/60 border border-blue-100 text-xs text-blue-950 flex items-center justify-between">
+                  <div>
+                    <span className="font-bold">Next Follow-up Visit:</span>{" "}
+                    <span className="font-semibold">{consultation.followUpDate}</span>
+                  </div>
+                  {consultation.followUpInstructions && (
+                    <span className="text-slate-600 italic">{consultation.followUpInstructions}</span>
+                  )}
+                </div>
+              )}
+
+              {/* Doctor Signature Block */}
+              <div className="mt-8 pt-4 border-t border-slate-200 flex justify-between items-end text-xs text-slate-500">
+                <p className="text-[11px] italic">
+                  * Valid for OPD reference. Keep this slip safe for next consultation.
+                </p>
+                <div className="text-right">
+                  <div className="h-10"></div>
+                  <p className="font-bold text-slate-900 text-sm">Dr. Vinish Kumar Singh</p>
+                  <p className="text-[11px] text-slate-500">Consultant Urologist & Andrologist</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Component Styles */}
       <style>{`
         .input-field {
@@ -787,6 +1032,31 @@ export default function Consultation() {
 
         .input-field::placeholder {
           color: rgb(148 163 184);
+        }
+
+        @media print {
+          body * {
+            visibility: hidden !important;
+          }
+          #printable-prescription, #printable-prescription * {
+            visibility: visible !important;
+          }
+          #printable-prescription {
+            position: fixed !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            margin: 0 !important;
+            padding: 24px !important;
+            background: white !important;
+            box-shadow: none !important;
+            border: none !important;
+            z-index: 999999 !important;
+          }
+          .no-print {
+            display: none !important;
+          }
         }
       `}</style>
     </div>

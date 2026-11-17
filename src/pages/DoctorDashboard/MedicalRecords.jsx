@@ -1,5 +1,6 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import useDebouncedValue from "../../hooks/useDebouncedValue";
+import { getConsultationsApi } from "../../api/consultationApi";
 import {
   Search,
   Filter,
@@ -15,183 +16,8 @@ import {
   Pill,
   AlertCircle,
   TestTube,
+  Loader2,
 } from "lucide-react";
-
-const medicalRecords = [
-  {
-    id: "MR-1001",
-    patientId: "UHID-10245",
-    patientName: "Rahul Sharma",
-    age: 42,
-    gender: "Male",
-    phone: "+91 9876543210",
-    bloodGroup: "B+",
-    visitDate: "12 Sep 2026",
-    diagnosis: "Kidney Stone",
-    complaint: "Pain in lower abdomen and difficulty in urination",
-    doctor: "Dr. Vinish Kumar Singh",
-    status: "Active",
-
-    medicalHistory: [
-      "Previous history of kidney stones",
-      "No major surgery",
-    ],
-
-    allergies: ["No known drug allergies"],
-
-    medications: [
-      "Tamsulosin 0.4 mg",
-      "Paracetamol 500 mg",
-    ],
-
-    clinicalNotes:
-      "Patient presented with intermittent lower abdominal pain. Ultrasound advised for further evaluation.",
-
-    investigations: [
-      {
-        name: "Ultrasound KUB",
-        date: "12 Sep 2026",
-        result: "4.5 mm calculus in left kidney",
-        remarks: "Follow-up advised",
-      },
-      {
-        name: "Urine Routine",
-        date: "12 Sep 2026",
-        result: "Normal",
-        remarks: "-",
-      },
-    ],
-
-    treatmentPlan:
-      "Continue medication and maintain adequate hydration. Follow-up after investigation.",
-  },
-
-  {
-    id: "MR-1002",
-    patientId: "UHID-10246",
-    patientName: "Amit Verma",
-    age: 36,
-    gender: "Male",
-    phone: "+91 9123456780",
-    bloodGroup: "O+",
-    visitDate: "11 Sep 2026",
-    diagnosis: "Urinary Tract Infection",
-    complaint: "Burning sensation during urination",
-    doctor: "Dr. Vinish Kumar Singh",
-    status: "Active",
-
-    medicalHistory: ["No significant previous medical history"],
-
-    allergies: ["No known allergies"],
-
-    medications: ["Antibiotic as prescribed", "Urinary alkalizer"],
-
-    clinicalNotes:
-      "Patient reported burning micturition for the last three days.",
-
-    investigations: [
-      {
-        name: "Urine Routine",
-        date: "11 Sep 2026",
-        result: "Pus cells increased",
-        remarks: "Suggestive of infection",
-      },
-      {
-        name: "Urine Culture",
-        date: "11 Sep 2026",
-        result: "Pending",
-        remarks: "Review after report",
-      },
-    ],
-
-    treatmentPlan:
-      "Complete prescribed medication course and increase fluid intake.",
-  },
-
-  {
-    id: "MR-1003",
-    patientId: "UHID-10247",
-    patientName: "Suresh Kumar",
-    age: 58,
-    gender: "Male",
-    phone: "+91 9988776655",
-    bloodGroup: "A+",
-    visitDate: "10 Sep 2026",
-    diagnosis: "Benign Prostatic Hyperplasia",
-    complaint: "Frequent urination and weak urine flow",
-    doctor: "Dr. Vinish Kumar Singh",
-    status: "Follow-up",
-
-    medicalHistory: [
-      "Hypertension",
-      "Previous history of prostate enlargement",
-    ],
-
-    allergies: ["No known drug allergies"],
-
-    medications: ["Tamsulosin 0.4 mg"],
-
-    clinicalNotes:
-      "Patient presented for follow-up with improvement in urinary symptoms.",
-
-    investigations: [
-      {
-        name: "USG Prostate",
-        date: "10 Sep 2026",
-        result: "Prostate enlarged",
-        remarks: "Continue follow-up",
-      },
-    ],
-
-    treatmentPlan:
-      "Continue current medication and monitor urinary symptoms.",
-  },
-
-  {
-    id: "MR-1004",
-    patientId: "UHID-10248",
-    patientName: "Mohit Singh",
-    age: 29,
-    gender: "Male",
-    phone: "+91 9001122334",
-    bloodGroup: "AB+",
-    visitDate: "08 Sep 2026",
-    diagnosis: "Male Infertility",
-    complaint: "Infertility evaluation",
-    doctor: "Dr. Vinish Kumar Singh",
-    status: "Under Investigation",
-
-    medicalHistory: [
-      "No previous major illness",
-      "No previous surgery",
-    ],
-
-    allergies: ["No known allergies"],
-
-    medications: [],
-
-    clinicalNotes:
-      "Patient and partner presented for infertility evaluation. Further investigations advised.",
-
-    investigations: [
-      {
-        name: "Semen Analysis",
-        date: "08 Sep 2026",
-        result: "Report awaited",
-        remarks: "Review after report",
-      },
-      {
-        name: "Hormonal Profile",
-        date: "08 Sep 2026",
-        result: "Pending",
-        remarks: "To be reviewed",
-      },
-    ],
-
-    treatmentPlan:
-      "Complete advised investigations and return for consultation.",
-  },
-];
 
 const statusStyles = {
   Active: "bg-green-50 text-green-700 border-green-200",
@@ -233,13 +59,79 @@ function Section({ icon: Icon, title, children }) {
 }
 
 export default function MedicalRecords() {
+  const [records, setRecords] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebouncedValue(search);
   const [statusFilter, setStatusFilter] = useState("All");
   const [selectedRecord, setSelectedRecord] = useState(null);
 
+  useEffect(() => {
+    let isMounted = true;
+    setLoading(true);
+    getConsultationsApi()
+      .then((data) => {
+        if (!isMounted) return;
+        const mapped = (data || []).map((item, idx) => ({
+          id: item.recordKey || item._id || `MR-${idx + 1001}`,
+          patientId: item.patientId || "—",
+          patientName: item.patientName || "Patient",
+          age: item.age || "—",
+          gender: item.gender || "—",
+          phone: item.mobile || "—",
+          bloodGroup: "—",
+          visitDate: item.completedAt
+            ? new Date(item.completedAt).toLocaleDateString("en-IN", {
+                day: "2-digit",
+                month: "short",
+                year: "numeric",
+              })
+            : item.createdAt
+            ? new Date(item.createdAt).toLocaleDateString("en-IN", {
+                day: "2-digit",
+                month: "short",
+                year: "numeric",
+              })
+            : "—",
+          diagnosis: item.diagnosis || "General Consultation",
+          complaint: item.chiefComplaint || "No complaint specified",
+          doctor: item.doctorName || "Dr. Vinish Kumar Singh",
+          status: item.status === "COMPLETED" ? "Active" : "Under Investigation",
+          medicalHistory: item.clinicalNotes ? [item.clinicalNotes] : ["No prior history noted"],
+          allergies: ["No known allergies"],
+          medications: (item.medicines || [])
+            .filter((m) => m && m.name)
+            .map(
+              (m) =>
+                `${m.name} ${m.dosage ? `(${m.dosage})` : ""} ${m.frequency || ""}`.trim()
+            ),
+          clinicalNotes: item.clinicalNotes || "—",
+          investigations: item.investigation
+            ? [
+                {
+                  name: item.investigation,
+                  date: "Prescribed",
+                  result: "Pending",
+                  remarks: "Advised in consultation",
+                },
+              ]
+            : [],
+          treatmentPlan:
+            item.advice || item.followUpInstructions || "Follow prescribed advice.",
+        }));
+        setRecords(mapped);
+      })
+      .catch((err) => console.warn("Failed to load consultations:", err))
+      .finally(() => {
+        if (isMounted) setLoading(false);
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const filteredRecords = useMemo(() => {
-    return medicalRecords.filter((record) => {
+    return records.filter((record) => {
       const searchText = debouncedSearch.toLowerCase();
 
       const matchesSearch =
@@ -253,18 +145,18 @@ export default function MedicalRecords() {
 
       return matchesSearch && matchesStatus;
     });
-  }, [debouncedSearch, statusFilter]);
+  }, [records, debouncedSearch, statusFilter]);
 
   return (
     <div className="min-h-screen bg-slate-50 p-4 md:p-6">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-900">
+        <h1 className="text-xl sm:text-2xl font-bold text-slate-800 tracking-tight">
           Medical Records
         </h1>
 
-        <p className="mt-1 text-sm text-slate-500">
-          View and manage patient medical history and clinical records.
+        <p className="mt-0.5 text-xs sm:text-sm text-slate-500">
+          Patient EMR & Clinical History
         </p>
       </div>
 
@@ -275,7 +167,7 @@ export default function MedicalRecords() {
             <div>
               <p className="text-sm text-slate-500">Total Records</p>
               <h2 className="mt-1 text-2xl font-bold text-slate-900">
-                {medicalRecords.length}
+                {records.length}
               </h2>
             </div>
 
@@ -290,7 +182,7 @@ export default function MedicalRecords() {
             <div>
               <p className="text-sm text-slate-500">Active Cases</p>
               <h2 className="mt-1 text-2xl font-bold text-slate-900">
-                {medicalRecords.filter((r) => r.status === "Active").length}
+                {records.filter((r) => r.status === "Active").length}
               </h2>
             </div>
 
@@ -305,10 +197,7 @@ export default function MedicalRecords() {
             <div>
               <p className="text-sm text-slate-500">Follow-up</p>
               <h2 className="mt-1 text-2xl font-bold text-slate-900">
-                {
-                  medicalRecords.filter((r) => r.status === "Follow-up")
-                    .length
-                }
+                {records.filter((r) => r.status === "Follow-up").length}
               </h2>
             </div>
 
@@ -323,11 +212,7 @@ export default function MedicalRecords() {
             <div>
               <p className="text-sm text-slate-500">Under Investigation</p>
               <h2 className="mt-1 text-2xl font-bold text-slate-900">
-                {
-                  medicalRecords.filter(
-                    (r) => r.status === "Under Investigation"
-                  ).length
-                }
+                {records.filter((r) => r.status === "Under Investigation").length}
               </h2>
             </div>
 
@@ -484,6 +369,15 @@ export default function MedicalRecords() {
                     </td>
                   </tr>
                 ))
+              ) : loading ? (
+                <tr>
+                  <td colSpan="6" className="px-5 py-12 text-center">
+                    <Loader2 size={32} className="mx-auto text-blue-600 animate-spin" />
+                    <p className="mt-2 text-sm text-slate-500 font-medium">
+                      Loading patient medical records...
+                    </p>
+                  </td>
+                </tr>
               ) : (
                 <tr>
                   <td colSpan="6" className="px-5 py-12 text-center">
@@ -497,7 +391,7 @@ export default function MedicalRecords() {
                     </p>
 
                     <p className="mt-1 text-sm text-slate-400">
-                      Try changing your search or filter.
+                      Completed patient consultations will appear here automatically.
                     </p>
                   </td>
                 </tr>

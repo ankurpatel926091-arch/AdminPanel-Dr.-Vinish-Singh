@@ -1,3 +1,5 @@
+import { updateAppointmentStatusApi } from '../api/appointmentApi';
+
 export const APPOINTMENTS_STORAGE_KEY = 'dr_vinish_appointments';
 export const CHECK_IN_APPOINTMENTS_STORAGE_KEY = 'dr_vinish_checkin_appointments';
 export const DOCTOR_QUEUE_STORAGE_KEY = 'dr_vinish_doctor_queue';
@@ -98,44 +100,14 @@ export const getStaticCheckInAppointments = (fallbackAppointments = []) => {
   return [...mappedAdminAppointments, ...standaloneCheckIns];
 };
 
-export const saveCheckInAppointments = (appointments) => {
-  localStorage.setItem(CHECK_IN_APPOINTMENTS_STORAGE_KEY, JSON.stringify(appointments));
-
-  const appointmentById = new Map(
-    appointments.map((appointment) => [getAppointmentId(appointment), appointment])
-  );
-  const savedAppointments = readArray(APPOINTMENTS_STORAGE_KEY).map((appointment) => {
-    const checkIn = appointmentById.get(getAppointmentId(appointment));
-    if (!checkIn) return appointment;
-
-    const updatedAppointment = {
-      ...appointment,
-      visitId: checkIn.visitId,
-      tokenNumber: checkIn.tokenNumber,
-      checkInAt: checkIn.checkInAt,
-      checkedInBy: checkIn.checkedInBy,
-    };
-    if (['CHECKED_IN', 'COMPLETED'].includes(checkIn.status)) {
-      updatedAppointment.checkInStatus = checkIn.status;
-    } else {
-      delete updatedAppointment.checkInStatus;
-    }
-    return updatedAppointment;
-  });
-
-  if (savedAppointments.length) {
-    localStorage.setItem(APPOINTMENTS_STORAGE_KEY, JSON.stringify(savedAppointments));
-  }
-  window.dispatchEvent(new Event('storage'));
+export const saveCheckInAppointments = (_appointments) => {
+  // Deprecated: Check-ins are now managed directly in MongoDB via checkInAppointmentApi
 };
 
 export const readStoredArray = readArray;
 
-export const saveQueue = (queue) => {
-  const serialized = JSON.stringify(queue);
-  localStorage.setItem(DOCTOR_QUEUE_STORAGE_KEY, serialized);
-  localStorage.setItem(SHARED_QUEUE_STORAGE_KEY, serialized);
-  window.dispatchEvent(new Event('storage'));
+export const saveQueue = (_queue) => {
+  // Deprecated: Queue state now stored and synchronized directly via MongoDB API
 };
 
 export const normalizeQueueItem = (item) => ({
@@ -168,20 +140,10 @@ export const normalizeQueueItem = (item) => ({
 
 export const markAppointmentVisited = (appointmentId) => {
   const key = String(appointmentId || '');
-  if (!key) return;
+  if (!key || key.startsWith('APT-DEMO')) return;
 
-  const appointments = readArray(APPOINTMENTS_STORAGE_KEY).map((appointment) =>
-    getAppointmentId(appointment) === key
-      ? { ...appointment, status: 'Visited', checkInStatus: 'COMPLETED' }
-      : appointment
+  // Persist directly to MongoDB
+  updateAppointmentStatusApi(key, 'Visited').catch((err) =>
+    console.warn('Update appointment status API:', err.message)
   );
-  localStorage.setItem(APPOINTMENTS_STORAGE_KEY, JSON.stringify(appointments));
-
-  const checkIns = readArray(CHECK_IN_APPOINTMENTS_STORAGE_KEY).map((appointment) =>
-    getAppointmentId(appointment) === key
-      ? { ...appointment, status: 'COMPLETED' }
-      : appointment
-  );
-  localStorage.setItem(CHECK_IN_APPOINTMENTS_STORAGE_KEY, JSON.stringify(checkIns));
-  window.dispatchEvent(new Event('storage'));
 };

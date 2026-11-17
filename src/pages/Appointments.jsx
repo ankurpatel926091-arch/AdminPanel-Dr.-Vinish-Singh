@@ -172,6 +172,7 @@ export default function Appointments() {
   const debouncedSearch = useDebouncedValue(search);
   const [showAddModal, setShowAddModal] = useState(false);
   const [isSavingAppointment, setIsSavingAppointment] = useState(false);
+  const [formErrors, setFormErrors] = useState({});
   const [viewAppointment, setViewAppointment] = useState(null);
   const [confirmVisitedApt, setConfirmVisitedApt] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -215,13 +216,77 @@ export default function Appointments() {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedAppointments = filtered.slice(startIndex, startIndex + itemsPerPage);
 
+  // Validate Appointment Form
+  const validateForm = () => {
+    const errors = {};
+
+    // 1. Patient Name Validation
+    const nameTrim = (formData.name || '').trim();
+    if (!nameTrim) {
+      errors.name = 'Patient Name is required.';
+    } else if (nameTrim.length < 2) {
+      errors.name = 'Patient Name must be at least 2 characters.';
+    } else if (!/^[a-zA-Z\s.'-]+$/.test(nameTrim)) {
+      errors.name = 'Name should only contain letters and spaces.';
+    }
+
+    // 2. Phone Number Validation (Indian 10-digit mobile)
+    const phoneTrim = (formData.phone || '').trim();
+    if (!phoneTrim) {
+      errors.phone = 'Phone Number is required.';
+    } else if (!/^\d{10}$/.test(phoneTrim)) {
+      errors.phone = 'Please enter a valid 10-digit mobile number.';
+    } else if (!/^[6-9]\d{9}$/.test(phoneTrim)) {
+      errors.phone = 'Mobile number must start with 6, 7, 8, or 9.';
+    }
+
+    // 3. Age Validation (Optional)
+    if (formData.age !== '' && formData.age !== undefined && formData.age !== null) {
+      const ageNum = Number(formData.age);
+      if (isNaN(ageNum) || ageNum < 0 || ageNum > 120) {
+        errors.age = 'Age must be between 0 and 120.';
+      }
+    }
+
+    // 4. Email Validation (Optional)
+    const emailTrim = (formData.email || '').trim();
+    if (emailTrim && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailTrim)) {
+      errors.email = 'Please enter a valid email address (e.g. name@gmail.com).';
+    }
+
+    // 5. Clinic / Centre Validation
+    if (!formData.clinic && !defaultClinicId) {
+      errors.clinic = 'Please select a clinic / hospital centre.';
+    }
+
+    // 6. Date Validation
+    if (!formData.date) {
+      errors.date = 'Appointment Date is required.';
+    } else {
+      const selected = new Date(formData.date);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      selected.setHours(0, 0, 0, 0);
+      if (selected < today) {
+        errors.date = 'Appointment date cannot be in the past.';
+      }
+    }
+
+    return errors;
+  };
+
   const handleFormSubmit = async (e) => {
     e.preventDefault();
     if (isSavingAppointment) return;
-    if (!formData.name.trim() || !formData.phone.trim()) {
-      alert('Please fill in patient name and phone number.');
+
+    const errors = validateForm();
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
+      const firstError = Object.values(errors)[0];
+      toast.error(firstError);
       return;
     }
+    setFormErrors({});
 
     let formattedDate = formData.date;
     try {
@@ -268,6 +333,7 @@ export default function Appointments() {
         message: '',
         status: 'Confirmed'
       });
+      setFormErrors({});
       setShowAddModal(false);
     } catch (error) {
       toast.error(error.response?.data?.message || error.message || 'Unable to save appointment.');
@@ -757,12 +823,12 @@ export default function Appointments() {
 
       {/* ================= 5. ADD APPOINTMENT MODAL ================= */}
       {showAddModal && createPortal(
-        <div className="fixed inset-0 z-[9999] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 cursor-pointer" onClick={() => setShowAddModal(false)}>
+        <div className="fixed inset-0 z-[9999] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 cursor-pointer" onClick={() => { setFormErrors({}); setShowAddModal(false); }}>
           <div className="bg-white rounded-2xl sm:rounded-3xl max-w-2xl w-full p-3.5 sm:p-7 shadow-2xl border border-slate-200 relative cursor-default max-h-[92vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <button
               type="button"
               disabled={isSavingAppointment}
-              onClick={() => setShowAddModal(false)}
+              onClick={() => { setFormErrors({}); setShowAddModal(false); }}
               className="absolute top-5 right-5 text-slate-400 hover:text-slate-600 p-1.5 rounded-full hover:bg-slate-100 transition-all cursor-pointer"
             >
               <X className="w-5 h-5" />
@@ -778,7 +844,7 @@ export default function Appointments() {
               </div>
             </div>
 
-            <form onSubmit={handleFormSubmit} className="space-y-4">
+            <form onSubmit={handleFormSubmit} className="space-y-4" noValidate>
               {/* Row 1: Patient Name & Phone Number */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
@@ -788,11 +854,22 @@ export default function Appointments() {
                   <input
                     type="text"
                     value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    onChange={(e) => {
+                      setFormData({ ...formData, name: e.target.value });
+                      if (formErrors.name) setFormErrors({ ...formErrors, name: '' });
+                    }}
                     placeholder="Enter Full Patient Name"
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all placeholder:text-slate-400"
-                    required
+                    className={`w-full px-3.5 py-2.5 bg-slate-50 border rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:bg-white transition-all placeholder:text-slate-400 ${
+                      formErrors.name
+                        ? 'border-rose-400 focus:border-rose-500 focus:ring-rose-500/20 bg-rose-50/20'
+                        : 'border-slate-200 focus:ring-blue-600'
+                    }`}
                   />
+                  {formErrors.name && (
+                    <p className="mt-1 text-[11px] font-semibold text-rose-500">
+                      {formErrors.name}
+                    </p>
+                  )}
                 </div>
 
                 <div>
@@ -801,12 +878,26 @@ export default function Appointments() {
                   </label>
                   <input
                     type="tel"
+                    inputMode="numeric"
+                    maxLength={10}
                     value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    onChange={(e) => {
+                      const onlyDigits = e.target.value.replace(/\D/g, '').slice(0, 10);
+                      setFormData({ ...formData, phone: onlyDigits });
+                      if (formErrors.phone) setFormErrors({ ...formErrors, phone: '' });
+                    }}
                     placeholder="Enter 10-Digit Mobile Number"
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all placeholder:text-slate-400"
-                    required
+                    className={`w-full px-3.5 py-2.5 bg-slate-50 border rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:bg-white transition-all placeholder:text-slate-400 ${
+                      formErrors.phone
+                        ? 'border-rose-400 focus:border-rose-500 focus:ring-rose-500/20 bg-rose-50/20'
+                        : 'border-slate-200 focus:ring-blue-600'
+                    }`}
                   />
+                  {formErrors.phone && (
+                    <p className="mt-1 text-[11px] font-semibold text-rose-500">
+                      {formErrors.phone}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -817,16 +908,27 @@ export default function Appointments() {
                     Age (Optional)
                   </label>
                   <input
-                    type="number"
-                    min="0"
-                    max="120"
-                    step="1"
+                    type="text"
                     inputMode="numeric"
+                    maxLength={3}
                     value={formData.age}
-                    onChange={(e) => setFormData({ ...formData, age: e.target.value })}
+                    onChange={(e) => {
+                      const cleanAge = e.target.value.replace(/\D/g, '').slice(0, 3);
+                      setFormData({ ...formData, age: cleanAge });
+                      if (formErrors.age) setFormErrors({ ...formErrors, age: '' });
+                    }}
                     placeholder="Age in years"
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all placeholder:text-slate-400"
+                    className={`w-full px-3.5 py-2.5 bg-slate-50 border rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:bg-white transition-all placeholder:text-slate-400 ${
+                      formErrors.age
+                        ? 'border-rose-400 focus:border-rose-500 focus:ring-rose-500/20 bg-rose-50/20'
+                        : 'border-slate-200 focus:ring-blue-600'
+                    }`}
                   />
+                  {formErrors.age && (
+                    <p className="mt-1 text-[11px] font-semibold text-rose-500">
+                      {formErrors.age}
+                    </p>
+                  )}
                 </div>
 
                 <div>
@@ -851,10 +953,22 @@ export default function Appointments() {
                   <input
                     type="email"
                     value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    onChange={(e) => {
+                      setFormData({ ...formData, email: e.target.value });
+                      if (formErrors.email) setFormErrors({ ...formErrors, email: '' });
+                    }}
                     placeholder="e.g. user@gmail.com"
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all placeholder:text-slate-400"
+                    className={`w-full px-3.5 py-2.5 bg-slate-50 border rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:bg-white transition-all placeholder:text-slate-400 ${
+                      formErrors.email
+                        ? 'border-rose-400 focus:border-rose-500 focus:ring-rose-500/20 bg-rose-50/20'
+                        : 'border-slate-200 focus:ring-blue-600'
+                    }`}
                   />
+                  {formErrors.email && (
+                    <p className="mt-1 text-[11px] font-semibold text-rose-500">
+                      {formErrors.email}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -888,18 +1002,31 @@ export default function Appointments() {
                         clinic: selectedClinic,
                         problem: newOptions[0]
                       }));
+                      if (formErrors.clinic) setFormErrors((prev) => ({ ...prev, clinic: '' }));
                     }}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all cursor-pointer"
-                    required
+                    className={`w-full px-3.5 py-2.5 bg-slate-50 border rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:bg-white transition-all cursor-pointer ${
+                      formErrors.clinic
+                        ? 'border-rose-400 focus:border-rose-500 focus:ring-rose-500/20 bg-rose-50/20'
+                        : 'border-slate-200 focus:ring-blue-600'
+                    }`}
                   >
-                    {(clinics && clinics.length > 0 ? clinics.filter((c, index, self) => 
-                      index === self.findIndex((t) => (t.name || '').trim().toLowerCase() === (c.name || '').trim().toLowerCase())
-                    ) : []).map((c) => (
+                    {(clinics && clinics.length > 0 ? clinics.filter((c, index, self) => {
+                      const cKey = (c.name || '').toLowerCase().includes('rudraksh') ? 'rudraksh' : (c.name || '').toLowerCase().includes('shilpi') ? 'shilpi' : (c.name || '').trim().toLowerCase();
+                      return index === self.findIndex((t) => {
+                        const tKey = (t.name || '').toLowerCase().includes('rudraksh') ? 'rudraksh' : (t.name || '').toLowerCase().includes('shilpi') ? 'shilpi' : (t.name || '').trim().toLowerCase();
+                        return tKey === cKey;
+                      });
+                    }) : []).map((c) => (
                       <option key={c._id || c.id} value={c._id || c.id}>
                         {c.name}
                       </option>
                     ))}
                   </select>
+                  {formErrors.clinic && (
+                    <p className="mt-1 text-[11px] font-semibold text-rose-500">
+                      {formErrors.clinic}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -923,11 +1050,23 @@ export default function Appointments() {
                   </label>
                   <input
                     type="date"
+                    min={new Date().toISOString().split('T')[0]}
                     value={formData.date}
-                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all"
-                    required
+                    onChange={(e) => {
+                      setFormData({ ...formData, date: e.target.value });
+                      if (formErrors.date) setFormErrors({ ...formErrors, date: '' });
+                    }}
+                    className={`w-full px-3.5 py-2.5 bg-slate-50 border rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:bg-white transition-all ${
+                      formErrors.date
+                        ? 'border-rose-400 focus:border-rose-500 focus:ring-rose-500/20 bg-rose-50/20'
+                        : 'border-slate-200 focus:ring-blue-600'
+                    }`}
                   />
+                  {formErrors.date && (
+                    <p className="mt-1 text-[11px] font-semibold text-rose-500">
+                      {formErrors.date}
+                    </p>
+                  )}
                 </div>
 
                 <div>
