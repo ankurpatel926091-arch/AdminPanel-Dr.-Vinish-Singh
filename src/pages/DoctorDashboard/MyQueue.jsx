@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import useDebouncedValue from "../../hooks/useDebouncedValue";
@@ -134,9 +135,9 @@ export default function MyQueue() {
     return waitingList[0];
   }, [queue]);
 
-  // Filtered Queue List
+  // Filtered & Sorted Queue List (In Room / Consult first, Waiting next, Completed at bottom)
   const filteredQueue = useMemo(() => {
-    return queue.filter((item) => {
+    const list = queue.filter((item) => {
       const query = debouncedSearchQuery.toLowerCase().trim();
       const name = String(item.patientName || "").toLowerCase();
       const id = String(item.patientId || "").toLowerCase();
@@ -156,6 +157,33 @@ export default function MyQueue() {
       const matchesStatus = statusFilter === "ALL" || itemStatus === statusFilter;
 
       return matchesSearch && matchesStatus;
+    });
+
+    const statusRank = {
+      IN_CONSULTATION: 1,
+      WAITING: 2,
+      SKIPPED: 3,
+      COMPLETED: 4,
+    };
+
+    return [...list].sort((a, b) => {
+      const stA = normalizeStatus(a.status);
+      const stB = normalizeStatus(b.status);
+      const rankA = statusRank[stA] || 5;
+      const rankB = statusRank[stB] || 5;
+
+      if (rankA !== rankB) return rankA - rankB;
+
+      // When both are WAITING, prioritize Emergency / High priority
+      if (stA === "WAITING" && stB === "WAITING") {
+        const pA = String(a.priority || "").toUpperCase();
+        const pB = String(b.priority || "").toUpperCase();
+        const prioRank = (p) => (p === "EMERGENCY" ? 1 : p === "HIGH" ? 2 : 3);
+        const diff = prioRank(pA) - prioRank(pB);
+        if (diff !== 0) return diff;
+      }
+
+      return 0;
     });
   }, [queue, debouncedSearchQuery, statusFilter]);
 
@@ -601,8 +629,9 @@ export default function MyQueue() {
       </div>
 
       {/* Modal for Patient Details */}
-      {selectedPatientModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+      {selectedPatientModal &&
+        createPortal(
+          <div className="fixed inset-0 z-[9999] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-200">
             {/* Modal Header */}
             <div className="flex items-center justify-between pb-4 border-b border-slate-100">
@@ -707,7 +736,8 @@ export default function MyQueue() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );

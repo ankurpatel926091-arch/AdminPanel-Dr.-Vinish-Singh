@@ -2840,15 +2840,16 @@ export default function Billing() {
 
       ========================================= */}
 
-      {selectedBill && (
-        <div
-          className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-3 sm:p-4 cursor-pointer"
-          onClick={() => setSelectedBill(null)}
-        >
+      {selectedBill &&
+        createPortal(
           <div
-            className="flex max-h-[95vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl cursor-default animate-in fade-in zoom-in-95 duration-150"
-            onClick={(e) => e.stopPropagation()}
+            className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-3 sm:p-4 cursor-pointer"
+            onClick={() => setSelectedBill(null)}
           >
+            <div
+              className="flex max-h-[95vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl cursor-default animate-in fade-in zoom-in-95 duration-150"
+              onClick={(e) => e.stopPropagation()}
+            >
             {/* Header Toolbar */}
             <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50/90 px-5 py-3">
               <div className="flex items-center gap-2">
@@ -3133,7 +3134,8 @@ export default function Billing() {
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
 
       {/* Print Stylesheet for Official OPD Receipt */}
@@ -3166,8 +3168,9 @@ export default function Billing() {
 
       ========================================= */}
 
-      {paymentBill && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
+      {paymentBill &&
+        createPortal(
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
           <div
             className="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl cursor-default"
             onClick={(e) => e.stopPropagation()}
@@ -3342,7 +3345,8 @@ export default function Billing() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );

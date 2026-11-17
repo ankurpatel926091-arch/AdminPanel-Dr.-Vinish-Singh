@@ -91,7 +91,7 @@ export default function Sidebar({ isOpen, isCollapsed, onClose }) {
     role === "admin"
       ? [
           { path: "/admin/billing", label: "Billing", icon: FileText },
-          { path: "/admin/payments", label: "Payments", icon: CreditCard },
+          // { path: "/admin/payments", label: "Payments", icon: CreditCard },
         ]
       : [];
 
