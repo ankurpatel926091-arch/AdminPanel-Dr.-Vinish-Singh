@@ -23,6 +23,8 @@ import {
   ClipboardCheck,
   Receipt,
   Sparkles,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import {
   toCheckInAppointment,
@@ -37,12 +39,6 @@ import {
   checkInAppointmentApi,
 } from "../../api/appointmentApi";
 import { addToQueueApi } from "../../api/queueApi";
-
-/* =========================================================
-   Mock Appointment Data
-========================================================= */
-
-const defaultAppointments = [];
 
 /* =========================================================
    Status Styles
@@ -96,7 +92,7 @@ export default function CheckIn() {
       const list = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
       setAppointments(list.map(toCheckInAppointment));
     } catch (err) {
-      toast.error(err?.response?.data?.message || "Failed to load appointments from server");
+      toast.error(err?.response?.data?.message || "Unable to load appointments. Please refresh.");
     } finally {
       setLoading(false);
     }
@@ -120,17 +116,19 @@ export default function CheckIn() {
   const [showCheckInModal, setShowCheckInModal] = useState(false);
   const [checkInSuccess, setCheckInSuccess] = useState(null);
 
+  // ✅ NEW: Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+
   // Demographic & identity verification state
   const [identityVerified, setIdentityVerified] = useState(true);
   const [demographicsVerified, setDemographicsVerified] = useState(true);
 
   /* =========================================================
      1. Search Appointment / Patient
-     (Search using Appointment ID, UHID, mobile or patient name)
   ========================================================= */
 
   const filteredAppointments = useMemo(() => {
-    // Only show Confirmed and Checked-in appointments (exclude Pending and Cancelled)
     const confirmedList = appointments.filter(
       (apt) => apt.status === "CONFIRMED" || apt.status === "CHECKED_IN"
     );
@@ -153,6 +151,29 @@ export default function CheckIn() {
       );
     });
   }, [appointments, debouncedSearch]);
+
+  /* =========================================================
+     ✅ NEW: Pagination logic
+  ========================================================= */
+
+  const totalPages = Math.ceil(filteredAppointments.length / itemsPerPage) || 1;
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedAppointments = filteredAppointments.slice(
+    startIndex,
+    startIndex + itemsPerPage
+  );
+
+  // Reset to page 1 when search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearch]);
+
+  // Safety: agar current page total pages se zyada ho jaye (e.g. delete ke baad)
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [totalPages, currentPage]);
 
   /* =========================================================
      Today's Statistics
@@ -287,60 +308,11 @@ export default function CheckIn() {
         });
       }
 
-      try {
-        const queuePayload = {
-          tokenNumber: `T-${String(updatedApt.tokenNumber).padStart(3, "0")}`,
-          visitId: updatedApt.visitId,
-          appointment: updatedApt.appointmentId || null,
-          patientId: updatedApt.patientId,
-          patientName: updatedApt.patientName,
-          age: Number(updatedApt.age) || 35,
-          gender: updatedApt.gender || "Male",
-          mobile: updatedApt.mobile || "",
-          doctorName: updatedApt.doctorName,
-          department: updatedApt.department,
-          clinic: updatedApt.clinic,
-          checkInTime: updatedApt.checkInAt,
-          status: "Waiting",
-          priority: "Normal",
-        };
-        // Persist to MongoDB Queue
-        addToQueueApi(queuePayload).catch((e) => console.warn("Queue API sync error:", e));
-
-        const existingQueue =
-          readStoredArray(SHARED_QUEUE_STORAGE_KEY).length > 0
-            ? readStoredArray(SHARED_QUEUE_STORAGE_KEY)
-            : readStoredArray(DOCTOR_QUEUE_STORAGE_KEY);
-        const appointmentId = String(updatedApt.appointmentId);
-        const filteredQueue = existingQueue.filter(
-          (item) => String(item.appointmentId || "") !== appointmentId
-        );
-        const newQueueItem = {
-          id: `Q-${updatedApt.visitId}`,
-          appointmentId,
-          ...queuePayload,
-          status: "WAITING",
-          priority: "NORMAL",
-          startTime: null,
-        };
-        saveQueue([normalizeQueueItem(newQueueItem), ...filteredQueue.map(normalizeQueueItem)]);
-      } catch (error) {
-        console.error("Unable to add checked-in patient to doctor queue:", error);
-      }
-
       closeModal();
-      toast.success(`Check-In confirmed for ${updatedApt.patientName}! Opening OPD Billing...`);
-
-      navigate("/admin/billing", {
-        state: {
-          appointment: updatedApt,
-          visitId: updatedApt.visitId,
-          patientId: updatedApt.patientId,
-          patientName: updatedApt.patientName,
-          doctorName: updatedApt.doctorName,
-          autoOpenPayment: true,
-        },
-      });
+      const tokenDisplay = updatedApt.tokenNumber ? `Token #${updatedApt.tokenNumber}` : 'Assigned';
+      toast.success(
+        `Check-In completed for ${updatedApt.patientName}! (${tokenDisplay}). Complete billing to send patient to Doctor Queue.`
+      );
     } catch (error) {
       toast.error(error?.response?.data?.message || error?.message || "Failed to check in patient");
     } finally {
@@ -403,23 +375,18 @@ export default function CheckIn() {
       ===================================================== */}
 
       <div className="mb-4 sm:mb-6 grid grid-cols-3 gap-2 sm:gap-4">
-        {/* Total Confirmed */}
         <StatCard
           title="Confirmed"
           value={totalAppointments}
           icon={Calendar}
           iconClass="bg-blue-50 text-blue-600"
         />
-
-        {/* Confirmed / Ready */}
         <StatCard
           title="Ready Check-in"
           value={confirmedCount}
           icon={UserCheck}
           iconClass="bg-amber-50 text-amber-600"
         />
-
-        {/* Checked In */}
         <StatCard
           title="Checked-in"
           value={checkedInCount}
@@ -430,7 +397,6 @@ export default function CheckIn() {
 
       {/* =====================================================
           SEARCH PANEL
-          1. Search appointment/patient using Appointment ID, UHID, mobile or patient name.
       ===================================================== */}
 
       <div className="mb-5 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -454,13 +420,19 @@ export default function CheckIn() {
           <input
             type="text"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setCurrentPage(1); // ✅ reset page on search
+            }}
             placeholder="Appointment ID, UHID, mobile or patient name..."
             className="w-full rounded-lg border border-slate-200 bg-slate-50 py-3 pl-10 pr-4 text-sm outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100"
           />
           {search && (
             <button
-              onClick={() => setSearch("")}
+              onClick={() => {
+                setSearch("");
+                setCurrentPage(1);
+              }}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400 hover:text-slate-600"
             >
               Clear
@@ -484,7 +456,10 @@ export default function CheckIn() {
           </div>
 
           <button
-            onClick={() => setSearch("")}
+            onClick={() => {
+              setSearch("");
+              setCurrentPage(1);
+            }}
             className="hidden items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-50 sm:flex"
           >
             <RefreshCw size={14} />
@@ -527,8 +502,8 @@ export default function CheckIn() {
                     </p>
                   </td>
                 </tr>
-              ) : filteredAppointments.length > 0 ? (
-                filteredAppointments.map((appointment) => {
+              ) : paginatedAppointments.length > 0 ? (
+                paginatedAppointments.map((appointment) => {
                   const canCheckIn = appointment.status === "CONFIRMED";
                   const alreadyChecked = appointment.status === "CHECKED_IN";
                   const blocked =
@@ -545,7 +520,6 @@ export default function CheckIn() {
                       key={appointment.appointmentId}
                       className="transition hover:bg-slate-50/80"
                     >
-                      {/* Appointment */}
                       <td className="px-3.5 py-2.5 whitespace-nowrap">
                         <p
                           className="font-mono text-[11px] font-semibold text-slate-800 tracking-tight select-all leading-tight"
@@ -564,7 +538,6 @@ export default function CheckIn() {
                         )}
                       </td>
 
-                      {/* Patient */}
                       <td className="px-3.5 py-2.5">
                         <div className="flex items-center gap-2.5">
                           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-50 text-blue-600">
@@ -587,7 +560,6 @@ export default function CheckIn() {
                         </div>
                       </td>
 
-                      {/* Doctor */}
                       <td className="px-3.5 py-2.5">
                         <div className="flex items-start gap-1.5">
                           <Stethoscope
@@ -605,7 +577,6 @@ export default function CheckIn() {
                         </div>
                       </td>
 
-                      {/* Time */}
                       <td className="px-3.5 py-2.5 whitespace-nowrap">
                         <div className="flex items-center gap-1.5">
                           <Clock size={14} className="text-slate-400 shrink-0" />
@@ -622,7 +593,6 @@ export default function CheckIn() {
                         </div>
                       </td>
 
-                      {/* Status */}
                       <td className="px-3.5 py-2.5 whitespace-nowrap">
                         <span
                           className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${
@@ -634,7 +604,6 @@ export default function CheckIn() {
                         </span>
                       </td>
 
-                      {/* Action */}
                       <td className="px-3.5 py-2.5 whitespace-nowrap text-center">
                         <div className="flex items-center justify-center gap-1.5">
                           {canCheckIn && (
@@ -700,10 +669,75 @@ export default function CheckIn() {
             </tbody>
           </table>
         </div>
+
+        {/* =====================================================
+            ✅ NEW: PAGINATION FOOTER
+        ===================================================== */}
+        {filteredAppointments.length > 0 && (
+          <div className="px-5 py-3.5 bg-slate-50/50 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500 font-medium">
+            <div>
+              Showing {startIndex + 1} to{" "}
+              {Math.min(startIndex + itemsPerPage, filteredAppointments.length)} of{" "}
+              {filteredAppointments.length} appointments
+            </div>
+
+            <div className="flex items-center gap-3">
+              <div className="inline-flex items-center gap-1">
+                <button
+                  type="button"
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                  className="w-7 h-7 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center transition-all"
+                >
+                  <ChevronLeft className="w-4 h-4 text-slate-600" />
+                </button>
+
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                  <button
+                    key={page}
+                    type="button"
+                    onClick={() => setCurrentPage(page)}
+                    className={`w-7 h-7 rounded-lg font-extrabold text-xs flex items-center justify-center transition-all ${
+                      currentPage === page
+                        ? "bg-blue-600 text-white shadow-xs"
+                        : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-100"
+                    }`}
+                  >
+                    {page}
+                  </button>
+                ))}
+
+                <button
+                  type="button"
+                  disabled={currentPage === totalPages}
+                  onClick={() =>
+                    setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+                  }
+                  className="w-7 h-7 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center transition-all"
+                >
+                  <ChevronRight className="w-4 h-4 text-slate-600" />
+                </button>
+              </div>
+
+              <select
+                value={itemsPerPage}
+                onChange={(e) => {
+                  setItemsPerPage(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:outline-none cursor-pointer"
+              >
+                <option value={10}>10 / page</option>
+                <option value={20}>20 / page</option>
+                <option value={50}>50 / page</option>
+              </select>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* =====================================================
-          CHECK-IN & VERIFICATION MODAL
+          CHECK-IN & VERIFICATION MODAL (unchanged)
       ===================================================== */}
 
       {showCheckInModal && selectedAppointment && createPortal(
@@ -733,7 +767,6 @@ export default function CheckIn() {
 
             {/* Modal Content */}
             <div className="overflow-y-auto p-4 space-y-3.5">
-              {/* Success View */}
               {checkInSuccess ? (
                 <div>
                   <div className="rounded-xl border border-green-200 bg-green-50 p-4 text-center">
@@ -750,7 +783,6 @@ export default function CheckIn() {
                     </p>
 
                     <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                      {/* Visit ID */}
                       <div className="rounded-lg border border-green-200 bg-white p-2.5 text-left shadow-2xs">
                         <p className="text-[11px] font-medium text-slate-400">Visit ID</p>
                         <p className="mt-0.5 text-sm font-bold text-slate-900">
@@ -758,7 +790,6 @@ export default function CheckIn() {
                         </p>
                       </div>
 
-                      {/* Token */}
                       <div className="rounded-lg border border-green-200 bg-white p-2.5 text-left shadow-2xs">
                         <p className="text-[11px] font-medium text-slate-400">Token Number</p>
                         <p className="mt-0.5 text-sm font-bold text-blue-600">
@@ -766,7 +797,6 @@ export default function CheckIn() {
                         </p>
                       </div>
 
-                      {/* Timestamp */}
                       <div className="rounded-lg border border-green-200 bg-white p-2.5 text-left shadow-2xs">
                         <p className="text-[11px] font-medium text-slate-400">Check-in Time</p>
                         <p className="mt-0.5 text-xs font-bold text-slate-800">
@@ -774,7 +804,6 @@ export default function CheckIn() {
                         </p>
                       </div>
 
-                      {/* Receptionist */}
                       <div className="rounded-lg border border-green-200 bg-white p-2.5 text-left shadow-2xs">
                         <p className="text-[11px] font-medium text-slate-400">Receptionist ID</p>
                         <p className="mt-0.5 text-xs font-bold text-slate-800 truncate" title={checkInSuccess.checkedInBy}>
@@ -784,7 +813,6 @@ export default function CheckIn() {
                     </div>
                   </div>
 
-                  {/* Step 6: Proceed to OPD billing */}
                   <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-3 rounded-xl border border-blue-200 bg-blue-50/70 p-3.5">
                     <div className="flex items-start gap-2.5">
                       <Receipt size={18} className="shrink-0 text-blue-600 mt-0.5" />
@@ -810,7 +838,6 @@ export default function CheckIn() {
                 </div>
               ) : (
                 <>
-                  {/* Step 2: Verify Patient Identity and Demographic Details */}
                   <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-600">
@@ -822,7 +849,7 @@ export default function CheckIn() {
                           {selectedAppointment.patientName}
                         </h3>
 
-                        <div className="mt-0.5 flex flex-wrap gap-2 text-[11px] text-slate-500">
+                                                <div className="mt-0.5 flex flex-wrap gap-2 text-[11px] text-slate-500">
                           <span className="flex items-center gap-1 font-medium">
                             <Hash size={11} />
                             {selectedAppointment.patientId}

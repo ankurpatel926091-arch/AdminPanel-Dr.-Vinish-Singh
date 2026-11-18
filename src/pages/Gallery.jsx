@@ -8,7 +8,7 @@ import {
   updateGalleryMediaApi,
   toggleGalleryStatusApi,
   deleteGalleryItemApi
-} from '../services/galleryService';
+} from '../api/galleryApi';
 import { getSecureMediaUrl } from '../utils/mediaUtils';
 
 const CATEGORIES = [

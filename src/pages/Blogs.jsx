@@ -37,7 +37,7 @@ import {
   updateBlogApi,
   deleteBlogApi,
   toggleBlogStatusApi
-} from '../services/blogService';
+} from '../api/blogApi';
 import BlogEditor from '../components/BlogEditor/BlogEditor';
 
 export default function Blogs() {

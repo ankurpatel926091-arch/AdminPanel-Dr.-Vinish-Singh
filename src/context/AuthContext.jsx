@@ -4,7 +4,7 @@ import {
   loginAdmin,
   getAdminProfile,
   logoutAdmin,
-} from "../services/authService";
+} from "../api/authApi";
 
 const AuthContext = createContext();
 

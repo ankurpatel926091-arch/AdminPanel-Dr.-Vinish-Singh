@@ -136,6 +136,11 @@ const TodaysAppointments = () => {
           matchedQueueIds.add(matchedQueue._id || matchedQueue.id);
         }
 
+        // In Today's OPD Queue, strictly show patients who have an active queue record or are completed (Strict Pre-Billing: Option 1)
+        if (!matchedQueue && apt.status !== "Visited") {
+          return;
+        }
+
         let qStatus = "Not Checked-in";
         if (matchedQueue) {
           if (matchedQueue.status === "Consulting") qStatus = "In Consultation";
@@ -145,8 +150,6 @@ const TodaysAppointments = () => {
           else qStatus = matchedQueue.status;
         } else if (apt.status === "Visited") {
           qStatus = "Completed";
-        } else if (apt.status === "Checked-in") {
-          qStatus = "Waiting";
         }
 
         const tokenNum =
@@ -185,10 +188,24 @@ const TodaysAppointments = () => {
         });
       });
 
+      // Collect existing patient keys in mergedList to prevent duplicates
+      const seenPatientKeys = new Set();
+      mergedList.forEach((item) => {
+        const phone = item.mobile ? String(item.mobile).replace(/\D/g, "").slice(-10) : "";
+        const name = item.patientName ? item.patientName.trim().toLowerCase() : "";
+        if (phone && phone.length === 10) seenPatientKeys.add(phone);
+        else if (name) seenPatientKeys.add(name);
+      });
+
       // Also include any walk-in queue patients not matched to booked appointments
       queueList.forEach((q) => {
         const qId = q._id || q.id;
-        if (!matchedQueueIds.has(qId)) {
+        const qPhone = q.mobile ? String(q.mobile).replace(/\D/g, "").slice(-10) : "";
+        const qName = q.patientName ? q.patientName.trim().toLowerCase() : "";
+        const qKey = qPhone && qPhone.length === 10 ? qPhone : qName;
+
+        if (!matchedQueueIds.has(qId) && (!qKey || !seenPatientKeys.has(qKey))) {
+          if (qKey) seenPatientKeys.add(qKey);
           let qStatus = "Waiting";
           if (q.status === "Consulting") qStatus = "In Consultation";
           else if (q.status === "Waiting") qStatus = "Waiting";

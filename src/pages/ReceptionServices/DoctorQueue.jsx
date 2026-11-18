@@ -47,14 +47,24 @@ export default function DoctorQueue() {
       setLoading(true);
       const data = await getTodayQueueApi();
       if (Array.isArray(data)) {
-        const normalized = data.map((item) => {
+        // Enforce cabin exclusivity: Only 1 patient can be in Consulting at any time!
+        let activeFound = false;
+        const reversed = [...data].reverse();
+        const cleanedReversed = reversed.map((item) => {
           let st = item.status;
-          if (st === "IN_CONSULTATION") st = "Consulting";
-          else if (st === "WAITING") st = "Waiting";
+          if (st === "IN_CONSULTATION" || st === "Consulting" || st === "CONSULTING") {
+            if (!activeFound) {
+              activeFound = true;
+              st = "Consulting";
+            } else {
+              st = "Completed";
+            }
+          } else if (st === "WAITING") st = "Waiting";
           else if (st === "COMPLETED") st = "Completed";
           else if (st === "SKIPPED" || st === "CANCELLED") st = "Cancelled";
           return { ...item, status: st || "Waiting" };
         });
+        const normalized = cleanedReversed.reverse();
         setQueue(normalized);
       }
     } catch (e) {
@@ -95,7 +105,6 @@ export default function DoctorQueue() {
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearchQuery = useDebouncedValue(searchQuery);
   const [statusFilter, setStatusFilter] = useState("ALL");
-  const [doctorFilter, setDoctorFilter] = useState("ALL");
   const [selectedPatientModal, setSelectedPatientModal] = useState(null);
 
   // Basic Queue Summary (Total, Waiting, Completed)
@@ -120,12 +129,6 @@ export default function DoctorQueue() {
     return urgent || waitingList[0];
   }, [queue]);
 
-  // Unique doctors list
-  const doctorList = useMemo(() => {
-    const list = Array.from(new Set(queue.map((q) => q.doctorName).filter(Boolean)));
-    return list.length > 0 ? list : ["Dr. Vinish Kumar Singh"];
-  }, [queue]);
-
   // Filtered & Sorted Queue List (Consulting first, then Waiting, then Completed)
   const filteredQueue = useMemo(() => {
     const list = queue.filter((item) => {
@@ -138,9 +141,8 @@ export default function DoctorQueue() {
         item.mobile.includes(query);
 
       const matchesStatus = statusFilter === "ALL" || item.status === statusFilter;
-      const matchesDoctor = doctorFilter === "ALL" || item.doctorName === doctorFilter;
 
-      return matchesSearch && matchesStatus && matchesDoctor;
+      return matchesSearch && matchesStatus;
     });
 
     const statusOrder = { Consulting: 1, Waiting: 2, Completed: 3, Cancelled: 4 };
@@ -152,7 +154,7 @@ export default function DoctorQueue() {
       if (b.priority === "Urgent" && a.priority !== "Urgent") return 1;
       return 0;
     });
-  }, [queue, debouncedSearchQuery, statusFilter, doctorFilter]);
+  }, [queue, debouncedSearchQuery, statusFilter]);
 
   // Operational Actions (MongoDB Sync)
   const handleCallNextPatient = async () => {
@@ -198,7 +200,7 @@ export default function DoctorQueue() {
 
   const handleRefresh = async () => {
     await fetchQueueFromDB();
-    toast.info("Queue refreshed from database");
+    toast.success("Doctor queue refreshed successfully!");
   };
 
   return (
@@ -244,10 +246,14 @@ export default function DoctorQueue() {
           {/* Refresh Button */}
           <button
             onClick={handleRefresh}
-            className="p-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition"
+            disabled={loading}
+            className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-slate-200 text-slate-700 bg-white hover:bg-slate-50 hover:border-blue-200 hover:text-blue-600 transition shadow-xs disabled:opacity-50"
             title="Refresh Queue"
           >
-            <RotateCw className="w-4 h-4" />
+            <RotateCw className={`w-4 h-4 ${loading ? "animate-spin text-blue-600" : ""}`} />
+            <span className="text-xs font-semibold hidden sm:inline">
+              {loading ? "Refreshing..." : "Refresh"}
+            </span>
           </button>
         </div>
       </div>
@@ -382,20 +388,6 @@ export default function DoctorQueue() {
             <option value="Consulting">Consulting</option>
             <option value="Completed">Completed</option>
             <option value="Cancelled">Cancelled</option>
-          </select>
-
-          {/* Doctor Filter */}
-          <select
-            value={doctorFilter}
-            onChange={(e) => setDoctorFilter(e.target.value)}
-            className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-          >
-            <option value="ALL">All Doctors</option>
-            {doctorList.map((doc) => (
-              <option key={doc} value={doc}>
-                {doc}
-              </option>
-            ))}
           </select>
         </div>
       </div>

@@ -80,6 +80,65 @@ export default function App() {
     } catch (e) {}
   }, []);
 
+  // Global Modal Scroll Lock: Prevents background page scrolling whenever ANY modal is open
+  useEffect(() => {
+    const checkModalOpen = () => {
+      const modals = document.querySelectorAll(
+        '.fixed.inset-0:not([data-no-scroll-lock="true"]), [role="dialog"], .modal-backdrop'
+      );
+
+      let isModalOpen = false;
+      for (let i = 0; i < modals.length; i++) {
+        const el = modals[i];
+        const style = window.getComputedStyle(el);
+        if (style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0') {
+          isModalOpen = true;
+          break;
+        }
+      }
+
+      if (isModalOpen) {
+        if (!document.body.classList.contains('modal-open')) {
+          const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+          document.documentElement.classList.add('modal-open');
+          document.body.classList.add('modal-open');
+          document.body.style.overflow = 'hidden';
+          if (scrollbarWidth > 0) {
+            document.body.style.paddingRight = `${scrollbarWidth}px`;
+          }
+        }
+      } else {
+        if (document.body.classList.contains('modal-open')) {
+          document.documentElement.classList.remove('modal-open');
+          document.body.classList.remove('modal-open');
+          document.body.style.overflow = '';
+          document.body.style.paddingRight = '';
+        }
+      }
+    };
+
+    checkModalOpen();
+
+    const observer = new MutationObserver(() => {
+      checkModalOpen();
+    });
+
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['class', 'style', 'hidden']
+    });
+
+    return () => {
+      observer.disconnect();
+      document.documentElement.classList.remove('modal-open');
+      document.body.classList.remove('modal-open');
+      document.body.style.overflow = '';
+      document.body.style.paddingRight = '';
+    };
+  }, []);
+
   return (
     <AdminDataProvider>
       <ToastContainer

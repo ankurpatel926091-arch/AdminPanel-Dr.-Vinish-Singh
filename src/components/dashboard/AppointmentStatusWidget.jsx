@@ -8,6 +8,7 @@ const TIMEFRAMES = ['This Month', 'All Time', 'This Week', 'Today'];
 const STATUS_CONFIG = [
   { key: 'Pending', label: 'Pending', color: '#f59e0b', dotBg: 'bg-amber-500' },
   { key: 'Confirmed', label: 'Confirmed', color: '#10b981', dotBg: 'bg-emerald-500' },
+  { key: 'Checked-in', label: 'Checked-in', color: '#06b6d4', dotBg: 'bg-cyan-500' },
   { key: 'Visited', label: 'Visited', color: '#2563eb', dotBg: 'bg-blue-600' },
   { key: 'Missed', label: 'Missed', color: '#f97316', dotBg: 'bg-orange-500' },
   { key: 'Cancelled', label: 'Cancelled', color: '#f43f5e', dotBg: 'bg-rose-500' }
@@ -59,6 +60,7 @@ const parseAppointmentDate = (apt) => {
 export default function AppointmentStatusWidget() {
   const { appointments = [] } = useAdminData();
   const [timeframe, setTimeframe] = useState('This Month');
+  const [sourceFilter, setSourceFilter] = useState('All');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
 
@@ -73,16 +75,35 @@ export default function AppointmentStatusWidget() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Filter appointments dynamically by selected timeframe
+  // Filter appointments dynamically by source AND selected timeframe
   const filteredAppointments = useMemo(() => {
     if (!appointments || appointments.length === 0) return [];
-    if (timeframe === 'All Time') return appointments;
+
+    let list = appointments;
+
+    // 1. Source Filter (All | Online | Walk-in)
+    if (sourceFilter !== 'All') {
+      const targetSrc = sourceFilter.toLowerCase();
+      list = list.filter(apt => {
+        const aptSrc = (apt.source || 'Online').trim().toLowerCase();
+        if (targetSrc === 'online') {
+          return aptSrc === 'online' || !apt.source;
+        }
+        if (targetSrc === 'walk-in') {
+          return aptSrc === 'walk-in' || aptSrc === 'walkin';
+        }
+        return true;
+      });
+    }
+
+    // 2. Timeframe Filter
+    if (timeframe === 'All Time') return list;
 
     const now = new Date();
     const currentMonth = now.getMonth();
     const currentYear = now.getFullYear();
 
-    return appointments.filter(apt => {
+    return list.filter(apt => {
       const aptDate = parseAppointmentDate(apt);
 
       // If date parsing fails, default to including it in 'This Month' so no records are lost
@@ -109,14 +130,15 @@ export default function AppointmentStatusWidget() {
 
       return true;
     });
-  }, [appointments, timeframe]);
+  }, [appointments, timeframe, sourceFilter]);
 
   // Compute status counts dynamically from filtered appointments
   const chartData = useMemo(() => {
     return STATUS_CONFIG.map(cfg => {
+      const targetKey = cfg.key.toLowerCase().replace(/[\s_]/g, '-');
       const count = filteredAppointments.filter(apt => {
-        const statusStr = (apt.status || 'Pending').trim().toLowerCase();
-        return statusStr === cfg.key.toLowerCase();
+        const statusStr = (apt.status || 'Pending').trim().toLowerCase().replace(/[\s_]/g, '-');
+        return statusStr === targetKey;
       }).length;
 
       return {
@@ -143,17 +165,40 @@ export default function AppointmentStatusWidget() {
           <p className="text-xs text-slate-400 font-medium mt-0.5">Current appointment counts by status</p>
         </div>
 
-        {/* Top-Right Interactive Dropdown */}
-        <div className="relative shrink-0" ref={dropdownRef}>
-          <button
-            type="button"
-            onClick={() => setIsDropdownOpen(prev => !prev)}
-            className="flex items-center gap-2 text-xs font-bold bg-slate-100/90 hover:bg-slate-200/80 text-slate-700 px-3.5 py-1.5 rounded-xl border border-slate-200/80 transition-all cursor-pointer shadow-2xs active:scale-98"
-          >
-            <Calendar size={14} className="text-blue-600" />
-            <span>{timeframe}</span>
-            <ChevronDown size={14} className={`text-slate-500 transition-transform duration-200 ${isDropdownOpen ? 'rotate-180 text-blue-600' : ''}`} />
-          </button>
+        {/* Controls: Source Filter & Timeframe Dropdown */}
+        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+          {/* Source Filter (All | Online | Walk-in) */}
+          <div className="inline-flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200/80 text-[11px] font-bold shrink-0">
+            {['All', 'Online', 'Walk-in'].map((src) => {
+              const isSelected = sourceFilter === src;
+              return (
+                <button
+                  key={src}
+                  type="button"
+                  onClick={() => setSourceFilter(src)}
+                  className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                    isSelected
+                      ? 'bg-white text-blue-600 shadow-2xs'
+                      : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  {src === 'All' ? 'All (Both)' : src}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Timeframe Dropdown */}
+          <div className="relative shrink-0" ref={dropdownRef}>
+            <button
+              type="button"
+              onClick={() => setIsDropdownOpen(prev => !prev)}
+              className="flex items-center gap-2 text-xs font-bold bg-slate-100/90 hover:bg-slate-200/80 text-slate-700 px-3 py-1.5 rounded-xl border border-slate-200/80 transition-all cursor-pointer shadow-2xs active:scale-98"
+            >
+              <Calendar size={13} className="text-blue-600" />
+              <span>{timeframe}</span>
+              <ChevronDown size={13} className={`text-slate-500 transition-transform duration-200 ${isDropdownOpen ? 'rotate-180 text-blue-600' : ''}`} />
+            </button>
 
           {isDropdownOpen && (
             <div className="absolute right-0 mt-2 w-44 bg-white rounded-2xl border border-slate-200/90 shadow-xl py-1.5 z-50 animate-fadeIn">
@@ -182,16 +227,17 @@ export default function AppointmentStatusWidget() {
           )}
         </div>
       </div>
+    </div>
 
       {/* Responsive Bar Chart Section */}
-      <div className="h-52 sm:h-56 w-full mt-3">
+      <div className="h-56 sm:h-60 w-full mt-3">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={chartData} barCategoryGap="12%" margin={{ top: 25, right: 20, left: -15, bottom: 5 }}>
+          <BarChart data={chartData} barCategoryGap="8%" margin={{ top: 25, right: 15, left: -18, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
             <XAxis
               dataKey="status"
               stroke="#64748b"
-              fontSize={12}
+              fontSize={11}
               fontWeight={700}
               tickLine={false}
               axisLine={false}
@@ -204,20 +250,20 @@ export default function AppointmentStatusWidget() {
               axisLine={false}
               domain={[0, maxCount]}
             />
-            <Bar dataKey="count" radius={[12, 12, 0, 0]} maxBarSize={150}>
+            <Bar dataKey="count" radius={[10, 10, 0, 0]} maxBarSize={110}>
               {chartData.map((entry, index) => (
                 <Cell key={`cell-${index}`} fill={entry.color} />
               ))}
-              <LabelList dataKey="count" position="top" fill="#1e293b" fontSize={14} fontWeight={800} offset={8} />
+              <LabelList dataKey="count" position="top" fill="#1e293b" fontSize={13} fontWeight={800} offset={8} />
             </Bar>
           </BarChart>
         </ResponsiveContainer>
       </div>
 
       {/* Legend Below Chart */}
-      <div className="mt-3 pt-2 border-t border-slate-100 flex flex-wrap items-center justify-center gap-3 sm:gap-6 text-xs font-bold text-slate-700">
+      <div className="mt-3 pt-2.5 border-t border-slate-100 flex flex-wrap items-center justify-center gap-2.5 sm:gap-5 text-[11px] sm:text-xs font-bold text-slate-700">
         {STATUS_CONFIG.map(cfg => (
-          <div key={cfg.key} className="inline-flex items-center gap-2">
+          <div key={cfg.key} className="inline-flex items-center gap-1.5">
             <span className={`w-2.5 h-2.5 rounded-full ${cfg.dotBg}`} />
             <span>{cfg.label}</span>
           </div>

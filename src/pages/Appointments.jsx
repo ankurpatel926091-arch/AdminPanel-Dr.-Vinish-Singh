@@ -240,36 +240,52 @@ export default function Appointments() {
       errors.phone = 'Mobile number must start with 6, 7, 8, or 9.';
     }
 
-    // 3. Age Validation (Optional)
-    if (formData.age !== '' && formData.age !== undefined && formData.age !== null) {
-      const ageNum = Number(formData.age);
-      if (isNaN(ageNum) || ageNum < 0 || ageNum > 120) {
-        errors.age = 'Age must be between 0 and 120.';
+    // 3. Age Validation (Required)
+    const ageTrim = String(formData.age !== undefined && formData.age !== null ? formData.age : '').trim();
+    if (!ageTrim) {
+      errors.age = 'Patient Age is required.';
+    } else {
+      const ageNum = Number(ageTrim);
+      if (isNaN(ageNum) || !Number.isInteger(ageNum) || ageNum < 0 || ageNum > 120) {
+        errors.age = 'Age must be a valid number between 0 and 120.';
       }
     }
 
-    // 4. Email Validation (Optional)
+    // 4. Gender Validation
+    if (!formData.gender) {
+      errors.gender = 'Please select Gender.';
+    }
+
+    // 5. Email Validation (Optional)
     const emailTrim = (formData.email || '').trim();
     if (emailTrim && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailTrim)) {
       errors.email = 'Please enter a valid email address (e.g. name@gmail.com).';
     }
 
-    // 5. Clinic / Centre Validation
-    if (!formData.clinic && !defaultClinicId) {
-      errors.clinic = 'Please select a clinic / hospital centre.';
+    // 6. Clinic / Centre Validation
+    const effectiveClinic = formData.clinic || defaultClinicId;
+    if (!effectiveClinic) {
+      errors.clinic = 'Please select a clinic / doctor centre.';
     }
 
-    // 6. Date Validation
+    // 7. Date Validation
     if (!formData.date) {
       errors.date = 'Appointment Date is required.';
     } else {
-      const selected = new Date(formData.date);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      selected.setHours(0, 0, 0, 0);
-      if (selected < today) {
+      const todayStr = new Date().toLocaleDateString('en-CA');
+      if (formData.date < todayStr) {
         errors.date = 'Appointment date cannot be in the past.';
       }
+    }
+
+    // 8. Time Validation
+    if (!formData.time) {
+      errors.time = 'Please select appointment time.';
+    }
+
+    // 9. Status Validation
+    if (!formData.status) {
+      errors.status = 'Please select appointment status.';
     }
 
     return errors;
@@ -282,8 +298,13 @@ export default function Appointments() {
     const errors = validateForm();
     if (Object.keys(errors).length > 0) {
       setFormErrors(errors);
-      const firstError = Object.values(errors)[0];
-      toast.error(firstError);
+      const firstErrorKey = Object.keys(errors)[0];
+      toast.error(errors[firstErrorKey]);
+      const targetEl = document.querySelector(`[name="${firstErrorKey}"]`);
+      if (targetEl) {
+        targetEl.focus();
+        targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
       return;
     }
     setFormErrors({});
@@ -853,6 +874,7 @@ export default function Appointments() {
                   </label>
                   <input
                     type="text"
+                    name="name"
                     value={formData.name}
                     onChange={(e) => {
                       setFormData({ ...formData, name: e.target.value });
@@ -878,6 +900,7 @@ export default function Appointments() {
                   </label>
                   <input
                     type="tel"
+                    name="phone"
                     inputMode="numeric"
                     maxLength={10}
                     value={formData.phone}
@@ -905,10 +928,11 @@ export default function Appointments() {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                    Age (Optional)
+                    Age <span className="text-rose-500">*</span>
                   </label>
                   <input
                     type="text"
+                    name="age"
                     inputMode="numeric"
                     maxLength={3}
                     value={formData.age}
@@ -936,6 +960,7 @@ export default function Appointments() {
                     Gender <span className="text-rose-500">*</span>
                   </label>
                   <select
+                    name="gender"
                     value={formData.gender}
                     onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
                     className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all cursor-pointer"
@@ -952,6 +977,7 @@ export default function Appointments() {
                   </label>
                   <input
                     type="email"
+                    name="email"
                     value={formData.email}
                     onChange={(e) => {
                       setFormData({ ...formData, email: e.target.value });
@@ -979,6 +1005,7 @@ export default function Appointments() {
                     Consultation Type <span className="text-rose-500">*</span>
                   </label>
                   <select
+                    name="consultationType"
                     value={formData.consultationType}
                     onChange={(e) => setFormData({ ...formData, consultationType: e.target.value })}
                     className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all cursor-pointer"
@@ -990,9 +1017,10 @@ export default function Appointments() {
 
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                    Preferred Clinic Centre <span className="text-rose-500">*</span>
+                    Select Doctor & Centre <span className="text-rose-500">*</span>
                   </label>
                   <select
+                    name="clinic"
                     value={formData.clinic || defaultClinicId}
                     onChange={(e) => {
                       const selectedClinic = e.target.value;
@@ -1050,7 +1078,8 @@ export default function Appointments() {
                   </label>
                   <input
                     type="date"
-                    min={new Date().toISOString().split('T')[0]}
+                    name="date"
+                    min={new Date().toLocaleDateString('en-CA')}
                     value={formData.date}
                     onChange={(e) => {
                       setFormData({ ...formData, date: e.target.value });
@@ -1074,6 +1103,7 @@ export default function Appointments() {
                     Time
                   </label>
                   <select
+                    name="time"
                     value={formData.time}
                     onChange={(e) => setFormData({ ...formData, time: e.target.value })}
                     className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all cursor-pointer"
@@ -1093,15 +1123,13 @@ export default function Appointments() {
                     Status
                   </label>
                   <select
+                    name="status"
                     value={formData.status}
                     onChange={(e) => setFormData({ ...formData, status: e.target.value })}
                     className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all cursor-pointer"
                   >
                     <option value="Confirmed">Confirmed</option>
                     <option value="Pending">Pending</option>
-                    <option value="Visited">Visited</option>
-                    <option value="Missed">Missed</option>
-                    <option value="Cancelled">Cancelled</option>
                   </select>
                 </div>
               </div>
@@ -1307,7 +1335,7 @@ export default function Appointments() {
                 onClick={() => {
                   const aptId = confirmVisitedApt.id || confirmVisitedApt._id;
                   updateAppointmentStatus(aptId, 'Visited');
-                  toast.success(`Appointment for "${confirmVisitedApt.name || 'Patient'}" marked as Visited! No further changes allowed.`);
+                  toast.success(`Appointment for ${confirmVisitedApt.name || 'Patient'} marked as Visited successfully.`);
                   setConfirmVisitedApt(null);
                 }}
                 className="w-1/2 py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs shadow-md transition-all cursor-pointer flex items-center justify-center gap-1.5"

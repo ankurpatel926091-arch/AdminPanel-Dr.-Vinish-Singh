@@ -236,7 +236,7 @@ export default function Consultation() {
     try {
       await persistConsultation("DRAFT");
       setIsSaved(true);
-      toast.success("Consultation draft saved to database.");
+      toast.success("Consultation draft saved successfully.");
     } catch (error) {
       console.error("Unable to save consultation draft:", error);
       toast.error("Unable to save consultation draft.");
@@ -248,8 +248,9 @@ export default function Consultation() {
       await persistConsultation("COMPLETED");
 
       // 1. Mark appointment visited if exists
-      if (currentPatient.appointmentId) {
-        markAppointmentVisited(currentPatient.appointmentId);
+      const targetAptId = currentPatient.appointmentId || currentPatient.appointment?._id || currentPatient.appointment;
+      if (targetAptId) {
+        markAppointmentVisited(targetAptId);
       }
 
       // 2. Update MongoDB queue status via API
@@ -265,7 +266,7 @@ export default function Consultation() {
       localStorage.removeItem("dr_vinish_current_consultation_patient");
 
       setIsSaved(true);
-      toast.success("Consultation completed and saved to database!");
+      toast.success("Consultation completed successfully!");
       setShowPrescriptionModal(true);
     } catch (error) {
       console.error("Unable to complete consultation:", error);

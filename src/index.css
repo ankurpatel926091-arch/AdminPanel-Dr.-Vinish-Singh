@@ -26,6 +26,20 @@
   height: 6px;
 }
 
+/* Modal Open: Lock background scrolling and prevent page bounce */
+html.modal-open,
+body.modal-open {
+  overflow: hidden !important;
+  height: 100% !important;
+  overscroll-behavior: none !important;
+}
+
+/* Ensure modal dialog inner scroll areas continue to scroll smoothly */
+.modal-open .overflow-y-auto {
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
 ::-webkit-scrollbar-track {
   background: #f1f5f9;
 }

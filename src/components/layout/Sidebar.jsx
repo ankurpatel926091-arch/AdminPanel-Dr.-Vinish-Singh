@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { getUser, clearAuth } from "../../utils/auth";
-import { logoutAdmin } from "../../services/authService";
+import { logoutAdmin } from "../../api/authApi";
 import { useAdminData } from "../../context/AdminDataContext";
 import { toast } from "react-toastify";
 import {

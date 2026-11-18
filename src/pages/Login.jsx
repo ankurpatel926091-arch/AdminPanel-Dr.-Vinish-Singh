@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
-import { loginAdmin } from "../services/authService";
+import { loginAdmin } from "../api/authApi";
 import { isLoggedIn, saveAuth } from "../utils/auth";
 import {
   Lock,
@@ -124,6 +124,10 @@ export default function Login() {
                 <img
                   src={doctorPhoto}
                   alt="Dr. Vinish Kumar Singh"
+                  width="128"
+                  height="128"
+                  fetchPriority="high"
+                  decoding="async"
                   className="w-full h-full object-cover rounded-full transition-transform duration-500 group-hover:scale-105"
                 />
               </div>
@@ -216,7 +220,7 @@ export default function Login() {
               className="space-y-3.5 max-w-md mx-auto"
             >
               <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                <label htmlFor="admin-email" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
                   Email Address
                 </label>
                 <div className="relative">
@@ -224,6 +228,8 @@ export default function Login() {
                     <User className="w-4 h-4" />
                   </div>
                   <input
+                    id="admin-email"
+                    name="email"
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
@@ -237,7 +243,7 @@ export default function Login() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                <label htmlFor="admin-password" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
                   Password
                 </label>
                 <div className="relative">
@@ -245,6 +251,8 @@ export default function Login() {
                     <Lock className="w-4 h-4" />
                   </div>
                   <input
+                    id="admin-password"
+                    name="password"
                     type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
@@ -257,6 +265,7 @@ export default function Login() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
                     className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
                   >
                     {showPassword ? (
@@ -269,8 +278,10 @@ export default function Login() {
               </div>
 
               <div className="flex items-center justify-between text-xs pt-0.5">
-                <label className="flex items-center gap-2 cursor-pointer text-slate-600 font-medium">
+                <label htmlFor="remember-me" className="flex items-center gap-2 cursor-pointer text-slate-600 font-medium">
                   <input
+                    id="remember-me"
+                    name="rememberMe"
                     type="checkbox"
                     checked={rememberMe}
                     onChange={(e) => setRememberMe(e.target.checked)}

@@ -3,7 +3,7 @@ import { Menu, ChevronDown, User, LogOut, Settings } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import doctorPhoto from '../../assets/doctor.jpg';
 import { getUser, clearAuth } from '../../utils/auth';
-import { logoutAdmin } from '../../services/authService';
+import { logoutAdmin } from '../../api/authApi';
 import { toast } from 'react-toastify';
 
 export default function Header({ onToggleSidebar, onOpenSearch }) {

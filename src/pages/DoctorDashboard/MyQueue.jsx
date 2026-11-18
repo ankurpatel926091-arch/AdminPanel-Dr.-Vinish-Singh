@@ -61,7 +61,23 @@ export default function MyQueue() {
     try {
       const data = await getTodayQueueApi();
       if (Array.isArray(data)) {
-        const normalized = data.map((item) => normalizeQueueItem(item));
+        // Enforce cabin exclusivity: Only 1 patient can be IN_CONSULTATION at any time!
+        let activeFound = false;
+        const reversed = [...data].reverse();
+        const cleanedReversed = reversed.map((item) => {
+          const norm = normalizeQueueItem(item);
+          const st = String(norm.status || "").toUpperCase();
+          if (st === "IN_CONSULTATION" || st === "CONSULTING") {
+            if (!activeFound) {
+              activeFound = true;
+              return { ...norm, status: "Consulting" };
+            } else {
+              return { ...norm, status: "Completed" };
+            }
+          }
+          return norm;
+        });
+        const normalized = cleanedReversed.reverse();
         setQueue(normalized);
       }
     } catch (e) {
@@ -191,7 +207,7 @@ export default function MyQueue() {
   const handleResetDefaultQueue = async () => {
     try {
       await fetchQueueFromDB();
-      toast.info("Doctor Queue refreshed from database!");
+      toast.success("Doctor queue refreshed successfully!");
     } catch (e) {
       console.warn("Refresh queue error", e);
     }
@@ -305,62 +321,6 @@ export default function MyQueue() {
             </button>
           </div>
         </div>
-
-        {/* Active In-Cabin Patient Banner (Shown only when patient is in consultation) */}
-        {currentConsultation && (
-          <div className="mt-3.5 p-3 sm:p-3.5 rounded-xl bg-blue-900/40 border border-blue-400/30 backdrop-blur flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="min-w-[50px] px-2.5 h-10 rounded-xl bg-blue-600 text-white font-black text-sm sm:text-base flex items-center justify-center shadow-lg ring-2 ring-blue-300/40 shrink-0 whitespace-nowrap tracking-tight">
-                {currentConsultation.tokenNumber}
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="px-1.5 py-0.5 rounded text-[10px] font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 uppercase tracking-wide">
-                    Inside Cabin
-                  </span>
-                  {currentConsultation.startTime && (
-                    <span className="text-[11px] text-blue-200 font-mono">
-                      Started at {currentConsultation.startTime}
-                    </span>
-                  )}
-                </div>
-                <h3 className="text-sm sm:text-base font-bold text-white mt-0.5 flex flex-wrap items-center gap-1.5">
-                  <span>{currentConsultation.patientName}</span>
-                  <span className="text-xs text-slate-300 font-normal">
-                    ({currentConsultation.gender}, {currentConsultation.age} yrs)
-                  </span>
-                  {currentConsultation.patientId && (
-                    <span className="text-xs text-blue-200 font-normal">
-                      • {currentConsultation.patientId}
-                    </span>
-                  )}
-                  {currentConsultation.mobile && (
-                    <span className="text-xs text-slate-400 font-normal">
-                      • {currentConsultation.mobile}
-                    </span>
-                  )}
-                </h3>
-              </div>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2 self-end sm:self-center">
-              <button
-                onClick={() => setSelectedPatientModal(currentConsultation)}
-                className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 flex items-center gap-1.5 border border-slate-700"
-              >
-                <Eye className="w-3.5 h-3.5 text-blue-400" />
-                Vitals & Notes
-              </button>
-              <button
-                onClick={() => handleOpenConsultation(currentConsultation.id)}
-                className="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-md transition"
-              >
-                <MessageSquare className="w-3.5 h-3.5" />
-                Consult & Prescribe
-              </button>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Quick Stats Grid - 3 Clean Cards */}
@@ -586,7 +546,7 @@ export default function MyQueue() {
                           className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition active:scale-95"
                         >
                           <MessageSquare className="w-3.5 h-3.5" />
-                          Consult
+                          Consult & Prescribe
                         </button>
                       </>
                     )}

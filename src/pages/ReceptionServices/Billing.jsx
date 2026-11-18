@@ -691,27 +691,56 @@ export default function Billing() {
       notes: newBillForm.notes?.trim() || "",
     };
 
-    // If bill is Paid or Partial, automatically push to Doctor Queue
-    let assignedToken = null;
-    if (paymentStatus === "Paid" || paymentStatus === "Partial") {
-      assignedToken = addPatientToDoctorQueue(createdBill);
-      if (assignedToken) {
-        createdBill.tokenNumber = assignedToken;
-      }
-    }
-
     try {
       const res = await createAdminBillApi(createdBill);
       const savedBill = res?.data || createdBill;
       setBills((prev) => [savedBill, ...prev]);
+      toast.success(`Bill ${billId} created successfully!`);
 
-      if (assignedToken) {
-        toast.success(
-          `Bill ${billId} saved in database! Patient added to Doctor Queue with Token ${assignedToken}`,
-          { autoClose: 4500 },
+      // Option 1 (Strict Pre-Billing): Add patient to Doctor Queue ONLY upon successful payment for consultation bills!
+      const isConsultation =
+        Boolean(createdBill.appointment) ||
+        Boolean(createdBill.visitId && String(createdBill.visitId).startsWith("VIS-")) ||
+        (Array.isArray(createdBill.services) &&
+          createdBill.services.some((s) =>
+            /consultation|doctor|opd|urology/i.test(s.name || "")
+          )) ||
+        Number(createdBill.consultationFee) > 0;
+
+      if (isConsultation && formPaidAmount > 0) {
+        const matchedApt = appointments.find(
+          (a) =>
+            (createdBill.appointment && String(a._id || a.id) === String(createdBill.appointment)) ||
+            (createdBill.visitId && a.visitId && a.visitId === createdBill.visitId) ||
+            (createdBill.phone && a.phone && a.phone.replace(/\D/g, "") === createdBill.phone.replace(/\D/g, ""))
         );
-      } else {
-        toast.success(`Bill ${billId} saved successfully in database!`);
+
+        const formattedToken = matchedApt?.tokenNumber
+          ? `T-${String(matchedApt.tokenNumber).padStart(3, "0")}`
+          : undefined;
+
+        addToQueueApi({
+          tokenNumber: formattedToken,
+          visitId: createdBill.visitId || matchedApt?.visitId || "",
+          appointment: createdBill.appointment || matchedApt?._id || matchedApt?.id || null,
+          patientId: createdBill.patientId || matchedApt?.patientId || "",
+          patientName: createdBill.patientName,
+          age: Number(createdBill.age) || Number(matchedApt?.age) || 35,
+          gender: createdBill.gender || matchedApt?.gender || "Male",
+          mobile: createdBill.phone || matchedApt?.phone || "",
+          doctorName: createdBill.doctor || "Dr. Vinish Kumar Singh",
+          department: createdBill.department || "Urology",
+          clinic: createdBill.hospital || "Rudraksh IVF & Urology Centre",
+          status: "Waiting",
+          priority: "Normal",
+        })
+          .then((qRes) => {
+            const tokenAssigned = qRes?.data?.tokenNumber || formattedToken;
+            toast.success(
+              `Patient ${createdBill.patientName} added to Doctor Queue (${tokenAssigned || "Waiting"})`
+            );
+          })
+          .catch((e) => console.warn("Queue push error on bill creation:", e));
       }
 
       setShowCreateModal(false);
@@ -719,7 +748,7 @@ export default function Billing() {
       setSelectedBill(savedBill);
     } catch (err) {
       console.error("Save bill error:", err);
-      toast.error("Failed to save bill in database.");
+      toast.error("Unable to save bill. Please try again.");
     }
   };
 
@@ -913,11 +942,11 @@ export default function Billing() {
 
     updateAdminBillApi(editingBill.billId, updated)
       .then(() => {
-        toast.success(`Bill ${editingBill.billId} updated successfully in database!`);
+        toast.success(`Bill ${editingBill.billId} updated successfully!`);
       })
       .catch((err) => {
         console.error("Update bill error:", err);
-        toast.error("Failed to update bill in database.");
+        toast.error("Unable to update bill. Please try again.");
       });
 
     setBills((prev) =>
@@ -961,37 +990,66 @@ export default function Billing() {
       invoiceStatus: newStatus,
     };
 
-    let assignedToken = null;
     const updated = {
       ...paymentBill,
       ...updatePayload,
     };
-
-    assignedToken = addPatientToDoctorQueue(updated);
-    if (assignedToken) {
-      updated.tokenNumber = assignedToken;
-      updatePayload.tokenNumber = assignedToken;
-    }
 
     try {
       await updateAdminBillApi(paymentBill.billId, updatePayload);
       setBills((prev) =>
         prev.map((bill) => (bill.billId === paymentBill.billId ? updated : bill)),
       );
+      toast.success(`Payment of ₹${amount.toLocaleString("en-IN")} recorded successfully!`);
 
-      if (assignedToken) {
-        toast.success(
-          `Payment of ₹${amount.toLocaleString(
-            "en-IN",
-          )} collected! Saved to database & Token ${assignedToken} added to Doctor Queue.`,
-          { autoClose: 4500 },
+      // Option 1 (Strict Pre-Billing): Add patient to Doctor Queue ONLY upon successful payment for consultation bills!
+      const isConsultation =
+        Boolean(updated.appointment) ||
+        Boolean(updated.visitId && String(updated.visitId).startsWith("VIS-")) ||
+        (Array.isArray(updated.services) &&
+          updated.services.some((s) =>
+            /consultation|doctor|opd|urology/i.test(s.name || "")
+          )) ||
+        Number(updated.consultationFee) > 0;
+
+      if (isConsultation && newPaidAmount > 0) {
+        const matchedApt = appointments.find(
+          (a) =>
+            (updated.appointment && String(a._id || a.id) === String(updated.appointment)) ||
+            (updated.visitId && a.visitId && a.visitId === updated.visitId) ||
+            (updated.phone && a.phone && a.phone.replace(/\D/g, "") === updated.phone.replace(/\D/g, ""))
         );
-      } else {
-        toast.success(`Payment of ₹${amount.toLocaleString("en-IN")} collected & saved to database!`);
+
+        const formattedToken = matchedApt?.tokenNumber
+          ? `T-${String(matchedApt.tokenNumber).padStart(3, "0")}`
+          : undefined;
+
+        addToQueueApi({
+          tokenNumber: formattedToken,
+          visitId: updated.visitId || matchedApt?.visitId || "",
+          appointment: updated.appointment || matchedApt?._id || matchedApt?.id || null,
+          patientId: updated.patientId || matchedApt?.patientId || "",
+          patientName: updated.patientName,
+          age: Number(updated.age) || Number(matchedApt?.age) || 35,
+          gender: updated.gender || matchedApt?.gender || "Male",
+          mobile: updated.phone || matchedApt?.phone || "",
+          doctorName: updated.doctor || "Dr. Vinish Kumar Singh",
+          department: updated.department || "Urology",
+          clinic: updated.hospital || "Rudraksh IVF & Urology Centre",
+          status: "Waiting",
+          priority: "Normal",
+        })
+          .then((qRes) => {
+            const tokenAssigned = qRes?.data?.tokenNumber || formattedToken;
+            toast.success(
+              `Patient ${updated.patientName} added to Doctor Queue (${tokenAssigned || "Waiting"})`
+            );
+          })
+          .catch((e) => console.warn("Queue push error on payment collection:", e));
       }
     } catch (err) {
       console.error("Payment collection error:", err);
-      toast.error("Failed to update payment in database.");
+      toast.error("Unable to record payment. Please try again.");
     }
 
     setPaymentBill(null);
@@ -1231,35 +1289,35 @@ export default function Billing() {
           <table className="w-full min-w-[1100px]">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50">
-                <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">
                   Bill / Visit
                 </th>
 
-                <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">
                   Patient
                 </th>
 
-                <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">
                   Doctor & Clinic
                 </th>
 
-                <th className="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <th className="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">
                   Total
                 </th>
 
-                <th className="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <th className="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">
                   Paid
                 </th>
 
-                <th className="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <th className="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">
                   Due
                 </th>
 
-                <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">
                   Status
                 </th>
 
-                <th className="px-5 py-3 text-center text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <th className="px-5 py-3 text-center text-xs font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">
                   Action
                 </th>
               </tr>
@@ -1285,26 +1343,26 @@ export default function Billing() {
                   >
                     {/* Bill */}
 
-                    <td className="px-5 py-4">
-                      <p className="font-semibold text-slate-800">
+                    <td className="px-5 py-3.5 whitespace-nowrap">
+                      <p className="text-xs sm:text-sm font-bold text-slate-800 font-mono tracking-tight whitespace-nowrap">
                         {bill.billId}
                       </p>
 
-                      <p className="mt-1 text-xs text-slate-500">
+                      <p className="mt-0.5 text-[11px] text-slate-500 font-mono whitespace-nowrap">
                         {bill.visitId}
                       </p>
                     </td>
 
                     {/* Patient */}
 
-                    <td className="px-5 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-50 text-blue-600">
-                          <User size={18} />
+                    <td className="px-5 py-3.5 whitespace-nowrap">
+                      <div className="flex items-center gap-2.5">
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+                          <User size={15} />
                         </div>
 
                         <div>
-                          <p className="font-semibold text-slate-800">
+                          <p className="text-xs sm:text-sm font-semibold text-slate-800 whitespace-nowrap">
                             {bill.patientName}
                           </p>
                         </div>
@@ -1313,19 +1371,19 @@ export default function Billing() {
 
                     {/* Doctor */}
 
-                    <td className="px-5 py-4">
+                    <td className="px-5 py-3.5 whitespace-nowrap">
                       <div className="flex items-start gap-2">
                         <Stethoscope
-                          size={17}
+                          size={15}
                           className="mt-0.5 shrink-0 text-blue-500"
                         />
 
                         <div>
-                          <p className="text-sm font-medium text-slate-700">
+                          <p className="text-xs sm:text-sm font-medium text-slate-700 whitespace-nowrap">
                             {bill.doctor}
                           </p>
 
-                          <p className="mt-1 text-xs text-slate-500 line-clamp-1">
+                          <p className="mt-0.5 text-[11px] text-slate-500 line-clamp-1 whitespace-nowrap">
                             {bill.hospital || bill.department}
                           </p>
                         </div>
@@ -1334,21 +1392,21 @@ export default function Billing() {
 
                     {/* Total */}
 
-                    <td className="px-5 py-4 text-right">
-                      <p className="font-semibold text-slate-800">
+                    <td className="px-5 py-3.5 text-right whitespace-nowrap">
+                      <p className="text-xs sm:text-sm font-bold text-slate-800 whitespace-nowrap">
                         ₹{bill.totalAmount.toLocaleString("en-IN")}
                       </p>
                     </td>
 
                     {/* Paid */}
 
-                    <td className="px-5 py-4 text-right">
-                      <p className="font-medium text-green-600">
+                    <td className="px-5 py-3.5 text-right whitespace-nowrap">
+                      <p className="text-xs sm:text-sm font-semibold text-green-600 whitespace-nowrap">
                         ₹{bill.paidAmount.toLocaleString("en-IN")}
                       </p>
 
                       {bill.paymentMode && (
-                        <p className="mt-1 text-xs text-slate-400">
+                        <p className="mt-0.5 text-[11px] text-slate-400 whitespace-nowrap">
                           {bill.paymentMode}
                         </p>
                       )}
@@ -1356,9 +1414,9 @@ export default function Billing() {
 
                     {/* Due */}
 
-                    <td className="px-5 py-4 text-right">
+                    <td className="px-5 py-3.5 text-right whitespace-nowrap">
                       <p
-                        className={`font-semibold ${bill.dueAmount > 0 ? "text-red-600" : "text-slate-400"
+                        className={`text-xs sm:text-sm font-semibold whitespace-nowrap ${bill.dueAmount > 0 ? "text-red-600" : "text-slate-400"
                           }`}
                       >
                         ₹{bill.dueAmount.toLocaleString("en-IN")}
@@ -1367,9 +1425,9 @@ export default function Billing() {
 
                     {/* Status */}
 
-                    <td className="px-5 py-4">
+                    <td className="px-5 py-3.5 whitespace-nowrap">
                       <span
-                        className={`inline-flex rounded-full border px-3 py-1.5 text-xs font-medium ${paymentStatusStyles[bill.paymentStatus]
+                        className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold whitespace-nowrap ${paymentStatusStyles[bill.paymentStatus]
                           }`}
                       >
                         {bill.paymentStatus}
@@ -1378,7 +1436,7 @@ export default function Billing() {
 
                     {/* Actions */}
 
-                    <td className="px-5 py-4">
+                    <td className="px-5 py-3.5 whitespace-nowrap">
                       <div className="flex items-center justify-center gap-2">
                         {/* View */}
 

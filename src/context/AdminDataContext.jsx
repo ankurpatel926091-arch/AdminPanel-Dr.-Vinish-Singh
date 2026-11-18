@@ -4,7 +4,7 @@ import { getAdminAppointmentsApi } from '../api/appointmentApi';
 import { getAdminGalleryApi } from '../api/galleryApi';
 import { getAdminBlogsApi } from '../api/blogApi';
 import { getAdminClinicsApi } from '../api/clinicApi';
-import { isLoggedIn } from '../utils/auth';
+import { isLoggedIn, getUser } from '../utils/auth';
 
 const AdminDataContext = createContext();
 
@@ -58,23 +58,29 @@ export const AdminDataProvider = ({ children }) => {
 
   // Fetch real contact enquiries, gallery & blogs from backend API
   const fetchEnquiries = async () => {
-    setLoadingEnquiries(true);
-    try {
-      const res = await getAdminEnquiriesApi();
-      if (res && res.data) {
-        const items = res.data.map(item => ({
-          ...item,
-          id: item._id || item.id
-        }));
-        setEnquiries(items);
+    const user = getUser();
+    const isDoctor = user?.role?.toLowerCase() === 'doctor';
+
+    // Website Contact Enquiries are only needed for Admin role
+    if (!isDoctor) {
+      setLoadingEnquiries(true);
+      try {
+        const res = await getAdminEnquiriesApi();
+        if (res && res.data) {
+          const items = res.data.map(item => ({
+            ...item,
+            id: item._id || item.id
+          }));
+          setEnquiries(items);
+        }
+      } catch (err) {
+        console.warn('Backend enquiry fetch offline or error, using default state:', err.message);
+      } finally {
+        setLoadingEnquiries(false);
       }
-    } catch (err) {
-      console.warn('Backend enquiry fetch offline or error, using default state:', err.message);
-    } finally {
-      setLoadingEnquiries(false);
     }
 
-    // Appointments: sirf backend se, localStorage nahi
+    // Appointments: needed by both Doctor and Admin
     try {
       const aptRes = await getAdminAppointmentsApi();
       if (aptRes && aptRes.data && Array.isArray(aptRes.data)) {
@@ -88,24 +94,28 @@ export const AdminDataProvider = ({ children }) => {
       console.warn('Backend appointment fetch offline or error:', err.message);
     }
 
-    try {
-      const galRes = await getAdminGalleryApi();
-      if (galRes && galRes.data) {
-        setGalleryItems(galRes.data);
+    // Gallery & Blogs: Only needed for Admin Portal, never for Doctor Portal
+    if (!isDoctor) {
+      try {
+        const galRes = await getAdminGalleryApi();
+        if (galRes && galRes.data) {
+          setGalleryItems(galRes.data);
+        }
+      } catch (err) {
+        console.warn('Backend gallery fetch offline or error:', err.message);
       }
-    } catch (err) {
-      console.warn('Backend gallery fetch offline or error:', err.message);
+
+      try {
+        const blogRes = await getAdminBlogsApi();
+        if (blogRes && blogRes.data) {
+          setBlogs(blogRes.data);
+        }
+      } catch (err) {
+        console.warn('Backend blog fetch offline or error:', err.message);
+      }
     }
 
-    try {
-      const blogRes = await getAdminBlogsApi();
-      if (blogRes && blogRes.data) {
-        setBlogs(blogRes.data);
-      }
-    } catch (err) {
-      console.warn('Backend blog fetch offline or error:', err.message);
-    }
-
+    // Clinics: needed for clinic details
     try {
       const clinicRes = await getAdminClinicsApi();
       if (clinicRes && Array.isArray(clinicRes.data)) {
@@ -123,6 +133,9 @@ export const AdminDataProvider = ({ children }) => {
   // Real-time synchronization (sirf enquiries ke liye, appointments localStorage se nahi)
   const syncLocalStorageData = () => {
     try {
+      const user = getUser();
+      if (user?.role?.toLowerCase() === 'doctor') return;
+
       // Contact Enquiries submitted from website
       const localEnqStr = localStorage.getItem('dr_vinish_enquiries');
       if (localEnqStr) {
@@ -135,14 +148,15 @@ export const AdminDataProvider = ({ children }) => {
           });
         }
       }
-
-      // Appointments: localStorage se sync hata diya
     } catch (err) {
       console.warn('Sync local data error:', err.message);
     }
   };
 
   useEffect(() => {
+    const user = getUser();
+    if (user?.role?.toLowerCase() === 'doctor') return;
+
     syncLocalStorageData();
     window.addEventListener('storage', syncLocalStorageData);
     const interval = setInterval(syncLocalStorageData, 2000);

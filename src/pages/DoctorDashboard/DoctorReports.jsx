@@ -250,7 +250,7 @@ export default function DoctorReports() {
 
       toast.success("Consultation report downloaded successfully!");
     } catch (e) {
-      toast.error("Export failed: " + e.message);
+      toast.error("Unable to download report. Please try again.");
     }
   };
 

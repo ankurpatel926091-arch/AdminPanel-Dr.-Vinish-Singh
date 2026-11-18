@@ -17,6 +17,8 @@ import {
   AlertCircle,
   TestTube,
   Loader2,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 
 const statusStyles = {
@@ -65,6 +67,10 @@ export default function MedicalRecords() {
   const debouncedSearch = useDebouncedValue(search);
   const [statusFilter, setStatusFilter] = useState("All");
   const [selectedRecord, setSelectedRecord] = useState(null);
+
+  // ✅ NEW: Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   useEffect(() => {
     let isMounted = true;
@@ -147,6 +153,29 @@ export default function MedicalRecords() {
     });
   }, [records, debouncedSearch, statusFilter]);
 
+  /* =========================================================
+     ✅ NEW: Pagination logic
+  ========================================================= */
+
+  const totalPages = Math.ceil(filteredRecords.length / itemsPerPage) || 1;
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedRecords = filteredRecords.slice(
+    startIndex,
+    startIndex + itemsPerPage
+  );
+
+  // Reset to page 1 when search or status filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearch, statusFilter]);
+
+  // Safety: agar current page total pages se zyada ho jaye
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [totalPages, currentPage]);
+
   return (
     <div className="min-h-screen bg-slate-50 p-4 md:p-6">
       {/* Header */}
@@ -224,35 +253,41 @@ export default function MedicalRecords() {
       </div>
 
       {/* Filters */}
-      <div className="mb-5 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-        <div className="flex flex-col gap-3 md:flex-row">
+      <div className="mb-4 rounded-xl border border-slate-200 bg-white p-3 shadow-xs">
+        <div className="flex flex-col gap-2.5 sm:flex-row">
           {/* Search */}
           <div className="relative flex-1">
             <Search
-              size={18}
+              size={15}
               className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
             />
 
             <input
               type="text"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setCurrentPage(1); // ✅ reset page on search
+              }}
               placeholder="Search patient, UHID, phone or diagnosis..."
-              className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-4 text-sm outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100"
+              className="w-full rounded-lg border border-slate-200 bg-slate-50/70 py-2 pl-9 pr-3 text-xs sm:text-sm outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100"
             />
           </div>
 
           {/* Status */}
           <div className="relative">
             <Filter
-              size={17}
+              size={14}
               className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
             />
 
             <select
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full min-w-[190px] appearance-none rounded-lg border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-8 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              onChange={(e) => {
+                setStatusFilter(e.target.value);
+                setCurrentPage(1); // ✅ reset page on filter change
+              }}
+              className="w-full sm:w-auto min-w-[170px] appearance-none rounded-lg border border-slate-200 bg-slate-50/70 py-2 pl-8 pr-8 text-xs sm:text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 cursor-pointer font-medium text-slate-700"
             >
               <option value="All">All Status</option>
               <option value="Active">Active</option>
@@ -266,56 +301,56 @@ export default function MedicalRecords() {
       </div>
 
       {/* Records Table */}
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[950px]">
+          <table className="w-full min-w-[850px] text-left border-collapse">
             <thead>
-              <tr className="border-b border-slate-200 bg-slate-50">
-                <th className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <tr className="border-b border-slate-200 bg-slate-50/80">
+                <th className="px-4 py-2.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">
                   Patient
                 </th>
 
-                <th className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <th className="px-4 py-2.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">
                   Visit Date
                 </th>
 
-                <th className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <th className="px-4 py-2.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">
                   Diagnosis
                 </th>
 
-                <th className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <th className="px-4 py-2.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">
                   Doctor
                 </th>
 
-                <th className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <th className="px-4 py-2.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">
                   Status
                 </th>
 
-                <th className="px-5 py-4 text-center text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <th className="px-4 py-2.5 text-center text-[11px] font-bold uppercase tracking-wider text-slate-500">
                   Action
                 </th>
               </tr>
             </thead>
 
             <tbody className="divide-y divide-slate-100">
-              {filteredRecords.length > 0 ? (
-                filteredRecords.map((record) => (
+              {paginatedRecords.length > 0 ? (
+                paginatedRecords.map((record) => (
                   <tr
                     key={record.id}
-                    className="transition hover:bg-slate-50"
+                    className="transition hover:bg-blue-50/30"
                   >
-                    <td className="px-5 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-50 text-blue-600">
-                          <User size={19} />
+                    <td className="px-4 py-2.5">
+                      <div className="flex items-center gap-2.5">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-50 text-blue-600 shrink-0">
+                          <User size={15} />
                         </div>
 
                         <div>
-                          <p className="font-semibold text-slate-800">
+                          <p className="text-xs sm:text-[13px] font-bold text-slate-800 leading-tight">
                             {record.patientName}
                           </p>
 
-                          <p className="text-xs text-slate-500">
+                          <p className="text-[11px] text-slate-500 font-medium leading-tight mt-0.5">
                             {record.patientId} • {record.age} yrs •{" "}
                             {record.gender}
                           </p>
@@ -323,33 +358,33 @@ export default function MedicalRecords() {
                       </div>
                     </td>
 
-                    <td className="px-5 py-4">
-                      <div className="flex items-center gap-2 text-sm text-slate-600">
-                        <Calendar size={16} />
+                    <td className="px-4 py-2.5">
+                      <div className="flex items-center gap-1.5 text-xs font-medium text-slate-600">
+                        <Calendar size={13.5} className="text-slate-400 shrink-0" />
                         {record.visitDate}
                       </div>
                     </td>
 
-                    <td className="px-5 py-4">
-                      <p className="font-medium text-slate-800">
+                    <td className="px-4 py-2.5">
+                      <p className="text-xs sm:text-[13px] font-semibold text-slate-800 leading-tight">
                         {record.diagnosis}
                       </p>
 
-                      <p className="mt-1 max-w-[250px] truncate text-xs text-slate-500">
+                      <p className="mt-0.5 max-w-[240px] truncate text-[11px] text-slate-500 leading-tight">
                         {record.complaint}
                       </p>
                     </td>
 
-                    <td className="px-5 py-4">
-                      <div className="flex items-center gap-2 text-sm text-slate-600">
-                        <Stethoscope size={16} />
+                    <td className="px-4 py-2.5">
+                      <div className="flex items-center gap-1.5 text-xs font-medium text-slate-700">
+                        <Stethoscope size={13.5} className="text-slate-400 shrink-0" />
                         {record.doctor}
                       </div>
                     </td>
 
-                    <td className="px-5 py-4">
+                    <td className="px-4 py-2.5">
                       <span
-                        className={`inline-flex rounded-full border px-3 py-1 text-xs font-medium ${
+                        className={`inline-flex rounded-full border px-2.5 py-0.5 text-[11px] font-semibold tracking-wide ${
                           statusStyles[record.status] ||
                           "bg-slate-50 text-slate-600 border-slate-200"
                         }`}
@@ -358,12 +393,12 @@ export default function MedicalRecords() {
                       </span>
                     </td>
 
-                    <td className="px-5 py-4 text-center">
+                    <td className="px-4 py-2.5 text-center">
                       <button
                         onClick={() => setSelectedRecord(record)}
-                        className="inline-flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-medium text-blue-600 transition hover:bg-blue-100"
+                        className="inline-flex items-center gap-1 rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-600 transition hover:bg-blue-600 hover:text-white shadow-xs"
                       >
-                        <Eye size={16} />
+                        <Eye size={13} />
                         View
                       </button>
                     </td>
@@ -399,6 +434,71 @@ export default function MedicalRecords() {
             </tbody>
           </table>
         </div>
+
+        {/* =====================================================
+            ✅ NEW: PAGINATION FOOTER
+        ===================================================== */}
+        {filteredRecords.length > 0 && (
+          <div className="px-5 py-3.5 bg-slate-50/50 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500 font-medium">
+            <div>
+              Showing {startIndex + 1} to{" "}
+              {Math.min(startIndex + itemsPerPage, filteredRecords.length)} of{" "}
+              {filteredRecords.length} records
+            </div>
+
+            <div className="flex items-center gap-3">
+              <div className="inline-flex items-center gap-1">
+                <button
+                  type="button"
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                  className="w-7 h-7 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center transition-all"
+                >
+                  <ChevronLeft className="w-4 h-4 text-slate-600" />
+                </button>
+
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                  <button
+                    key={page}
+                    type="button"
+                    onClick={() => setCurrentPage(page)}
+                    className={`w-7 h-7 rounded-lg font-extrabold text-xs flex items-center justify-center transition-all ${
+                      currentPage === page
+                        ? "bg-blue-600 text-white shadow-xs"
+                        : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-100"
+                    }`}
+                  >
+                    {page}
+                  </button>
+                ))}
+
+                <button
+                  type="button"
+                  disabled={currentPage === totalPages}
+                  onClick={() =>
+                    setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+                  }
+                  className="w-7 h-7 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center transition-all"
+                >
+                  <ChevronRight className="w-4 h-4 text-slate-600" />
+                </button>
+              </div>
+
+              <select
+                value={itemsPerPage}
+                onChange={(e) => {
+                  setItemsPerPage(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:outline-none cursor-pointer"
+              >
+                <option value={10}>10 / page</option>
+                <option value={20}>20 / page</option>
+                <option value={50}>50 / page</option>
+              </select>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* View Record Modal */}
