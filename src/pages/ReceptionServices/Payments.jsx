@@ -20,6 +20,7 @@ import {
   X,
   IndianRupee,
   FileText,
+  ChevronDown,
 } from "lucide-react";
 
 /* =========================================
@@ -382,8 +383,8 @@ export default function Payments() {
           <div className="relative lg:col-span-1">
 
             <Search
-              size={18}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+              size={17}
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
             />
 
             <input
@@ -393,7 +394,7 @@ export default function Payments() {
                 setSearch(e.target.value)
               }
               placeholder="Payment ID, Bill ID, patient, UHID..."
-              className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-4 text-sm outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100"
+              className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 sm:py-2.5 pl-10 pr-4 text-xs sm:text-sm outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100 placeholder:text-slate-400"
             />
 
           </div>
@@ -402,8 +403,8 @@ export default function Payments() {
           <div className="relative">
 
             <CreditCard
-              size={17}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+              size={16}
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 z-10"
             />
 
             <select
@@ -411,7 +412,7 @@ export default function Payments() {
               onChange={(e) =>
                 setModeFilter(e.target.value)
               }
-              className="w-full appearance-none rounded-lg border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-4 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              className="w-full appearance-none rounded-lg border border-slate-200 bg-slate-50 py-2 sm:py-2.5 pl-10 pr-8 text-xs sm:text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 cursor-pointer font-medium text-slate-700"
             >
               <option value="All">
                 All Payment Modes
@@ -424,14 +425,19 @@ export default function Payments() {
               <option value="Other">Other</option>
             </select>
 
+            <ChevronDown
+              size={14}
+              className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400"
+            />
+
           </div>
 
           {/* Status */}
           <div className="relative">
 
             <Filter
-              size={17}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+              size={16}
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 z-10"
             />
 
             <select
@@ -439,7 +445,7 @@ export default function Payments() {
               onChange={(e) =>
                 setStatusFilter(e.target.value)
               }
-              className="w-full appearance-none rounded-lg border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-4 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              className="w-full appearance-none rounded-lg border border-slate-200 bg-slate-50 py-2 sm:py-2.5 pl-10 pr-8 text-xs sm:text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 cursor-pointer font-medium text-slate-700"
             >
               <option value="All">
                 All Payment Status
@@ -462,6 +468,11 @@ export default function Payments() {
               </option>
 
             </select>
+
+            <ChevronDown
+              size={14}
+              className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400"
+            />
 
           </div>
 

@@ -6,6 +6,7 @@ import {
   Filter,
   Eye,
   User,
+  Users,
   Calendar,
   Phone,
   Activity,
@@ -19,6 +20,8 @@ import {
   Loader2,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
+  Download,
 } from "lucide-react";
 
 const statusStyles = {
@@ -136,6 +139,92 @@ export default function MedicalRecords() {
     };
   }, []);
 
+  // Necessary Clinical Stats
+  const totalRecords = records.length;
+  const uniquePatients = useMemo(() => {
+    const set = new Set();
+    records.forEach((r) => {
+      const key = (
+        r.patientId && r.patientId !== "—" ? r.patientId : r.patientName
+      )
+        .toLowerCase()
+        .trim();
+      if (key) set.add(key);
+    });
+    return set.size;
+  }, [records]);
+
+  const prescriptionsCount = useMemo(() => {
+    return records.filter((r) => r.medications && r.medications.length > 0)
+      .length;
+  }, [records]);
+
+  const investigationsCount = useMemo(() => {
+    return records.filter(
+      (r) => r.investigations && r.investigations.length > 0
+    ).length;
+  }, [records]);
+
+  // CSV Export Handler
+  const exportToCSV = () => {
+    const dataToExport =
+      filteredRecords.length > 0 ? filteredRecords : records;
+    if (!dataToExport || dataToExport.length === 0) return;
+
+    const headers = [
+      "Record ID",
+      "Patient Name",
+      "UHID",
+      "Age",
+      "Gender",
+      "Phone",
+      "Visit Date",
+      "Diagnosis",
+      "Chief Complaint",
+      "Doctor",
+      "Prescribed Medicines",
+      "Investigations Advised",
+      "Advice / Treatment Plan",
+    ];
+
+    const rows = dataToExport.map((r) => [
+      `"${r.id || ""}"`,
+      `"${(r.patientName || "").replace(/"/g, '""')}"`,
+      `"${r.patientId || ""}"`,
+      `"${r.age || ""}"`,
+      `"${r.gender || ""}"`,
+      `"${r.phone || ""}"`,
+      `"${r.visitDate || ""}"`,
+      `"${(r.diagnosis || "").replace(/"/g, '""')}"`,
+      `"${(r.complaint || "").replace(/"/g, '""')}"`,
+      `"${(r.doctor || "").replace(/"/g, '""')}"`,
+      `"${(r.medications || []).join("; ").replace(/"/g, '""')}"`,
+      `"${(r.investigations || [])
+        .map((i) => i.name)
+        .join("; ")
+        .replace(/"/g, '""')}"`,
+      `"${(r.treatmentPlan || "").replace(/"/g, '""')}"`,
+    ]);
+
+    const csvContent = [
+      headers.join(","),
+      ...rows.map((row) => row.join(",")),
+    ].join("\n");
+    const blob = new Blob([csvContent], {
+      type: "text/csv;charset=utf-8;",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `medical-records-${
+      new Date().toISOString().split("T")[0]
+    }.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   const filteredRecords = useMemo(() => {
     return records.filter((record) => {
       const searchText = debouncedSearch.toLowerCase();
@@ -144,10 +233,19 @@ export default function MedicalRecords() {
         record.patientName.toLowerCase().includes(searchText) ||
         record.patientId.toLowerCase().includes(searchText) ||
         record.phone.includes(searchText) ||
-        record.diagnosis.toLowerCase().includes(searchText);
+        record.diagnosis.toLowerCase().includes(searchText) ||
+        record.complaint.toLowerCase().includes(searchText);
 
-      const matchesStatus =
-        statusFilter === "All" || record.status === statusFilter;
+      let matchesStatus = true;
+      if (statusFilter === "With Rx") {
+        matchesStatus =
+          record.medications && record.medications.length > 0;
+      } else if (statusFilter === "With Tests") {
+        matchesStatus =
+          record.investigations && record.investigations.length > 0;
+      } else if (statusFilter !== "All") {
+        matchesStatus = record.status === statusFilter;
+      }
 
       return matchesSearch && matchesStatus;
     });
@@ -179,24 +277,35 @@ export default function MedicalRecords() {
   return (
     <div className="min-h-screen bg-slate-50 p-4 md:p-6">
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-xl sm:text-2xl font-bold text-slate-800 tracking-tight">
-          Medical Records
-        </h1>
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-800">
+            Medical Records
+          </h1>
+          <p className="mt-0.5 text-xs sm:text-sm text-slate-500">
+            Patient EMR & Clinical History
+          </p>
+        </div>
 
-        <p className="mt-0.5 text-xs sm:text-sm text-slate-500">
-          Patient EMR & Clinical History
-        </p>
+        <button
+          onClick={exportToCSV}
+          disabled={records.length === 0}
+          className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-xs sm:text-sm font-semibold text-slate-700 shadow-xs transition hover:bg-slate-50 hover:text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+          title="Export Medical Records to CSV"
+        >
+          <Download size={15} className="text-slate-500" />
+          Export CSV
+        </button>
       </div>
 
-      {/* Summary Cards */}
+      {/* Summary Cards - Necessary Clinical Stats */}
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-slate-500">Total Records</p>
+              <p className="text-sm font-medium text-slate-500">Total Consultations</p>
               <h2 className="mt-1 text-2xl font-bold text-slate-900">
-                {records.length}
+                {totalRecords}
               </h2>
             </div>
 
@@ -209,14 +318,14 @@ export default function MedicalRecords() {
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-slate-500">Active Cases</p>
+              <p className="text-sm font-medium text-slate-500">Unique Patients</p>
               <h2 className="mt-1 text-2xl font-bold text-slate-900">
-                {records.filter((r) => r.status === "Active").length}
+                {uniquePatients}
               </h2>
             </div>
 
-            <div className="rounded-xl bg-green-50 p-3 text-green-600">
-              <Activity size={22} />
+            <div className="rounded-xl bg-emerald-50 p-3 text-emerald-600">
+              <Users size={22} />
             </div>
           </div>
         </div>
@@ -224,14 +333,14 @@ export default function MedicalRecords() {
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-slate-500">Follow-up</p>
+              <p className="text-sm font-medium text-slate-500">Prescriptions Issued</p>
               <h2 className="mt-1 text-2xl font-bold text-slate-900">
-                {records.filter((r) => r.status === "Follow-up").length}
+                {prescriptionsCount}
               </h2>
             </div>
 
             <div className="rounded-xl bg-indigo-50 p-3 text-indigo-600">
-              <Calendar size={22} />
+              <Pill size={22} />
             </div>
           </div>
         </div>
@@ -239,9 +348,9 @@ export default function MedicalRecords() {
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-slate-500">Under Investigation</p>
+              <p className="text-sm font-medium text-slate-500">Investigations Advised</p>
               <h2 className="mt-1 text-2xl font-bold text-slate-900">
-                {records.filter((r) => r.status === "Under Investigation").length}
+                {investigationsCount}
               </h2>
             </div>
 
@@ -259,7 +368,7 @@ export default function MedicalRecords() {
           <div className="relative flex-1">
             <Search
               size={15}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
             />
 
             <input
@@ -278,7 +387,7 @@ export default function MedicalRecords() {
           <div className="relative">
             <Filter
               size={14}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
             />
 
             <select
@@ -287,15 +396,17 @@ export default function MedicalRecords() {
                 setStatusFilter(e.target.value);
                 setCurrentPage(1); // ✅ reset page on filter change
               }}
-              className="w-full sm:w-auto min-w-[170px] appearance-none rounded-lg border border-slate-200 bg-slate-50/70 py-2 pl-8 pr-8 text-xs sm:text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 cursor-pointer font-medium text-slate-700"
+              className="w-full sm:w-auto min-w-[170px] appearance-none rounded-lg border border-slate-200 bg-slate-50/70 py-2 pl-9 pr-8 text-xs sm:text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 cursor-pointer font-medium text-slate-700"
             >
-              <option value="All">All Status</option>
-              <option value="Active">Active</option>
-              <option value="Follow-up">Follow-up</option>
-              <option value="Under Investigation">
-                Under Investigation
-              </option>
+              <option value="All">All Consultations</option>
+              <option value="With Rx">With Prescriptions</option>
+              <option value="With Tests">With Investigations</option>
             </select>
+
+            <ChevronDown
+              size={14}
+              className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400"
+            />
           </div>
         </div>
       </div>
@@ -323,7 +434,7 @@ export default function MedicalRecords() {
                 </th>
 
                 <th className="px-4 py-2.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                  Status
+                  Prescription
                 </th>
 
                 <th className="px-4 py-2.5 text-center text-[11px] font-bold uppercase tracking-wider text-slate-500">
@@ -383,14 +494,19 @@ export default function MedicalRecords() {
                     </td>
 
                     <td className="px-4 py-2.5">
-                      <span
-                        className={`inline-flex rounded-full border px-2.5 py-0.5 text-[11px] font-semibold tracking-wide ${
-                          statusStyles[record.status] ||
-                          "bg-slate-50 text-slate-600 border-slate-200"
-                        }`}
-                      >
-                        {record.status}
-                      </span>
+                      {record.medications && record.medications.length > 0 ? (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-indigo-100 bg-indigo-50 px-2.5 py-0.5 text-[11px] font-semibold text-indigo-700">
+                          <Pill size={11} />
+                          {record.medications.length}{" "}
+                          {record.medications.length > 1
+                            ? "Medicines"
+                            : "Medicine"}
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center rounded-full border border-slate-100 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-400">
+                          Consultation Only
+                        </span>
+                      )}
                     </td>
 
                     <td className="px-4 py-2.5 text-center">

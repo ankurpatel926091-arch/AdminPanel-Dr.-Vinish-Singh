@@ -490,8 +490,8 @@ const TodaysAppointments = () => {
           {/* Search */}
           <div className="relative flex-1">
             <Search
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-              size={18}
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+              size={16}
             />
 
             <input
@@ -503,11 +503,11 @@ const TodaysAppointments = () => {
                 w-full
                 pl-10
                 pr-4
-                py-2.5
+                py-2 sm:py-2.5
                 rounded-lg
                 border
                 border-slate-200
-                text-sm
+                text-xs sm:text-sm
                 outline-none
                 focus:border-blue-500
                 focus:ring-2
@@ -521,15 +521,16 @@ const TodaysAppointments = () => {
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
             className="
-              px-4
-              py-2.5
+              px-3 sm:px-4
+              py-2 sm:py-2.5
               rounded-lg
               border
               border-slate-200
               bg-white
-              text-sm
+              text-xs sm:text-sm
               outline-none
               focus:border-blue-500
+              cursor-pointer
             "
           >
             <option value="All">All Patients</option>

@@ -500,7 +500,7 @@ export default function ReceptionAppointments() {
         <div className="flex items-center gap-3 flex-wrap sm:flex-nowrap">
           {/* Search Input Box */}
           <div className="relative w-full sm:w-72">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3 pointer-events-none" />
             <input
               type="text"
               placeholder="Search patient, phone, condition..."

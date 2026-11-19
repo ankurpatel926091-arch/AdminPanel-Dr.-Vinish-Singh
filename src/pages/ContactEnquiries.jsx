@@ -73,7 +73,7 @@ export default function ContactEnquiries() {
         {/* Search & Refresh */}
         <div className="flex items-center gap-3">
           <div className="relative w-full sm:w-72">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3 pointer-events-none" />
             <input
               type="text"
               placeholder="Search enquiries..."

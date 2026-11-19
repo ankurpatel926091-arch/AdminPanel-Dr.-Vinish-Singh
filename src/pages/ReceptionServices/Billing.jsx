@@ -46,6 +46,7 @@ import {
   Printer,
   ChevronDown,
   Pencil,
+  ArrowRight,
 } from "lucide-react";
 
 /* =========================================
@@ -175,6 +176,10 @@ export default function Billing() {
 
   const [showCreateModal, setShowCreateModal] = useState(false);
 
+  // Queue Addition Prompt State
+  const [queueConfirmData, setQueueConfirmData] = useState(null);
+  const [addingToQueue, setAddingToQueue] = useState(false);
+
   // Collect Payment state
 
   const [paymentMode, setPaymentMode] = useState("UPI");
@@ -185,6 +190,10 @@ export default function Billing() {
 
   const defaultBillForm = {
     selectedAppointmentId: "",
+
+    visitId: "",
+
+    tokenNumber: "",
 
     patientId: "",
 
@@ -291,10 +300,14 @@ export default function Billing() {
 
       selectedAppointmentId: String(apt.id || apt._id || ""),
 
+      visitId: apt.visitId || "",
+
+      tokenNumber: apt.tokenNumber ? String(apt.tokenNumber).padStart(3, "0") : "",
+
       patientId:
         apt.patientId ||
         apt.uhid ||
-        `UHID-${Math.floor(10000 + Math.random() * 90000)}`,
+        (apt.visitId ? `UHID-${apt.visitId.replace(/\D/g, "")}` : `UHID-${Math.floor(10000 + Math.random() * 90000)}`),
 
       patientName: String(apt.patientName || apt.name || ""),
 
@@ -627,6 +640,49 @@ export default function Billing() {
     }
   };
 
+  // Trigger Doctor Queue Confirmation Popup
+  const promptQueueAddition = (billObj, paidAmt) => {
+    const matchedApt = appointments.find(
+      (a) =>
+        (billObj.appointment && String(a._id || a.id) === String(billObj.appointment)) ||
+        (billObj.visitId && a.visitId && a.visitId === billObj.visitId) ||
+        (billObj.phone && a.phone && a.phone.replace(/\D/g, "") === billObj.phone.replace(/\D/g, ""))
+    );
+
+    const formattedToken =
+      billObj.tokenNumber ||
+      (matchedApt?.tokenNumber
+        ? `T-${String(matchedApt.tokenNumber).padStart(3, "0")}`
+        : undefined);
+
+    const queuePayload = {
+      tokenNumber: formattedToken,
+      visitId: billObj.visitId || matchedApt?.visitId || "",
+      appointment: billObj.appointment || matchedApt?._id || matchedApt?.id || null,
+      bill: billObj._id || null,
+      patientId: billObj.patientId || matchedApt?.patientId || "",
+      patientName: billObj.patientName,
+      age: Number(billObj.age) || Number(matchedApt?.age) || 35,
+      gender: billObj.gender || matchedApt?.gender || "Male",
+      mobile: billObj.phone || matchedApt?.phone || "",
+      doctorName: billObj.doctor || "Dr. Vinish Kumar Singh",
+      department: billObj.department || "Urology",
+      clinic: billObj.hospital || "Rudraksh IVF & Urology Centre",
+      status: "Waiting",
+      priority: "Normal",
+    };
+
+    setQueueConfirmData({
+      patientName: billObj.patientName,
+      tokenNumber: formattedToken || "Auto",
+      visitId: billObj.visitId || matchedApt?.visitId || "",
+      patientId: billObj.patientId || matchedApt?.patientId || "",
+      amount: paidAmt,
+      services: billObj.services || [],
+      payload: queuePayload,
+    });
+  };
+
   const handleCreateBill = async (e) => {
     e.preventDefault();
 
@@ -654,10 +710,23 @@ export default function Billing() {
       year: "numeric",
     });
 
+    const matchedApt = appointments.find(
+      (a) => String(a._id || a.id) === String(newBillForm.selectedAppointmentId)
+    );
+
     const billNumber = Math.floor(1000 + Math.random() * 9000);
     const billId = `BILL-${billNumber}`;
-    const visitId = `V-${Math.floor(20000 + Math.random() * 90000)}`;
-    const patientId = `UHID-${Math.floor(10000 + Math.random() * 90000)}`;
+    const visitId =
+      newBillForm.visitId ||
+      matchedApt?.visitId ||
+      `V-${Math.floor(20000 + Math.random() * 90000)}`;
+    const patientId =
+      newBillForm.patientId ||
+      matchedApt?.patientId ||
+      (visitId ? `UHID-${visitId.replace(/\D/g, "")}` : `UHID-${Math.floor(10000 + Math.random() * 90000)}`);
+    const tokenNumber =
+      newBillForm.tokenNumber ||
+      (matchedApt?.tokenNumber ? `T-${String(matchedApt.tokenNumber).padStart(3, "0")}` : undefined);
 
     const paymentStatus =
       formDueAmount === 0 ? "Paid" : formPaidAmount > 0 ? "Partial" : "Pending";
@@ -665,6 +734,7 @@ export default function Billing() {
     const createdBill = {
       billId,
       visitId,
+      tokenNumber,
       appointment: newBillForm.selectedAppointmentId || null,
       patientId,
       patientName: newBillForm.patientName.trim(),
@@ -697,55 +767,14 @@ export default function Billing() {
       setBills((prev) => [savedBill, ...prev]);
       toast.success(`Bill ${billId} created successfully!`);
 
-      // Option 1 (Strict Pre-Billing): Add patient to Doctor Queue ONLY upon successful payment for consultation bills!
-      const isConsultation =
-        Boolean(createdBill.appointment) ||
-        Boolean(createdBill.visitId && String(createdBill.visitId).startsWith("VIS-")) ||
-        (Array.isArray(createdBill.services) &&
-          createdBill.services.some((s) =>
-            /consultation|doctor|opd|urology/i.test(s.name || "")
-          )) ||
-        Number(createdBill.consultationFee) > 0;
-
-      if (isConsultation && formPaidAmount > 0) {
-        const matchedApt = appointments.find(
-          (a) =>
-            (createdBill.appointment && String(a._id || a.id) === String(createdBill.appointment)) ||
-            (createdBill.visitId && a.visitId && a.visitId === createdBill.visitId) ||
-            (createdBill.phone && a.phone && a.phone.replace(/\D/g, "") === createdBill.phone.replace(/\D/g, ""))
-        );
-
-        const formattedToken = matchedApt?.tokenNumber
-          ? `T-${String(matchedApt.tokenNumber).padStart(3, "0")}`
-          : undefined;
-
-        addToQueueApi({
-          tokenNumber: formattedToken,
-          visitId: createdBill.visitId || matchedApt?.visitId || "",
-          appointment: createdBill.appointment || matchedApt?._id || matchedApt?.id || null,
-          patientId: createdBill.patientId || matchedApt?.patientId || "",
-          patientName: createdBill.patientName,
-          age: Number(createdBill.age) || Number(matchedApt?.age) || 35,
-          gender: createdBill.gender || matchedApt?.gender || "Male",
-          mobile: createdBill.phone || matchedApt?.phone || "",
-          doctorName: createdBill.doctor || "Dr. Vinish Kumar Singh",
-          department: createdBill.department || "Urology",
-          clinic: createdBill.hospital || "Rudraksh IVF & Urology Centre",
-          status: "Waiting",
-          priority: "Normal",
-        })
-          .then((qRes) => {
-            const tokenAssigned = qRes?.data?.tokenNumber || formattedToken;
-            toast.success(
-              `Patient ${createdBill.patientName} added to Doctor Queue (${tokenAssigned || "Waiting"})`
-            );
-          })
-          .catch((e) => console.warn("Queue push error on bill creation:", e));
-      }
-
       setShowCreateModal(false);
       setNewBillForm(defaultBillForm);
       setSelectedBill(savedBill);
+
+      // Prompt Receptionist: Would you like to add patient to Doctor Queue?
+      if (formPaidAmount > 0) {
+        promptQueueAddition(savedBill, formPaidAmount);
+      }
     } catch (err) {
       console.error("Save bill error:", err);
       toast.error("Unable to save bill. Please try again.");
@@ -1002,59 +1031,18 @@ export default function Billing() {
       );
       toast.success(`Payment of ₹${amount.toLocaleString("en-IN")} recorded successfully!`);
 
-      // Option 1 (Strict Pre-Billing): Add patient to Doctor Queue ONLY upon successful payment for consultation bills!
-      const isConsultation =
-        Boolean(updated.appointment) ||
-        Boolean(updated.visitId && String(updated.visitId).startsWith("VIS-")) ||
-        (Array.isArray(updated.services) &&
-          updated.services.some((s) =>
-            /consultation|doctor|opd|urology/i.test(s.name || "")
-          )) ||
-        Number(updated.consultationFee) > 0;
+      setPaymentBill(null);
+      setPaymentAmount("");
+      setPaymentMode("UPI");
 
-      if (isConsultation && newPaidAmount > 0) {
-        const matchedApt = appointments.find(
-          (a) =>
-            (updated.appointment && String(a._id || a.id) === String(updated.appointment)) ||
-            (updated.visitId && a.visitId && a.visitId === updated.visitId) ||
-            (updated.phone && a.phone && a.phone.replace(/\D/g, "") === updated.phone.replace(/\D/g, ""))
-        );
-
-        const formattedToken = matchedApt?.tokenNumber
-          ? `T-${String(matchedApt.tokenNumber).padStart(3, "0")}`
-          : undefined;
-
-        addToQueueApi({
-          tokenNumber: formattedToken,
-          visitId: updated.visitId || matchedApt?.visitId || "",
-          appointment: updated.appointment || matchedApt?._id || matchedApt?.id || null,
-          patientId: updated.patientId || matchedApt?.patientId || "",
-          patientName: updated.patientName,
-          age: Number(updated.age) || Number(matchedApt?.age) || 35,
-          gender: updated.gender || matchedApt?.gender || "Male",
-          mobile: updated.phone || matchedApt?.phone || "",
-          doctorName: updated.doctor || "Dr. Vinish Kumar Singh",
-          department: updated.department || "Urology",
-          clinic: updated.hospital || "Rudraksh IVF & Urology Centre",
-          status: "Waiting",
-          priority: "Normal",
-        })
-          .then((qRes) => {
-            const tokenAssigned = qRes?.data?.tokenNumber || formattedToken;
-            toast.success(
-              `Patient ${updated.patientName} added to Doctor Queue (${tokenAssigned || "Waiting"})`
-            );
-          })
-          .catch((e) => console.warn("Queue push error on payment collection:", e));
+      // Prompt Receptionist: Would you like to add patient to Doctor Queue?
+      if (newPaidAmount > 0) {
+        promptQueueAddition(updated, amount);
       }
     } catch (err) {
       console.error("Payment collection error:", err);
       toast.error("Unable to record payment. Please try again.");
     }
-
-    setPaymentBill(null);
-    setPaymentAmount("");
-    setPaymentMode("UPI");
   };
 
   return (
@@ -1110,80 +1098,68 @@ export default function Billing() {
 
       ========================================= */}
 
-      <div className="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 sm:gap-3.5 lg:grid-cols-4">
         {/* Total Bills */}
-
-        <div className="rounded-xl border border-slate-200 bg-white p-3 sm:p-4 shadow-xs">
+        <div className="rounded-xl border border-slate-200 bg-white p-2 sm:p-3.5 shadow-xs">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-[11px] sm:text-sm text-slate-500 font-medium">Total Bills</p>
-
-              <h2 className="mt-0.5 sm:mt-1 text-lg sm:text-2xl font-bold text-slate-900">
+              <p className="text-[10px] sm:text-xs text-slate-500 font-medium">Total Bills</p>
+              <h2 className="mt-0.5 text-sm sm:text-xl font-bold text-slate-900">
                 {totalBills}
               </h2>
             </div>
-
-            <div className="rounded-lg sm:rounded-xl bg-blue-50 p-2 sm:p-3 text-blue-600 shrink-0">
-              <FileText className="w-4 h-4 sm:w-5.5 sm:h-5.5" />
+            <div className="rounded-lg bg-blue-50 p-1.5 sm:p-2 text-blue-600 shrink-0">
+              <FileText className="w-3.5 h-3.5 sm:w-4.5 sm:h-4.5" />
             </div>
           </div>
         </div>
 
         {/* Paid */}
-
-        <div className="rounded-xl border border-slate-200 bg-white p-3 sm:p-4 shadow-xs">
+        <div className="rounded-xl border border-slate-200 bg-white p-2 sm:p-3.5 shadow-xs">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-[11px] sm:text-sm text-slate-500 font-medium">Paid Bills</p>
-
-              <h2 className="mt-0.5 sm:mt-1 text-lg sm:text-2xl font-bold text-slate-900">
+              <p className="text-[10px] sm:text-xs text-slate-500 font-medium">Paid Bills</p>
+              <h2 className="mt-0.5 text-sm sm:text-xl font-bold text-slate-900">
                 {paidBills}
               </h2>
             </div>
-
-            <div className="rounded-lg sm:rounded-xl bg-green-50 p-2 sm:p-3 text-green-600 shrink-0">
-              <CheckCircle2 className="w-4 h-4 sm:w-5.5 sm:h-5.5" />
+            <div className="rounded-lg bg-green-50 p-1.5 sm:p-2 text-green-600 shrink-0">
+              <CheckCircle2 className="w-3.5 h-3.5 sm:w-4.5 sm:h-4.5" />
             </div>
           </div>
         </div>
 
         {/* Pending */}
-
-        <div className="rounded-xl border border-slate-200 bg-white p-3 sm:p-4 shadow-xs">
+        <div className="rounded-xl border border-slate-200 bg-white p-2 sm:p-3.5 shadow-xs">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-[11px] sm:text-sm text-slate-500 font-medium">Pending / Due</p>
-
-              <h2 className="mt-0.5 sm:mt-1 text-lg sm:text-2xl font-bold text-slate-900">
+              <p className="text-[10px] sm:text-xs text-slate-500 font-medium">Pending / Due</p>
+              <h2 className="mt-0.5 text-sm sm:text-xl font-bold text-slate-900">
                 {pendingBills}
               </h2>
               {partialBills > 0 && (
-                <p className="text-[10px] sm:text-[11px] font-medium text-amber-600 mt-0.5">
+                <p className="text-[9px] sm:text-[10px] font-medium text-amber-600 mt-0.5 truncate">
                   ({pendingBills - partialBills} Unpaid • {partialBills} Partial)
                 </p>
               )}
             </div>
-
-            <div className="rounded-lg sm:rounded-xl bg-amber-50 p-2 sm:p-3 text-amber-600 shrink-0">
-              <Clock className="w-4 h-4 sm:w-5.5 sm:h-5.5" />
+            <div className="rounded-lg bg-amber-50 p-1.5 sm:p-2 text-amber-600 shrink-0">
+              <Clock className="w-3.5 h-3.5 sm:w-4.5 sm:h-4.5" />
             </div>
           </div>
         </div>
 
         {/* Due */}
-
-        <div className="rounded-xl border border-slate-200 bg-white p-3 sm:p-4 shadow-xs">
+        <div className="rounded-xl border border-slate-200 bg-white p-2 sm:p-3.5 shadow-xs">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-[11px] sm:text-sm text-slate-500 font-medium">Total Due</p>
-
-              <h2 className="mt-0.5 sm:mt-1 text-lg sm:text-2xl font-bold text-slate-900">
+              <p className="text-[10px] sm:text-xs text-slate-500 font-medium">Total Due</p>
+              <h2 className="mt-0.5 text-sm sm:text-xl font-bold text-slate-900">
                 ₹{totalDue.toLocaleString("en-IN")}
               </h2>
             </div>
-
-            <div className="rounded-lg sm:rounded-xl bg-red-50 p-2 sm:p-3 text-red-600 shrink-0">
-              <IndianRupee className="w-4 h-4 sm:w-5.5 sm:h-5.5" />
+            <div className="rounded-lg bg-red-50 p-1.5 sm:p-2 text-red-600 shrink-0">
+              <IndianRupee className="w-3.5 h-3.5 sm:w-4.5 sm:h-4.5" />
             </div>
           </div>
         </div>
@@ -1195,19 +1171,18 @@ export default function Billing() {
 
       ========================================= */}
 
-      <div className="rounded-xl border border-slate-200 bg-white p-3.5 sm:p-5 shadow-xs">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="rounded-xl border border-slate-200 bg-white p-2 sm:p-3 shadow-xs">
+        <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="text-xs sm:text-sm text-slate-500 font-medium">Today's Collection</p>
-
-            <h2 className="mt-0.5 sm:mt-1 text-lg sm:text-2xl font-bold text-slate-900">
+            <p className="text-[10px] sm:text-xs text-slate-500 font-medium">Today's Collection</p>
+            <h2 className="mt-0.5 text-sm sm:text-xl font-bold text-emerald-600">
               ₹{totalCollected.toLocaleString("en-IN")}
             </h2>
           </div>
 
-          <div className="inline-flex items-center gap-1.5 sm:gap-2 rounded-lg bg-green-50 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-green-700 w-fit">
-            <Banknote size={16} className="sm:w-4.5 sm:h-4.5" />
-            Payment Collection
+          <div className="inline-flex items-center gap-1.5 rounded-lg bg-green-50 px-2 sm:px-2.5 py-1 text-[11px] sm:text-xs font-semibold text-green-700 shrink-0">
+            <Banknote size={13} className="shrink-0" />
+            <span>Collection</span>
           </div>
         </div>
       </div>
@@ -1218,46 +1193,46 @@ export default function Billing() {
 
       ========================================= */}
 
-      <div className="mb-5 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+      <div className="mb-3 rounded-xl border border-slate-200 bg-white p-2 sm:p-3.5 shadow-xs">
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
           {/* Search */}
-
-          <div className="relative md:col-span-2">
+          <div className="relative flex-1">
             <Search
-              size={18}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+              size={14}
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
             />
 
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search Bill ID, Visit ID, patient name, UHID, or diagnosis..."
-              className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-4 text-sm outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100"
+              placeholder="Search bill, patient, UHID..."
+              className="w-full h-9 sm:h-10 rounded-lg border border-slate-200 bg-slate-50/70 py-2 pl-9 pr-3 text-xs sm:text-sm outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100 placeholder:text-slate-400"
             />
           </div>
 
-          {/* Status */}
-
-          <div className="relative">
+          {/* Status Dropdown */}
+          <div className="relative sm:w-48 shrink-0">
             <Filter
-              size={17}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+              size={13}
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 z-10"
             />
 
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full appearance-none rounded-lg border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-4 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              className="w-full h-9 sm:h-10 appearance-none rounded-lg border border-slate-200 bg-slate-50/70 py-2 pl-9 pr-8 text-xs sm:text-sm font-medium text-slate-700 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100 cursor-pointer"
             >
               <option value="All">All Payment Status</option>
-
               <option value="Paid">Paid</option>
-
               <option value="Partial">Partial</option>
-
               <option value="Pending">Pending</option>
             </select>
+
+            <ChevronDown
+              size={13}
+              className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400"
+            />
           </div>
         </div>
       </div>
@@ -1268,56 +1243,62 @@ export default function Billing() {
 
       ========================================= */}
 
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-        <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
+        <div className="flex items-center justify-between border-b border-slate-200 px-3 sm:px-4 py-2 sm:py-3">
           <div>
-            <h2 className="font-semibold text-slate-800">OPD Bills</h2>
+            <h2 className="text-xs sm:text-sm font-bold text-slate-800">OPD Bills</h2>
 
-            <p className="mt-1 text-xs text-slate-500">
+            <p className="mt-0.5 text-[10px] sm:text-xs text-slate-500">
               {filteredBills.length} bill
               {filteredBills.length !== 1 ? "s" : ""} found
             </p>
           </div>
 
-          <div className="hidden items-center gap-2 text-xs text-slate-500 sm:flex">
-            <Lock size={14} />
+          <div className="hidden items-center gap-1.5 text-xs text-slate-400 sm:flex">
+            <Lock size={13} />
             Paid invoices are protected
           </div>
         </div>
 
+        {/* Mobile Swipe Hint */}
+        <div className="flex items-center justify-between bg-blue-50/70 px-3 py-1 border-b border-blue-100/80 text-[10px] font-medium text-blue-700 sm:hidden">
+          <span>← Swipe horizontally for actions →</span>
+          <span className="font-bold">{filteredBills.length} Bills</span>
+        </div>
+
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1100px]">
+          <table className="w-full min-w-[760px] text-left border-collapse">
             <thead>
-              <tr className="border-b border-slate-200 bg-slate-50">
-                <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">
+              <tr className="border-b border-slate-200 bg-slate-50/80">
+                <th className="px-2.5 sm:px-3.5 py-2 text-left text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">
                   Bill / Visit
                 </th>
 
-                <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">
+                <th className="px-2.5 sm:px-3.5 py-2 text-left text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">
                   Patient
                 </th>
 
-                <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">
+                <th className="px-2.5 sm:px-3.5 py-2 text-left text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">
                   Doctor & Clinic
                 </th>
 
-                <th className="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">
+                <th className="px-2.5 sm:px-3.5 py-2 text-right text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">
                   Total
                 </th>
 
-                <th className="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">
+                <th className="px-2.5 sm:px-3.5 py-2 text-right text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">
                   Paid
                 </th>
 
-                <th className="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">
+                <th className="px-2.5 sm:px-3.5 py-2 text-right text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">
                   Due
                 </th>
 
-                <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">
+                <th className="px-2.5 sm:px-3.5 py-2 text-left text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">
                   Status
                 </th>
 
-                <th className="px-5 py-3 text-center text-xs font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap">
+                <th className="px-2.5 sm:px-3.5 py-2 text-center text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">
                   Action
                 </th>
               </tr>
@@ -1326,10 +1307,10 @@ export default function Billing() {
             <tbody className="divide-y divide-slate-100">
               {loadingBills ? (
                 <tr>
-                  <td colSpan="8" className="px-5 py-14 text-center">
-                    <div className="flex flex-col items-center justify-center gap-3">
-                      <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
-                      <p className="text-sm font-medium text-slate-600">
+                  <td colSpan="8" className="px-4 py-10 text-center">
+                    <div className="flex flex-col items-center justify-center gap-2">
+                      <div className="h-7 w-7 animate-spin rounded-full border-3 border-blue-600 border-t-transparent" />
+                      <p className="text-xs font-medium text-slate-600">
                         Loading bills from database...
                       </p>
                     </div>
@@ -1343,26 +1324,26 @@ export default function Billing() {
                   >
                     {/* Bill */}
 
-                    <td className="px-5 py-3.5 whitespace-nowrap">
-                      <p className="text-xs sm:text-sm font-bold text-slate-800 font-mono tracking-tight whitespace-nowrap">
+                    <td className="px-2.5 sm:px-3.5 py-2 whitespace-nowrap">
+                      <p className="text-xs sm:text-[13px] font-bold text-slate-800 font-mono tracking-tight whitespace-nowrap">
                         {bill.billId}
                       </p>
 
-                      <p className="mt-0.5 text-[11px] text-slate-500 font-mono whitespace-nowrap">
+                      <p className="mt-0.5 text-[10px] text-slate-500 font-mono whitespace-nowrap">
                         {bill.visitId}
                       </p>
                     </td>
 
                     {/* Patient */}
 
-                    <td className="px-5 py-3.5 whitespace-nowrap">
-                      <div className="flex items-center gap-2.5">
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
-                          <User size={15} />
+                    <td className="px-2.5 sm:px-3.5 py-2 whitespace-nowrap">
+                      <div className="flex items-center gap-2">
+                        <div className="flex h-6 w-6 sm:h-7 sm:w-7 shrink-0 items-center justify-center rounded-md bg-blue-50 text-blue-600">
+                          <User size={13} />
                         </div>
 
                         <div>
-                          <p className="text-xs sm:text-sm font-semibold text-slate-800 whitespace-nowrap">
+                          <p className="text-xs sm:text-[13px] font-semibold text-slate-800 whitespace-nowrap">
                             {bill.patientName}
                           </p>
                         </div>
@@ -1371,19 +1352,19 @@ export default function Billing() {
 
                     {/* Doctor */}
 
-                    <td className="px-5 py-3.5 whitespace-nowrap">
-                      <div className="flex items-start gap-2">
+                    <td className="px-2.5 sm:px-3.5 py-2 whitespace-nowrap">
+                      <div className="flex items-start gap-1.5">
                         <Stethoscope
-                          size={15}
+                          size={13}
                           className="mt-0.5 shrink-0 text-blue-500"
                         />
 
                         <div>
-                          <p className="text-xs sm:text-sm font-medium text-slate-700 whitespace-nowrap">
+                          <p className="text-xs sm:text-[13px] font-medium text-slate-700 whitespace-nowrap">
                             {bill.doctor}
                           </p>
 
-                          <p className="mt-0.5 text-[11px] text-slate-500 line-clamp-1 whitespace-nowrap">
+                          <p className="mt-0.5 text-[10px] text-slate-500 max-w-[140px] truncate whitespace-nowrap">
                             {bill.hospital || bill.department}
                           </p>
                         </div>
@@ -1392,21 +1373,21 @@ export default function Billing() {
 
                     {/* Total */}
 
-                    <td className="px-5 py-3.5 text-right whitespace-nowrap">
-                      <p className="text-xs sm:text-sm font-bold text-slate-800 whitespace-nowrap">
+                    <td className="px-2.5 sm:px-3.5 py-2 text-right whitespace-nowrap">
+                      <p className="text-xs sm:text-[13px] font-bold text-slate-800 whitespace-nowrap">
                         ₹{bill.totalAmount.toLocaleString("en-IN")}
                       </p>
                     </td>
 
                     {/* Paid */}
 
-                    <td className="px-5 py-3.5 text-right whitespace-nowrap">
-                      <p className="text-xs sm:text-sm font-semibold text-green-600 whitespace-nowrap">
+                    <td className="px-2.5 sm:px-3.5 py-2 text-right whitespace-nowrap">
+                      <p className="text-xs sm:text-[13px] font-semibold text-green-600 whitespace-nowrap">
                         ₹{bill.paidAmount.toLocaleString("en-IN")}
                       </p>
 
                       {bill.paymentMode && (
-                        <p className="mt-0.5 text-[11px] text-slate-400 whitespace-nowrap">
+                        <p className="mt-0.5 text-[10px] text-slate-400 whitespace-nowrap">
                           {bill.paymentMode}
                         </p>
                       )}
@@ -1414,9 +1395,9 @@ export default function Billing() {
 
                     {/* Due */}
 
-                    <td className="px-5 py-3.5 text-right whitespace-nowrap">
+                    <td className="px-2.5 sm:px-3.5 py-2 text-right whitespace-nowrap">
                       <p
-                        className={`text-xs sm:text-sm font-semibold whitespace-nowrap ${bill.dueAmount > 0 ? "text-red-600" : "text-slate-400"
+                        className={`text-xs sm:text-[13px] font-semibold whitespace-nowrap ${bill.dueAmount > 0 ? "text-red-600" : "text-slate-400"
                           }`}
                       >
                         ₹{bill.dueAmount.toLocaleString("en-IN")}
@@ -1425,9 +1406,9 @@ export default function Billing() {
 
                     {/* Status */}
 
-                    <td className="px-5 py-3.5 whitespace-nowrap">
+                    <td className="px-2.5 sm:px-3.5 py-2 whitespace-nowrap">
                       <span
-                        className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold whitespace-nowrap ${paymentStatusStyles[bill.paymentStatus]
+                        className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] sm:text-xs font-semibold whitespace-nowrap ${paymentStatusStyles[bill.paymentStatus]
                           }`}
                       >
                         {bill.paymentStatus}
@@ -1436,16 +1417,16 @@ export default function Billing() {
 
                     {/* Actions */}
 
-                    <td className="px-5 py-3.5 whitespace-nowrap">
-                      <div className="flex items-center justify-center gap-2">
+                    <td className="px-2.5 sm:px-3.5 py-2 whitespace-nowrap">
+                      <div className="flex items-center justify-center gap-1 sm:gap-1.5">
                         {/* View */}
 
                         <button
                           onClick={() => setSelectedBill(bill)}
                           title="View Bill Details"
-                          className="rounded-lg border border-slate-200 bg-white p-2 text-slate-600 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600"
+                          className="rounded-md border border-slate-200 bg-white p-1 sm:p-1.5 text-slate-600 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600"
                         >
-                          <Eye size={17} />
+                          <Eye size={14} />
                         </button>
 
                         {/* Edit */}
@@ -1453,9 +1434,9 @@ export default function Billing() {
                         <button
                           onClick={() => handleOpenEdit(bill)}
                           title="Edit Bill"
-                          className="rounded-lg border border-slate-200 bg-white p-2 text-slate-600 transition hover:border-amber-200 hover:bg-amber-50 hover:text-amber-600"
+                          className="rounded-md border border-slate-200 bg-white p-1 sm:p-1.5 text-slate-600 transition hover:border-amber-200 hover:bg-amber-50 hover:text-amber-600"
                         >
-                          <Pencil size={17} />
+                          <Pencil size={14} />
                         </button>
 
                         {/* Send / Push to Doctor Queue */}
@@ -1467,15 +1448,15 @@ export default function Billing() {
                               ? `Token: ${bill.tokenNumber} (Click to re-sync in Queue)`
                               : "Send to Doctor Queue"
                           }
-                          className={`rounded-lg border p-2 transition flex items-center gap-1.5 ${bill.tokenNumber
-                              ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-semibold text-xs"
+                          className={`rounded-md border p-1 sm:p-1.5 transition flex items-center gap-1 ${bill.tokenNumber
+                              ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-semibold text-[11px]"
                               : "border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-100"
                             }`}
                         >
-                          <Stethoscope size={16} />
+                          <Stethoscope size={13} />
 
                           {bill.tokenNumber && (
-                            <span className="text-[11px] font-bold">
+                            <span className="text-[10px] font-bold">
                               {bill.tokenNumber}
                             </span>
                           )}
@@ -1491,9 +1472,9 @@ export default function Billing() {
                               setPaymentAmount(bill.dueAmount.toString());
                             }}
                             title="Collect Payment"
-                            className="rounded-lg border border-green-200 bg-green-50 p-2 text-green-600 transition hover:bg-green-100"
+                            className="rounded-md border border-green-200 bg-green-50 p-1 sm:p-1.5 text-green-600 transition hover:bg-green-100"
                           >
-                            <CreditCard size={17} />
+                            <CreditCard size={14} />
                           </button>
                         )}
 
@@ -1503,9 +1484,9 @@ export default function Billing() {
                           <button
                             onClick={() => setSelectedBill(bill)}
                             title="Receipt / Print"
-                            className="rounded-lg border border-blue-200 bg-blue-50 p-2 text-blue-600 transition hover:bg-blue-100"
+                            className="rounded-md border border-blue-200 bg-blue-50 p-1 sm:p-1.5 text-blue-600 transition hover:bg-blue-100"
                           >
-                            <Receipt size={17} />
+                            <Receipt size={14} />
                           </button>
                         )}
                       </div>
@@ -2331,511 +2312,306 @@ export default function Billing() {
         editFormData &&
         createPortal(
           <div
-            className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs cursor-pointer"
+            className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/60 p-3 sm:p-4 backdrop-blur-xs cursor-pointer animate-in fade-in duration-150"
             onClick={() => {
               setEditingBill(null);
               setEditFormData(null);
             }}
           >
             <div
-              className="flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl cursor-default"
+              className="flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl border border-slate-100 cursor-default animate-in zoom-in-95 duration-150"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Modal Header */}
-
-              <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-6 py-4">
+              <div className="flex items-center justify-between border-b border-amber-100 bg-amber-50/70 px-5 py-3.5">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500 text-white shadow-sm">
-                    <Pencil size={20} />
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500 text-white shadow-xs">
+                    <Pencil size={18} />
                   </div>
 
                   <div>
-                    <h2 className="text-lg font-bold text-slate-900">
-                      Edit Bill ({editingBill.billId})
-                    </h2>
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-base sm:text-lg font-bold text-slate-900">
+                        Edit Bill & Services
+                      </h2>
+                      <span className="rounded-md bg-amber-100 px-2 py-0.5 text-xs font-black text-amber-800">
+                        #{editingBill.billId}
+                      </span>
+                    </div>
 
-                    <p className="text-xs text-slate-500">
-                      Modify patient details, diagnosis, services & amounts
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Adjust bill services, pricing, discount, and payment collection
                     </p>
                   </div>
                 </div>
 
                 <button
+                  type="button"
                   onClick={() => {
                     setEditingBill(null);
-
                     setEditFormData(null);
                   }}
-                  className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-200 hover:text-slate-600"
+                  className="rounded-lg p-1.5 text-slate-400 transition hover:bg-amber-100 hover:text-slate-700"
                 >
-                  <X size={20} />
+                  <X size={18} />
                 </button>
               </div>
 
               {/* Modal Form Body */}
-
               <form
                 onSubmit={handleSaveEditBill}
-                className="flex-1 overflow-y-auto p-6 space-y-6"
+                className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4"
               >
-                {/* Section 1: Patient Details */}
-
-                <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4">
-                  <span className="mb-3 block text-xs font-bold uppercase tracking-wider text-slate-500">
-                    1. Patient Details
-                  </span>
-
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-4">
-                    <div className="sm:col-span-2">
-                      <label className="mb-1 block text-xs font-medium text-slate-600">
-                        Patient Full Name{" "}
-                        <span className="text-red-500">*</span>
-                      </label>
-
-                      <input
-                        type="text"
-                        required
-                        value={editFormData.patientName}
-                        onChange={(e) =>
-                          setEditFormData((prev) => ({
-                            ...prev,
-
-                            patientName: e.target.value,
-                          }))
-                        }
-                        className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                      />
+                {/* 1. Patient & Clinic Identity Summary Card (Read-Only) */}
+                <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3.5 shadow-xs">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200/70 pb-2.5">
+                    <div className="flex items-center gap-2.5">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 text-blue-700 shrink-0">
+                        <User size={16} />
+                      </div>
+                      <div>
+                        <span className="text-sm font-bold text-slate-900 block leading-tight">
+                          {editFormData.patientName}
+                        </span>
+                        <span className="text-[11px] text-slate-500 font-medium">
+                          {editFormData.phone || "No Mobile"} • {editFormData.age} yrs • {editFormData.gender}
+                        </span>
+                      </div>
                     </div>
 
-                    <div>
-                      <label className="mb-1 block text-xs font-medium text-slate-600">
-                        Phone Number
-                      </label>
-
-                      <input
-                        type="text"
-                        value={editFormData.phone}
-                        onChange={(e) =>
-                          setEditFormData((prev) => ({
-                            ...prev,
-
-                            phone: e.target.value,
-                          }))
-                        }
-                        className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                      />
+                    <div className="text-left sm:text-right">
+                      <span className="inline-block rounded-md bg-slate-200/80 px-2 py-0.5 text-[11px] font-bold text-slate-700">
+                        {editFormData.visitId || editFormData.patientId || "OPD Visit"}
+                      </span>
+                      <p className="text-[11px] text-slate-500 mt-0.5">
+                        {editingBill.visitDate || "Today"}
+                      </p>
                     </div>
+                  </div>
 
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="mb-1 block text-xs font-medium text-slate-600">
-                          Age
-                        </label>
-
-                        <input
-                          type="number"
-                          value={editFormData.age}
-                          onChange={(e) =>
-                            setEditFormData((prev) => ({
-                              ...prev,
-
-                              age: e.target.value,
-                            }))
-                          }
-                          className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="mb-1 block text-xs font-medium text-slate-600">
-                          Gender
-                        </label>
-
-                        <select
-                          value={editFormData.gender}
-                          onChange={(e) =>
-                            setEditFormData((prev) => ({
-                              ...prev,
-
-                              gender: e.target.value,
-                            }))
-                          }
-                          className="w-full rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                        >
-                          <option value="Male">Male</option>
-
-                          <option value="Female">Female</option>
-
-                          <option value="Other">Other</option>
-                        </select>
-                      </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 text-xs">
+                    <div className="flex items-center gap-1.5 text-slate-600">
+                      <Stethoscope size={13.5} className="text-slate-400 shrink-0" />
+                      <span className="truncate">{editFormData.doctor || "Dr. Vinish Kumar Singh"}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-slate-600">
+                      <Activity size={13.5} className="text-slate-400 shrink-0" />
+                      <span className="truncate">{editFormData.diagnosis || "General Consultation"}</span>
                     </div>
                   </div>
                 </div>
 
-                {/* Section 2: Clinic & Diagnosis */}
-
-                <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4">
-                  <span className="mb-3 block text-xs font-bold uppercase tracking-wider text-slate-500">
-                    2. Clinic, Doctor & Diagnosis
-                  </span>
-
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    <div>
-                      <label className="mb-1 block text-xs font-medium text-slate-600">
-                        Clinic / Hospital Branch
-                      </label>
-
-                      <select
-                        value={editFormData.hospital}
-                        onChange={(e) =>
-                          setEditFormData((prev) => ({
-                            ...prev,
-
-                            hospital: e.target.value,
-                          }))
-                        }
-                        className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                      >
-                        {CLINIC_CENTRES.map((c, i) => (
-                          <option key={i} value={c}>
-                            {c}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="mb-1 block text-xs font-medium text-slate-600">
-                        Consultant Doctor
-                      </label>
-
-                      <input
-                        type="text"
-                        readOnly
-                        value={editFormData.doctor}
-                        className="w-full rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-sm text-slate-600 outline-none cursor-not-allowed"
-                      />
-                    </div>
-
-                    {/* Diagnosis */}
-
-                    <div className="sm:col-span-2">
-                      <label className="mb-1 block text-xs font-semibold text-blue-900">
-                        Diagnosis / Reason for Visit{" "}
-                        <span className="text-red-500">*</span>
-                      </label>
-
-                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                        <select
-                          value={
-                            UROLOGY_CONDITIONS.includes(editFormData.diagnosis)
-                              ? editFormData.diagnosis
-                              : "Other / Custom"
-                          }
-                          onChange={(e) =>
-                            setEditFormData((prev) => ({
-                              ...prev,
-
-                              diagnosis: e.target.value,
-                            }))
-                          }
-                          className="w-full rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm font-medium text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                        >
-                          {UROLOGY_CONDITIONS.map((cond, i) => (
-                            <option key={i} value={cond}>
-                              {cond}
-                            </option>
-                          ))}
-                        </select>
-
-                        {(editFormData.diagnosis === "Other / Custom" ||
-                          !UROLOGY_CONDITIONS.includes(
-                            editFormData.diagnosis,
-                          )) && (
-                            <input
-                              type="text"
-                              required
-                              placeholder="Type custom disease or condition..."
-                              value={
-                                editFormData.diagnosis === "Other / Custom"
-                                  ? editFormData.customDiagnosis
-                                  : editFormData.diagnosis
-                              }
-                              onChange={(e) =>
-                                setEditFormData((prev) => ({
-                                  ...prev,
-
-                                  customDiagnosis: e.target.value,
-
-                                  diagnosis: "Other / Custom",
-                                }))
-                              }
-                              className="w-full rounded-lg border border-blue-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                            />
-                          )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Section 3: Bill Items / Services */}
-
-                <div className="rounded-xl border border-slate-200 bg-white p-4">
+                {/* 2. Services & Particulars (Editable) */}
+                <div className="rounded-xl border border-slate-200 bg-white p-3.5 sm:p-4 shadow-xs">
                   <div className="mb-3 flex items-center justify-between">
                     <div>
-                      <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                        3. Services & Particulars
+                      <span className="text-xs font-bold uppercase tracking-wider text-slate-700 block">
+                        Services & Particulars
                       </span>
-
-                      <p className="text-xs text-slate-400">
-                        Edit services or add new items
+                      <p className="text-[11px] text-slate-400 mt-0.5">
+                        Add consultation, tests, procedures, or medicines
                       </p>
                     </div>
 
                     <button
                       type="button"
                       onClick={handleEditAddService}
-                      className="flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 transition hover:bg-blue-100"
+                      className="flex items-center gap-1 rounded-lg bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-600 transition hover:bg-blue-100"
                     >
-                      <Plus size={14} />
-                      Add Item
+                      <Plus size={13} />
+                      <span>Add Item</span>
                     </button>
                   </div>
 
-                  <div className="space-y-3">
-                    {editFormData.services.map((item, index) => (
+                  <div className="space-y-2.5">
+                    {editFormData.services.map((service, idx) => (
                       <div
-                        key={index}
-                        className="flex flex-col gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 sm:flex-row sm:items-center"
+                        key={idx}
+                        className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 rounded-lg border border-slate-200 bg-slate-50/50 p-2.5 transition hover:bg-slate-50"
                       >
-                        {/* Preset selector */}
-
-                        <div className="sm:w-1/3">
+                        {/* Preset Quick Select */}
+                        <div className="w-full sm:w-1/3">
                           <select
                             onChange={(e) =>
-                              handleEditPresetServiceSelect(
-                                index,
-                                e.target.value,
-                              )
+                              handleEditPresetServiceSelect(idx, e.target.value)
                             }
+                            className="w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs outline-none focus:border-blue-500 cursor-pointer"
                             defaultValue=""
-                            className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-700 outline-none focus:border-blue-500"
                           >
                             <option value="" disabled>
                               -- Quick Select Service --
                             </option>
-
-                            {STANDARD_SERVICES.map((std, i) => (
-                              <option key={i} value={std.name}>
-                                {std.name}{" "}
-                                {std.amount > 0 ? `(₹${std.amount})` : ""}
+                            {STANDARD_SERVICES.map((s) => (
+                              <option key={s.name} value={s.name}>
+                                {s.name} (₹{s.amount})
                               </option>
                             ))}
                           </select>
                         </div>
 
-                        {/* Service Name */}
-
+                        {/* Service Name Input */}
                         <div className="flex-1">
                           <input
                             type="text"
                             required
-                            placeholder="Service name (e.g. OPD Consultation)"
-                            value={item.name}
+                            placeholder="Service / Procedure name..."
+                            value={service.name}
                             onChange={(e) =>
-                              handleEditServiceChange(
-                                index,
-                                "name",
-                                e.target.value,
-                              )
+                              handleEditServiceChange(idx, "name", e.target.value)
                             }
-                            className="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-800 outline-none focus:border-blue-500"
+                            className="w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-800 outline-none focus:border-blue-500"
                           />
                         </div>
 
-                        {/* Amount */}
+                        {/* Amount Input */}
+                        <div className="w-full sm:w-28 flex items-center gap-1.5">
+                          <div className="relative flex-1">
+                            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400">
+                              ₹
+                            </span>
+                            <input
+                              type="number"
+                              required
+                              min="0"
+                              placeholder="0"
+                              value={service.amount}
+                              onChange={(e) =>
+                                handleEditServiceChange(
+                                  idx,
+                                  "amount",
+                                  e.target.value,
+                                )
+                              }
+                              className="w-full rounded-md border border-slate-200 bg-white py-1.5 pl-6 pr-2 text-right text-xs font-semibold text-slate-800 outline-none focus:border-blue-500"
+                            />
+                          </div>
 
-                        <div className="relative w-32">
-                          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400">
-                            ₹
-                          </span>
-
-                          <input
-                            type="number"
-                            min="0"
-                            required
-                            placeholder="Amount"
-                            value={item.amount}
-                            onChange={(e) =>
-                              handleEditServiceChange(
-                                index,
-
-                                "amount",
-
-                                Number(e.target.value),
-                              )
-                            }
-                            className="w-full rounded-lg border border-slate-200 bg-white py-1.5 pl-6 pr-2 text-xs font-semibold text-slate-800 outline-none focus:border-blue-500"
-                          />
+                          {editFormData.services.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => handleEditRemoveService(idx)}
+                              className="rounded-md p-1.5 text-slate-400 transition hover:bg-red-50 hover:text-red-500"
+                              title="Remove item"
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          )}
                         </div>
-
-                        {/* Remove Button */}
-
-                        <button
-                          type="button"
-                          onClick={() => handleEditRemoveService(index)}
-                          className="self-end rounded-md p-1.5 text-slate-400 transition hover:bg-red-50 hover:text-red-500 sm:self-center"
-                          title="Remove service"
-                        >
-                          <Trash2 size={16} />
-                        </button>
                       </div>
                     ))}
                   </div>
                 </div>
 
-                {/* Section 4: Calculation & Payment Details */}
-
-                <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4">
-                  <span className="mb-3 block text-xs font-bold uppercase tracking-wider text-slate-500">
-                    4. Billing Summary & Payment
+                {/* 3. Billing Summary & Payment (Editable) */}
+                <div className="rounded-xl border border-slate-200 bg-white p-3.5 sm:p-4 shadow-xs">
+                  <span className="mb-3 block text-xs font-bold uppercase tracking-wider text-slate-700">
+                    Billing Summary & Payment
                   </span>
 
-                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                    {/* Summary Box */}
-
-                    <div className="space-y-2.5 rounded-lg border border-slate-200 bg-white p-3.5">
-                      <div className="flex justify-between text-xs text-slate-500">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* Left: Summary Numbers & Discount */}
+                    <div className="space-y-2 rounded-xl border border-slate-100 bg-slate-50/70 p-3 text-xs">
+                      <div className="flex justify-between items-center text-slate-600">
                         <span>Subtotal:</span>
-
-                        <span className="font-semibold text-slate-700">
+                        <span className="font-semibold text-slate-900">
                           ₹{editSubtotal.toLocaleString("en-IN")}
                         </span>
                       </div>
 
-                      <div className="flex items-center justify-between text-xs text-slate-500">
-                        <span>Discount:</span>
-
-                        <div className="relative w-28">
-                          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-slate-400">
-                            ₹
-                          </span>
-
-                          <input
-                            type="number"
-                            min="0"
-                            value={editFormData.discount}
-                            onChange={(e) =>
-                              setEditFormData((prev) => ({
-                                ...prev,
-
-                                discount: e.target.value,
-                              }))
-                            }
-                            className="w-full rounded-md border border-slate-200 py-1 pl-5 pr-2 text-right text-xs font-medium text-slate-800 outline-none focus:border-blue-500"
-                          />
-                        </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-600">Discount (₹):</span>
+                        <input
+                          type="number"
+                          min="0"
+                          value={editFormData.discount}
+                          onChange={(e) =>
+                            setEditFormData((prev) => ({
+                              ...prev,
+                              discount: e.target.value,
+                            }))
+                          }
+                          className="w-24 rounded-md border border-slate-200 bg-white py-1 px-2 text-right text-xs font-semibold outline-none focus:border-blue-500"
+                        />
                       </div>
 
-                      <div className="border-t border-slate-100 pt-2 flex justify-between text-sm font-bold text-slate-900">
+                      <div className="flex justify-between items-center border-t border-slate-200/80 pt-2 font-bold text-slate-900 text-sm">
                         <span>Total Net Amount:</span>
-
-                        <span className="text-blue-700">
+                        <span className="text-blue-600">
                           ₹{editTotalAmount.toLocaleString("en-IN")}
                         </span>
                       </div>
                     </div>
 
-                    {/* Payment Input Box */}
-
-                    <div className="space-y-3 rounded-lg border border-slate-200 bg-white p-3.5">
-                      <div>
-                        <div className="flex items-center justify-between mb-1">
-                          <label className="text-xs font-medium text-slate-600">
-                            Paid Amount
-                          </label>
-
-                          <div className="flex gap-1.5 text-[11px]">
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setEditFormData((prev) => ({
-                                  ...prev,
-
-                                  paidAmount: editTotalAmount,
-                                }))
-                              }
-                              className="text-blue-600 hover:underline"
-                            >
-                              Full Paid
-                            </button>
-
-                            <span>•</span>
-
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setEditFormData((prev) => ({
-                                  ...prev,
-
-                                  paidAmount: 0,
-                                }))
-                              }
-                              className="text-red-600 hover:underline"
-                            >
-                              Unpaid (₹0)
-                            </button>
-                          </div>
-                        </div>
-
-                        <div className="relative">
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400">
-                            ₹
-                          </span>
-
-                          <input
-                            type="number"
-                            min="0"
-                            max={editTotalAmount}
-                            value={editFormData.paidAmount}
-                            onChange={(e) =>
+                    {/* Right: Payment Collection */}
+                    <div className="space-y-2.5 rounded-xl border border-slate-100 bg-slate-50/70 p-3 text-xs">
+                      <div className="flex justify-between items-center">
+                        <span className="font-semibold text-slate-700">Paid Amount (₹):</span>
+                        <div className="flex items-center gap-1.5 text-[11px]">
+                          <button
+                            type="button"
+                            onClick={() =>
                               setEditFormData((prev) => ({
                                 ...prev,
-
-                                paidAmount: e.target.value,
+                                paidAmount: editTotalAmount,
                               }))
                             }
-                            className="w-full rounded-lg border border-slate-200 py-2 pl-7 pr-3 text-sm font-bold text-green-700 outline-none focus:border-blue-500"
-                          />
+                            className="font-bold text-blue-600 hover:underline"
+                          >
+                            Full Paid
+                          </button>
+                          <span className="text-slate-300">•</span>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setEditFormData((prev) => ({
+                                ...prev,
+                                paidAmount: 0,
+                              }))
+                            }
+                            className="font-bold text-slate-500 hover:underline"
+                          >
+                            Unpaid
+                          </button>
                         </div>
                       </div>
 
-                      {/* Due display */}
-
-                      <div className="flex items-center justify-between text-xs font-semibold">
-                        <span className="text-slate-500">Balance Due:</span>
-
-                        <span
-                          className={
-                            editDueAmount > 0
-                              ? "text-red-600"
-                              : "text-slate-400"
+                      <div className="relative">
+                        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400">
+                          ₹
+                        </span>
+                        <input
+                          type="number"
+                          min="0"
+                          max={editTotalAmount}
+                          value={editFormData.paidAmount}
+                          onChange={(e) =>
+                            setEditFormData((prev) => ({
+                              ...prev,
+                              paidAmount: e.target.value,
+                            }))
                           }
+                          className="w-full rounded-md border border-slate-200 bg-white py-1.5 pl-6 pr-3 text-right text-xs font-bold text-slate-900 outline-none focus:border-blue-500"
+                        />
+                      </div>
+
+                      <div className="flex justify-between items-center pt-1 border-t border-slate-200/70 text-xs">
+                        <span className="text-slate-500">Balance Due:</span>
+                        <span
+                          className={`font-black ${
+                            editDueAmount > 0 ? "text-rose-600" : "text-emerald-600"
+                          }`}
                         >
                           ₹{editDueAmount.toLocaleString("en-IN")}
                         </span>
                       </div>
 
-                      {/* Payment Mode */}
-
+                      {/* Payment Mode Selector */}
                       {editPaidAmount > 0 && (
-                        <div>
-                          <label className="mb-1 block text-xs font-medium text-slate-600">
-                            Payment Mode
+                        <div className="pt-1.5">
+                          <label className="mb-1 block text-[11px] font-medium text-slate-500">
+                            Payment Mode:
                           </label>
-
-                          <div className="grid grid-cols-4 gap-1.5">
+                          <div className="grid grid-cols-4 gap-1">
                             {["Cash", "UPI", "Card", "Online"].map((mode) => (
                               <button
                                 key={mode}
@@ -2843,14 +2619,14 @@ export default function Billing() {
                                 onClick={() =>
                                   setEditFormData((prev) => ({
                                     ...prev,
-
                                     paymentMode: mode,
                                   }))
                                 }
-                                className={`rounded-md py-1 text-xs font-medium border transition ${editFormData.paymentMode === mode
-                                    ? "border-blue-500 bg-blue-50 text-blue-700"
-                                    : "border-slate-200 text-slate-600 hover:bg-slate-50"
-                                  }`}
+                                className={`rounded-md py-1 text-[11px] font-semibold border transition ${
+                                  editFormData.paymentMode === mode
+                                    ? "border-blue-500 bg-blue-50 text-blue-700 shadow-2xs"
+                                    : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                                }`}
                               >
                                 {mode}
                               </button>
@@ -2860,29 +2636,42 @@ export default function Billing() {
                       )}
                     </div>
                   </div>
+
+                  {/* Notes / Remarks */}
+                  <div className="mt-3">
+                    <input
+                      type="text"
+                      placeholder="Optional remarks / bill notes..."
+                      value={editFormData.notes}
+                      onChange={(e) =>
+                        setEditFormData((prev) => ({
+                          ...prev,
+                          notes: e.target.value,
+                        }))
+                      }
+                      className="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-3 py-1.5 text-xs text-slate-700 outline-none focus:border-blue-500"
+                    />
+                  </div>
                 </div>
 
                 {/* Modal Footer */}
-
-                <div className="flex items-center justify-end gap-3 border-t border-slate-200 pt-4">
+                <div className="flex items-center justify-end gap-2.5 border-t border-slate-200 pt-3.5">
                   <button
                     type="button"
                     onClick={() => {
                       setEditingBill(null);
-
                       setEditFormData(null);
                     }}
-                    className="rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50"
+                    className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs sm:text-sm font-semibold text-slate-600 transition hover:bg-slate-100"
                   >
                     Cancel
                   </button>
 
                   <button
                     type="submit"
-                    className="flex items-center gap-2 rounded-lg bg-amber-500 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-amber-600 active:scale-95"
+                    className="flex items-center gap-1.5 rounded-xl bg-amber-500 px-5 py-2 text-xs sm:text-sm font-bold text-white shadow-sm transition hover:bg-amber-600 active:scale-95"
                   >
-                    <CheckCircle2 size={18} />
-
+                    <CheckCircle2 size={16} />
                     <span>Update & Save Bill</span>
                   </button>
                 </div>
@@ -3406,6 +3195,151 @@ export default function Billing() {
         </div>,
         document.body,
       )}
+
+      {/* =====================================================
+          Doctor Queue Confirmation Modal (Post-Billing / Payment)
+      ===================================================== */}
+      {queueConfirmData &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-in fade-in duration-200 cursor-pointer"
+            onClick={() => {
+              setQueueConfirmData(null);
+            }}
+          >
+            <div
+              className="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl border border-slate-100 cursor-default animate-in zoom-in-95 duration-200"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header Gradient Stripe */}
+              <div className="h-2 bg-gradient-to-r from-blue-600 via-indigo-600 to-emerald-500" />
+
+              <div className="p-5 sm:p-6">
+                {/* Header with Icon */}
+                <div className="flex items-start gap-3.5">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 border border-blue-100 shadow-xs">
+                    <Stethoscope size={22} />
+                  </div>
+                  <div className="flex-1">
+                    <div className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-700 border border-emerald-200 mb-1">
+                      <CheckCircle2 size={12} />
+                      Billing / Payment Completed
+                    </div>
+                    <h3 className="text-base sm:text-lg font-bold text-slate-900 leading-snug">
+                      Add Patient to Doctor Queue?
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Send patient to Dr. Vinish's OPD waiting queue?
+                    </p>
+                  </div>
+                </div>
+
+                {/* Patient Summary Card */}
+                <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50/80 p-3.5 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <User size={15} className="text-blue-600 shrink-0" />
+                      <span className="text-sm font-bold text-slate-900">
+                        {queueConfirmData.patientName}
+                      </span>
+                    </div>
+                    {queueConfirmData.tokenNumber && queueConfirmData.tokenNumber !== "Auto" ? (
+                      <span className="inline-flex items-center gap-1 rounded-md bg-blue-600 px-2.5 py-0.5 text-xs font-black text-white shadow-xs">
+                        #{queueConfirmData.tokenNumber}
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 rounded-md bg-slate-200 px-2 py-0.5 text-[11px] font-bold text-slate-700">
+                        Token: Next in Queue
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-200/60 text-xs">
+                    <div>
+                      <span className="text-slate-400 text-[11px]">Visit / ID:</span>
+                      <p className="font-semibold text-slate-700 truncate">
+                        {queueConfirmData.visitId || queueConfirmData.patientId || "—"}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 text-[11px]">Amount Paid:</span>
+                      <p className="font-semibold text-emerald-600">
+                        ₹{Number(queueConfirmData.amount || 0).toLocaleString("en-IN")}
+                      </p>
+                    </div>
+                  </div>
+
+                  {Array.isArray(queueConfirmData.services) && queueConfirmData.services.length > 0 && (
+                    <div className="pt-1.5 border-t border-slate-200/60 text-[11px]">
+                      <span className="text-slate-400">Services Billed:</span>
+                      <p className="font-medium text-slate-700 truncate">
+                        {queueConfirmData.services.map((s) => s.name).join(", ")}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Clarification prompt */}
+                <p className="mt-3.5 text-xs text-slate-500 leading-relaxed text-center">
+                  Select <strong className="text-blue-600 font-semibold">Yes</strong> to assign token and place in doctor's waiting list. Select <strong className="text-slate-700 font-semibold">No, Skip</strong> for standalone lab tests or pharmacy only.
+                </p>
+
+                {/* Yes / No Action Buttons */}
+                <div className="mt-5 grid grid-cols-2 gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const pName = queueConfirmData.patientName;
+                      setQueueConfirmData(null);
+                      toast.info(`Billing saved. ${pName} was not added to doctor queue.`);
+                    }}
+                    className="flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs sm:text-sm font-semibold text-slate-700 hover:bg-slate-100 transition active:scale-95 shadow-xs"
+                  >
+                    <X size={15} />
+                    No, Skip
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={addingToQueue}
+                    onClick={async () => {
+                      try {
+                        setAddingToQueue(true);
+                        const res = await addToQueueApi(queueConfirmData.payload);
+                        const assignedToken = res?.data?.tokenNumber || queueConfirmData.tokenNumber;
+                        if (assignedToken) {
+                          setBills((prev) =>
+                            prev.map((b) =>
+                              (queueConfirmData.payload.visitId && b.visitId === queueConfirmData.payload.visitId) ||
+                              (queueConfirmData.payload.bill && String(b._id || b.id) === String(queueConfirmData.payload.bill)) ||
+                              b.patientName === queueConfirmData.patientName
+                                ? { ...b, tokenNumber: assignedToken }
+                                : b
+                            )
+                          );
+                        }
+                        toast.success(
+                          `Patient ${queueConfirmData.patientName} added to Doctor Queue (${assignedToken || "Waiting"})!`
+                        );
+                      } catch (err) {
+                        console.error("Queue add error:", err);
+                        toast.error("Unable to add patient to queue. Please try again.");
+                      } finally {
+                        setAddingToQueue(false);
+                        setQueueConfirmData(null);
+                      }
+                    }}
+                    className="flex items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-3.5 py-2.5 text-xs sm:text-sm font-bold text-white shadow-md hover:bg-blue-700 transition active:scale-95 disabled:opacity-50"
+                  >
+                    <CheckCircle2 size={16} />
+                    {addingToQueue ? "Adding..." : "Yes, Add to Queue"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }

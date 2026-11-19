@@ -20,7 +20,6 @@ import {
   MapPin,
   FileText,
   CreditCard,
-  BarChart2,
   BookOpen,
   Settings,
   LogOut,
@@ -120,7 +119,6 @@ export default function Sidebar({ isOpen, isCollapsed, onClose }) {
     role === "admin"
       ? [
           { path: "/admin/patients", label: "Patients", icon: User },
-          { path: "/admin/reports", label: "Reports", icon: BarChart2 },
         ]
       : [];
 
@@ -145,11 +143,15 @@ export default function Sidebar({ isOpen, isCollapsed, onClose }) {
               ]
             : []),
           {
+            path: "/doctor/patients",
+            label: "Patients",
+            icon: User,
+          },
+          {
             path: "/doctor/medical-records",
             label: "Medical Records",
             icon: FileText,
           },
-          { path: "/doctor/reports", label: "OPD Reports", icon: BarChart2 },
         ]
       : [];
 

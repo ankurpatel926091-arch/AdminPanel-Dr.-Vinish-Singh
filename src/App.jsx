@@ -11,7 +11,6 @@ import DoctorDashboard from "./pages/Dashboard";
 import TodaysAppointments from "./pages/DoctorDashboard/TodaysAppointments";
 import MedicalRecords from "./pages/DoctorDashboard/MedicalRecords";
 import Prescriptions from "./pages/DoctorDashboard/Prescriptions";
-import DoctorReports from "./pages/DoctorDashboard/DoctorReports";
 import DoctorDash from "./pages/DoctorDashboard/DoctorDash";
 import Consultation from "./pages/DoctorDashboard/Consultation";
 import MyQueue from "./pages/DoctorDashboard/MyQueue";
@@ -194,7 +193,7 @@ export default function App() {
               <Route path="payments" element={<Payments />} />
               <Route path="doctor-queue" element={<DoctorQueue />} />
               <Route path="patients" element={<Patients />} />
-              <Route path="reports" element={<Reports />} />
+              <Route path="reports" element={<Navigate to="/admin/billing" replace />} />
             </Route>
 
             {/* Legacy/Direct Admin Routes */}
@@ -223,9 +222,10 @@ export default function App() {
                 path="all-appointments"
                 element={<Navigate to="/doctor/todays-appointments" replace />}
               />
+              <Route path="patients" element={<Patients />} />
               <Route path="medical-records" element={<MedicalRecords />} />
               <Route path="prescriptions" element={<Prescriptions />} />
-              <Route path="reports" element={<DoctorReports />} />
+              <Route path="reports" element={<Navigate to="/doctor/medical-records" replace />} />
               <Route path="follow-ups" element={<FollowUps />} />
               <Route path="consultation" element={<Consultation />} />
             </Route>

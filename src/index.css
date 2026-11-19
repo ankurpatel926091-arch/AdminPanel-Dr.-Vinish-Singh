@@ -143,11 +143,51 @@ body.modal-open {
   /* Compact buttons, inputs & select fields */
   input, select, textarea {
     font-size: 0.78rem !important;
-    padding-top: 0.35rem !important;
-    padding-bottom: 0.35rem !important;
-    padding-left: 0.55rem !important;
-    padding-right: 0.55rem !important;
     border-radius: 0.55rem !important;
+  }
+
+  /* Default compact padding ONLY for inputs/selects without explicit icon padding */
+  input:not([class*="pl-"]),
+  select:not([class*="pl-"]),
+  textarea:not([class*="pl-"]) {
+    padding-left: 0.65rem;
+  }
+
+  input:not([class*="pr-"]),
+  select:not([class*="pr-"]),
+  textarea:not([class*="pr-"]) {
+    padding-right: 0.65rem;
+  }
+
+  /* Ensure inputs and selects with icons ALWAYS preserve clean icon clearance on mobile */
+  .pl-8, input.pl-8, select.pl-8 {
+    padding-left: 2rem !important;
+  }
+  .pl-9, input.pl-9, select.pl-9 {
+    padding-left: 2.25rem !important;
+  }
+  .pl-10, input.pl-10, select.pl-10 {
+    padding-left: 2.5rem !important;
+  }
+  .pl-11, input.pl-11, select.pl-11 {
+    padding-left: 2.75rem !important;
+  }
+  .pl-12, input.pl-12, select.pl-12 {
+    padding-left: 3rem !important;
+  }
+  .pr-8, input.pr-8, select.pr-8 {
+    padding-right: 2rem !important;
+  }
+  .pr-9, input.pr-9, select.pr-9 {
+    padding-right: 2.25rem !important;
+  }
+  .pr-10, input.pr-10, select.pr-10 {
+    padding-right: 2.5rem !important;
+  }
+
+  /* Prevent absolute icons inside relative form controls from blocking touch/clicks */
+  .relative > svg.absolute {
+    pointer-events: none;
   }
 
   /* Compact buttons */
