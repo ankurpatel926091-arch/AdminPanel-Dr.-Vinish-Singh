@@ -1,12 +1,36 @@
 import API from './axios';
 
-// Fetch all OPD bills from MongoDB database via backend API
-export const getAdminBillsApi = async () => {
+// Fetch all OPD bills from MongoDB database via backend API (supports server-side pagination & filters)
+export const getAdminBillsApi = async (filters = {}) => {
   try {
-    const res = await API.get('/billing/admin/all');
+    const params = {};
+    if (filters.search && String(filters.search).trim()) {
+      params.search = String(filters.search).trim();
+    }
+    if (filters.paymentStatus && filters.paymentStatus !== 'All') {
+      params.paymentStatus = filters.paymentStatus;
+    }
+    if (filters.page) {
+      params.page = filters.page;
+    }
+    if (filters.limit) {
+      params.limit = filters.limit;
+    }
+    if (filters.startDate) {
+      params.startDate = filters.startDate;
+    }
+    if (filters.endDate) {
+      params.endDate = filters.endDate;
+    }
+    if (filters.date) {
+      params.date = filters.date;
+    }
+
+    const res = await API.get('/billing/admin/all', { params });
     if (res?.data) {
       if (Array.isArray(res.data)) return res.data;
       if (Array.isArray(res.data.data)) return res.data.data;
+      if (res.data.data) return res.data;
     }
     return [];
   } catch (error) {
@@ -60,5 +84,16 @@ export const deleteAdminBillApi = async (billId) => {
       success: false,
       message: error.response?.data?.message || error.message
     };
+  }
+};
+
+// Fetch Day-by-Day Historical Collections Summary (Cash vs UPI vs Total)
+export const getDailyCollectionSummaryApi = async (days = 30) => {
+  try {
+    const res = await API.get('/billing/admin/daily-summary', { params: { days } });
+    return res?.data || { success: false, data: [] };
+  } catch (error) {
+    console.error('Fetch Daily Collection Summary Error:', error);
+    return { success: false, data: [] };
   }
 };

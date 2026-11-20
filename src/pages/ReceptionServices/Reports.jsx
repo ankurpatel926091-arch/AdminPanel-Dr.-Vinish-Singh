@@ -342,30 +342,30 @@ const Reports = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 p-4 md:p-6">
+    <div className="space-y-4 sm:space-y-6">
 
       {/* =====================================================
           HEADER
       ====================================================== */}
 
-      <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-800 tracking-tight">
             Reports
           </h1>
 
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-0.5 text-xs sm:text-sm text-slate-500">
             View and analyze operational reports
           </p>
         </div>
 
-        <div className="flex flex-wrap gap-2">
+        <div className="flex items-center gap-2">
           <button
             onClick={exportCSV}
-            className="flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+            className="flex items-center gap-1.5 sm:gap-2 rounded-lg border border-slate-300 bg-white px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-medium text-slate-700 transition hover:bg-slate-50 cursor-pointer"
           >
-            <Download size={17} />
-            Export CSV
+            <Download size={15} />
+            <span>Export CSV</span>
           </button>
 
           <button

@@ -349,20 +349,20 @@ export default function CheckIn() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 p-4 md:p-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* =====================================================
           HEADER
       ===================================================== */}
 
-      <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Check-in</h1>
-          <p className="mt-1 text-sm text-slate-500">
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">Check-in</h1>
+          <p className="mt-0.5 text-xs sm:text-sm text-slate-500">
             Verify patient details and create today's OPD visit.
           </p>
         </div>
 
-        <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 shadow-sm">
+        <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 sm:px-4 py-2 sm:py-2.5 shadow-xs w-fit">
           <ClipboardCheck size={18} className="text-blue-600" />
           <span className="text-sm font-medium text-slate-700">
             Today's OPD Check-in

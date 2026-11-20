@@ -79,6 +79,38 @@ const isToday = (dateStr, createdAt) => {
   return false;
 };
 
+const normalizeQueueStatus = (status) =>
+  String(status || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, "_");
+
+const getQueueStatusCategory = (status) => {
+  const normalized = normalizeQueueStatus(status);
+
+  if (
+    ["waiting", "checked_in", "checkedin", "in_queue", "pending_queue"].includes(
+      normalized,
+    )
+  ) {
+    return "waiting";
+  }
+
+  if (
+    ["consulting", "in_consultation", "consultation"].includes(normalized)
+  ) {
+    return "consulting";
+  }
+
+  if (
+    ["completed", "visited", "consultation_completed"].includes(normalized)
+  ) {
+    return "completed";
+  }
+
+  return "other";
+};
+
 const DoctorDash = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -112,9 +144,18 @@ const DoctorDash = () => {
           : [];
 
       // Count appointments scheduled for today
-      const todaysApts = aptList.filter((apt) =>
-        isToday(apt.date, apt.createdAt)
-      );
+      const todaysApts = aptList.filter((apt) => {
+        if (!isToday(apt.date, apt.createdAt)) return false;
+
+        const status = String(apt.status || "")
+          .trim()
+          .toLowerCase()
+          .replace(/[\s-]+/g, "_");
+
+        return !["cancelled", "canceled", "missed", "no_show", "skipped"].includes(
+          status,
+        );
+      });
       setAppointmentsCount(todaysApts.length);
 
       if (isManualRefresh) {
@@ -141,21 +182,35 @@ const DoctorDash = () => {
 
   // Derived KPI metrics from real live queue
   const waitingPatients = useMemo(
-    () => queue.filter((item) => (item.status || "").toLowerCase() === "waiting"),
+    () =>
+      queue.filter(
+        (item) => getQueueStatusCategory(item.status) === "waiting",
+      ),
     [queue]
   );
 
   const consultingPatients = useMemo(
     () =>
-      queue.filter((item) => {
-        const st = (item.status || "").toLowerCase();
-        return st === "consulting" || st === "in_consultation";
-      }),
+      queue.filter(
+        (item) => getQueueStatusCategory(item.status) === "consulting",
+      ),
     [queue]
   );
 
   const completedPatients = useMemo(
-    () => queue.filter((item) => (item.status || "").toLowerCase() === "completed"),
+    () =>
+      queue.filter((item) => {
+        if (getQueueStatusCategory(item.status) !== "completed") return false;
+
+        const itemDate =
+          item.createdAt ||
+          item.checkInAt ||
+          item.appointmentDate ||
+          item.date ||
+          null;
+
+        return !itemDate || isToday(itemDate, itemDate);
+      }),
     [queue]
   );
 
@@ -288,9 +343,9 @@ const DoctorDash = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-50/60 p-4 sm:p-6 lg:p-8 space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* ================= 1. HEADER ================= */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
         <div>
           <h1 className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight">
             Doctor Dashboard
@@ -300,21 +355,21 @@ const DoctorDash = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           <button
             onClick={() => fetchDashboardData(true)}
             disabled={loading}
-            className="flex items-center gap-1.5 px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-slate-600 hover:text-blue-600 hover:border-blue-200 text-xs sm:text-sm font-semibold transition disabled:opacity-50 shadow-sm"
+            className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 bg-white border border-slate-200 rounded-xl text-slate-600 hover:text-blue-600 hover:border-blue-200 text-xs sm:text-sm font-semibold transition disabled:opacity-50 shadow-xs cursor-pointer"
             title="Refresh dashboard data"
           >
             <RefreshCw
-              className={`w-4 h-4 ${loading ? "animate-spin text-blue-600" : ""}`}
+              className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${loading ? "animate-spin text-blue-600" : ""}`}
             />
-            <span className="hidden sm:inline">Refresh</span>
+            <span>Refresh</span>
           </button>
 
-          <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-4 py-2 shadow-sm">
-            <CalendarDays className="w-4 h-4 text-blue-600" />
+          <div className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 sm:gap-2 bg-white border border-slate-200 rounded-xl px-3 py-1.5 sm:px-4 sm:py-2 shadow-xs">
+            <CalendarDays className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-600" />
             <span className="text-xs sm:text-sm font-semibold text-slate-700">
               {new Date().toLocaleDateString("en-IN", {
                 day: "2-digit",
@@ -326,37 +381,37 @@ const DoctorDash = () => {
         </div>
       </div>
 
-      {/* ================= 2. LIVE STATISTICS CARDS ================= */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+      {/* ================= 2. LIVE STATISTICS CARDS (2x2 on mobile, 4 on desktop) ================= */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
         {stats.map((item) => {
           const Icon = item.icon;
           return (
             <div
               key={item.title}
               onClick={item.onClick}
-              className={`bg-white border border-slate-200 rounded-2xl p-5 shadow-xs hover:shadow-md transition-all cursor-pointer group ${item.borderHover}`}
+              className={`bg-white border border-slate-200 rounded-xl sm:rounded-2xl p-2.5 sm:p-5 shadow-xs hover:shadow-md transition-all cursor-pointer group ${item.borderHover}`}
             >
               <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                <div className="min-w-0 pr-1">
+                  <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-slate-400 truncate">
                     {item.title}
                   </p>
-                  <h2 className="text-3xl font-extrabold text-slate-800 mt-2 tracking-tight group-hover:text-blue-600 transition-colors">
+                  <h2 className="text-lg sm:text-3xl font-extrabold text-slate-800 mt-1 sm:mt-2 tracking-tight group-hover:text-blue-600 transition-colors">
                     {loading ? (
-                      <span className="inline-block w-8 h-8 rounded bg-slate-100 animate-pulse" />
+                      <span className="inline-block w-6 sm:w-8 h-6 sm:h-8 rounded bg-slate-100 animate-pulse" />
                     ) : (
                       item.value
                     )}
                   </h2>
-                  <p className="text-xs text-slate-500 font-medium mt-1">
+                  <p className="text-[10px] sm:text-xs text-slate-500 font-medium mt-0.5 sm:mt-1 truncate">
                     {item.description}
                   </p>
                 </div>
 
                 <div
-                  className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${item.iconBg}`}
+                  className={`w-8 h-8 sm:w-11 sm:h-11 rounded-lg sm:rounded-xl flex items-center justify-center shrink-0 ${item.iconBg}`}
                 >
-                  <Icon className={`w-5 h-5 ${item.iconColor}`} />
+                  <Icon className={`w-4 h-4 sm:w-5 sm:h-5 ${item.iconColor}`} />
                 </div>
               </div>
             </div>
@@ -588,26 +643,7 @@ const DoctorDash = () => {
               <ArrowRight className="w-4 h-4 text-purple-400 group-hover:translate-x-0.5 transition-transform" />
             </button>
 
-            {/* 4. OPD Reports */}
-            <button
-              onClick={() => navigate("/doctor/reports")}
-              className="w-full flex items-center justify-between p-3 rounded-xl bg-emerald-50/80 hover:bg-emerald-100/90 text-emerald-900 border border-emerald-100 transition group text-left"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg bg-emerald-600 text-white flex items-center justify-center shadow-xs">
-                  <BarChart2 className="w-4 h-4" />
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-slate-800 group-hover:text-emerald-700">
-                    OPD Reports
-                  </p>
-                  <p className="text-[11px] text-slate-500 font-medium">
-                    Daily summary & stats
-                  </p>
-                </div>
-              </div>
-              <ArrowRight className="w-4 h-4 text-emerald-400 group-hover:translate-x-0.5 transition-transform" />
-            </button>
+           
           </div>
         </div>
       </div>

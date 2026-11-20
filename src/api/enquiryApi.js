@@ -1,8 +1,8 @@
 import API from './axios';
 
-// Get all contact enquiries for Admin Panel
-export const getAdminEnquiriesApi = async () => {
-  const response = await API.get('/enquiries/admin/all');
+// Get all contact enquiries for Admin Panel (supports server-side pagination & search)
+export const getAdminEnquiriesApi = async (params = {}) => {
+  const response = await API.get('/enquiries/admin/all', { params });
   return response.data;
 };
 

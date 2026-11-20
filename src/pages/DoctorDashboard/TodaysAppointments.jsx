@@ -143,10 +143,26 @@ const TodaysAppointments = () => {
 
         let qStatus = "Not Checked-in";
         if (matchedQueue) {
-          if (matchedQueue.status === "Consulting") qStatus = "In Consultation";
-          else if (matchedQueue.status === "Waiting") qStatus = "Waiting";
-          else if (matchedQueue.status === "Completed") qStatus = "Completed";
-          else if (matchedQueue.status === "Skipped") qStatus = "Skipped";
+          const queueStatus = String(matchedQueue.status || "")
+            .trim()
+            .toUpperCase()
+            .replace(/[\s-]+/g, "_");
+          if (["CONSULTING", "IN_CONSULTATION"].includes(queueStatus))
+            qStatus = "In Consultation";
+          else if (
+            ["WAITING", "CHECKED_IN", "IN_QUEUE", "PENDING_QUEUE"].includes(
+              queueStatus,
+            )
+          )
+            qStatus = "Waiting";
+          else if (
+            ["COMPLETED", "VISITED", "CONSULTATION_COMPLETED"].includes(
+              queueStatus,
+            )
+          )
+            qStatus = "Completed";
+          else if (["SKIPPED", "CANCELLED", "MISSED"].includes(queueStatus))
+            qStatus = "Skipped";
           else qStatus = matchedQueue.status;
         } else if (apt.status === "Visited") {
           qStatus = "Completed";
@@ -362,9 +378,9 @@ const TodaysAppointments = () => {
   };
 
   return (
-    <div className="p-4 md:p-6 space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* ================= HEADER ================= */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-slate-800 tracking-tight">
             Today's Appointments
@@ -375,26 +391,26 @@ const TodaysAppointments = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           <button
             onClick={() => fetchTodaysAppointments(true)}
             disabled={loading}
-            className="flex items-center gap-1.5 px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-600 hover:text-blue-600 hover:border-blue-200 text-sm font-medium transition disabled:opacity-50 shadow-sm"
+            className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 bg-white border border-slate-200 rounded-xl text-slate-600 hover:text-blue-600 hover:border-blue-200 text-xs sm:text-sm font-semibold transition disabled:opacity-50 shadow-xs cursor-pointer"
             title="Refresh list"
           >
             <RefreshCw
-              className={`w-4 h-4 ${loading ? "animate-spin text-blue-600" : ""}`}
+              className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${loading ? "animate-spin text-blue-600" : ""}`}
             />
-            <span className="hidden sm:inline">Refresh</span>
+            <span>Refresh</span>
           </button>
 
-          <div className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl shadow-sm">
-            <CalendarDays className="w-4 h-4 text-blue-600" />
+          <div className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 sm:gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-white border border-slate-200 rounded-xl shadow-xs">
+            <CalendarDays className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-600" />
 
-            <span className="text-sm font-medium text-slate-700">
+            <span className="text-xs sm:text-sm font-semibold text-slate-700">
               {new Date().toLocaleDateString("en-IN", {
                 day: "numeric",
-                month: "long",
+                month: "short",
                 year: "numeric",
               })}
             </span>
@@ -403,7 +419,7 @@ const TodaysAppointments = () => {
       </div>
 
       {/* ================= SUMMARY ================= */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
         {/* Total */}
         <div className="bg-white border border-slate-200 rounded-xl p-4">
           <div className="flex items-center justify-between">

@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect, useRef } from "react";
+import React, { useMemo, useState, useEffect, useRef, useCallback } from "react";
 
 import { createPortal } from "react-dom";
 
@@ -15,6 +15,7 @@ import {
   createAdminBillApi,
   updateAdminBillApi,
   deleteAdminBillApi,
+  getDailyCollectionSummaryApi,
 } from "../../api/billingApi";
 
 import { addToQueueApi } from "../../api/queueApi";
@@ -45,8 +46,11 @@ import {
   FilePlus,
   Printer,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Pencil,
   ArrowRight,
+  Download,
 } from "lucide-react";
 
 /* =========================================
@@ -138,38 +142,111 @@ export default function Billing() {
 
   const appointments = adminData?.appointments || [];
 
-  // Persisted Bills from MongoDB Database
+  // Persisted Bills from MongoDB Database (with Server-Side Pagination)
   const [bills, setBills] = useState([]);
   const [loadingBills, setLoadingBills] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [totalBillsCount, setTotalBillsCount] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [billingSummary, setBillingSummary] = useState({
+    totalBilled: 0,
+    totalCollected: 0,
+    totalDue: 0,
+    cashTotal: 0,
+    upiTotal: 0,
+    cardTotal: 0,
+    paidCount: 0,
+    pendingCount: 0,
+  });
+  const [showSettlementModal, setShowSettlementModal] = useState(false);
 
-  const fetchBillsFromDB = async () => {
+  // Date Filtering & Daily History States
+  const [datePreset, setDatePreset] = useState("all");
+  const [customDate, setCustomDate] = useState("");
+  const [showDailyHistoryModal, setShowDailyHistoryModal] = useState(false);
+  const [dailyHistoryList, setDailyHistoryList] = useState([]);
+  const [loadingDailyHistory, setLoadingDailyHistory] = useState(false);
+
+  // Calculate active Date Filter Parameters
+  const getDateFilterParams = useCallback(() => {
+    const today = new Date();
+    const formatYMD = (d) => {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    };
+
+    if (datePreset === "today") {
+      return { date: formatYMD(today) };
+    }
+    if (datePreset === "yesterday") {
+      const y = new Date(today);
+      y.setDate(y.getDate() - 1);
+      return { date: formatYMD(y) };
+    }
+    if (datePreset === "this_week") {
+      const past7 = new Date(today);
+      past7.setDate(past7.getDate() - 6);
+      return { startDate: formatYMD(past7), endDate: formatYMD(today) };
+    }
+    if (datePreset === "this_month") {
+      const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+      return { startDate: formatYMD(startOfMonth), endDate: formatYMD(today) };
+    }
+    if (datePreset === "custom" && customDate) {
+      return { date: customDate };
+    }
+    return {};
+  }, [datePreset, customDate]);
+
+  // Search & Filter
+  const [search, setSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(search);
+  const [statusFilter, setStatusFilter] = useState("All");
+
+  const fetchBillsFromDB = useCallback(async (page = currentPage) => {
     try {
       setLoadingBills(true);
-      const data = await getAdminBillsApi();
-      if (Array.isArray(data)) {
-        setBills(data);
+      const dateParams = getDateFilterParams();
+      const res = await getAdminBillsApi({
+        search: debouncedSearch,
+        paymentStatus: statusFilter,
+        page,
+        limit: pageSize,
+        ...dateParams,
+      });
+
+      if (res && res.data && Array.isArray(res.data)) {
+        setBills(res.data);
+        const total = res.total ?? res.data.length;
+        setTotalBillsCount(total);
+        setTotalPages(res.totalPages || Math.ceil(total / pageSize) || 1);
+        if (res.summary) {
+          setBillingSummary(res.summary);
+        }
+      } else if (Array.isArray(res)) {
+        setBills(res);
+        setTotalBillsCount(res.length);
+        setTotalPages(Math.ceil(res.length / pageSize) || 1);
       }
     } catch (e) {
       console.warn("Could not fetch bills from MongoDB:", e);
     } finally {
       setLoadingBills(false);
     }
-  };
+  }, [debouncedSearch, statusFilter, pageSize, currentPage, getDateFilterParams]);
 
   useEffect(() => {
-    fetchBillsFromDB();
-  }, []);
+    setCurrentPage(1);
+  }, [debouncedSearch, statusFilter, datePreset, customDate]);
 
-  // Search & Filter
-
-  const [search, setSearch] = useState("");
-
-  const debouncedSearch = useDebouncedValue(search);
-
-  const [statusFilter, setStatusFilter] = useState("All");
+  useEffect(() => {
+    fetchBillsFromDB(currentPage);
+  }, [debouncedSearch, statusFilter, datePreset, customDate, currentPage, pageSize]);
 
   // Modals state
-
   const [selectedBill, setSelectedBill] = useState(null);
 
   const [paymentBill, setPaymentBill] = useState(null);
@@ -496,6 +573,123 @@ export default function Billing() {
 
   const totalCollected = bills.reduce((sum, bill) => sum + bill.paidAmount, 0);
 
+  // Day-End Settlement Tally Metrics (from DB summary or page fallback)
+  const tallyCash = billingSummary.cashTotal || bills.reduce((sum, b) => {
+    const mode = String(b.paymentMode || "").toLowerCase();
+    return mode === "cash" ? sum + (Number(b.paidAmount) || 0) : sum;
+  }, 0);
+
+  const tallyUpi = billingSummary.upiTotal || bills.reduce((sum, b) => {
+    const mode = String(b.paymentMode || "").toLowerCase();
+    return mode.includes("upi") || mode.includes("online") || mode.includes("gpay") || mode.includes("phonepe")
+      ? sum + (Number(b.paidAmount) || 0)
+      : sum;
+  }, 0);
+
+  const tallyCard = billingSummary.cardTotal || bills.reduce((sum, b) => {
+    const mode = String(b.paymentMode || "").toLowerCase();
+    return mode.includes("card") ? sum + (Number(b.paidAmount) || 0) : sum;
+  }, 0);
+
+  const tallyTotalCollected = billingSummary.totalCollected || (tallyCash + tallyUpi + tallyCard) || totalCollected;
+  const tallyTotalDue = billingSummary.totalDue ?? totalDue;
+
+  const cashPercent = tallyTotalCollected > 0 ? Math.round((tallyCash / tallyTotalCollected) * 100) : 0;
+  const upiPercent = tallyTotalCollected > 0 ? Math.round((tallyUpi / tallyTotalCollected) * 100) : 0;
+  const cardPercent = tallyTotalCollected > 0 ? Math.max(0, 100 - cashPercent - upiPercent) : 0;
+
+  /* =========================================
+     Export Bills to CSV for Accounts / CA
+  ========================================= */
+  const exportToCSV = async () => {
+    try {
+      toast.info("Preparing full billing report for export...");
+      const dateParams = getDateFilterParams();
+      const fullRes = await getAdminBillsApi({
+        search: debouncedSearch,
+        paymentStatus: statusFilter,
+        ...dateParams,
+      });
+      const dataToExport = Array.isArray(fullRes) ? fullRes : (fullRes?.data || bills);
+
+      if (!dataToExport || dataToExport.length === 0) {
+        toast.warning("No bills to export");
+        return;
+      }
+
+      const headers = [
+        "Bill ID",
+        "Visit ID",
+        "Patient Name",
+        "UHID",
+        "Mobile",
+        "Age",
+        "Gender",
+        "Visit Date",
+        "Diagnosis / Reason",
+        "Doctor",
+        "Hospital / Branch",
+        "Total Amount (Rs)",
+        "Discount (Rs)",
+        "Paid Amount (Rs)",
+        "Due Amount (Rs)",
+        "Payment Mode",
+        "Payment Status",
+        "Invoice Status"
+      ];
+
+      const rows = dataToExport.map((b) => [
+        `"${b.billId || ""}"`,
+        `"${b.visitId || ""}"`,
+        `"${(b.patientName || "").replace(/"/g, '""')}"`,
+        `"${b.patientId || ""}"`,
+        `"${b.phone || ""}"`,
+        `"${b.age || ""}"`,
+        `"${b.gender || ""}"`,
+        `"${b.visitDate || ""}"`,
+        `"${(b.diagnosis || "").replace(/"/g, '""')}"`,
+        `"${(b.doctor || "Dr. Vinish Kumar Singh").replace(/"/g, '""')}"`,
+        `"${(b.hospital || "").replace(/"/g, '""')}"`,
+        `"${b.totalAmount ?? 0}"`,
+        `"${b.discount ?? 0}"`,
+        `"${b.paidAmount ?? 0}"`,
+        `"${b.dueAmount ?? 0}"`,
+        `"${b.paymentMode || "Cash"}"`,
+        `"${b.paymentStatus || "Paid"}"`,
+        `"${b.invoiceStatus || "Paid"}"`
+      ]);
+
+      const csvContent = [headers.join(","), ...rows.map((row) => row.join(","))].join("\n");
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `billing-report-${new Date().toISOString().split("T")[0]}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast.success(`Exported ${dataToExport.length} bills to CSV`);
+    } catch (err) {
+      toast.error("Failed to export billing CSV");
+    }
+  };
+
+  // Open Daily Collection History
+  const handleOpenDailyHistory = async () => {
+    setShowDailyHistoryModal(true);
+    setLoadingDailyHistory(true);
+    try {
+      const res = await getDailyCollectionSummaryApi(30);
+      setDailyHistoryList(res?.data || []);
+    } catch (err) {
+      console.error("Failed to fetch daily history:", err);
+      toast.error("Could not fetch daily collection history");
+    } finally {
+      setLoadingDailyHistory(false);
+    }
+  };
+
   /* =========================================
 
      New Bill Handlers
@@ -619,8 +813,25 @@ export default function Billing() {
   };
 
   // Manual Trigger to Send / View Bill in Doctor Queue
-
   const handleSendToDoctorQueue = (bill) => {
+    const due = Number(
+      bill.dueAmount !== undefined
+        ? bill.dueAmount
+        : Math.max(0, (Number(bill.totalAmount) || 0) - (Number(bill.paidAmount) || 0))
+    );
+
+    // If payment is not fully settled (Due > 0 or Status not Paid)
+    if (due > 0 || (bill.paymentStatus && bill.paymentStatus !== "Paid")) {
+      toast.warning(
+        `Due amount ₹${due.toLocaleString("en-IN")} pending hai! Doctor Queue me bhejne se pehle payment clear karein.`,
+        { autoClose: 4500 }
+      );
+      // Automatically open the Collect Payment modal with this bill and due amount preset!
+      setPaymentBill(bill);
+      setPaymentAmount(due > 0 ? String(due) : "");
+      return;
+    }
+
     const token = addPatientToDoctorQueue(bill);
 
     if (token) {
@@ -632,7 +843,6 @@ export default function Billing() {
 
       toast.success(
         `Patient ${bill.patientName} added to Doctor Queue with Token ${token}!`,
-
         { autoClose: 4000 },
       );
     } else {
@@ -642,6 +852,16 @@ export default function Billing() {
 
   // Trigger Doctor Queue Confirmation Popup
   const promptQueueAddition = (billObj, paidAmt) => {
+    const due = Number(
+      billObj.dueAmount !== undefined
+        ? billObj.dueAmount
+        : Math.max(0, (Number(billObj.totalAmount) || 0) - (Number(billObj.paidAmount) || 0))
+    );
+    // If due is pending, do not add to doctor queue
+    if (due > 0 || (billObj.paymentStatus && billObj.paymentStatus !== "Paid")) {
+      return;
+    }
+
     const matchedApt = appointments.find(
       (a) =>
         (billObj.appointment && String(a._id || a.id) === String(billObj.appointment)) ||
@@ -772,7 +992,8 @@ export default function Billing() {
       setSelectedBill(savedBill);
 
       // Prompt Receptionist: Would you like to add patient to Doctor Queue?
-      if (formPaidAmount > 0) {
+      // Only prompt when payment is completely cleared (no due pending)
+      if (formDueAmount === 0 && formPaidAmount > 0) {
         promptQueueAddition(savedBill, formPaidAmount);
       }
     } catch (err) {
@@ -1036,8 +1257,13 @@ export default function Billing() {
       setPaymentMode("UPI");
 
       // Prompt Receptionist: Would you like to add patient to Doctor Queue?
-      if (newPaidAmount > 0) {
+      // Only prompt when due is completely 0 (full payment cleared)
+      if (newDueAmount === 0 && newPaidAmount > 0) {
         promptQueueAddition(updated, amount);
+      } else if (newDueAmount > 0) {
+        toast.info(
+          `Payment of ₹${amount.toLocaleString("en-IN")} recorded. Remaining due: ₹${newDueAmount.toLocaleString("en-IN")}. Doctor Queue me bhejne ke liye poora payment clear karein.`
+        );
       }
     } catch (err) {
       console.error("Payment collection error:", err);
@@ -1065,6 +1291,16 @@ export default function Billing() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+          <button
+            onClick={exportToCSV}
+            disabled={bills.length === 0}
+            className="flex items-center gap-1.5 sm:gap-2 rounded-lg border border-slate-200 bg-white px-2.5 sm:px-3.5 py-1.5 sm:py-2.5 text-xs sm:text-sm font-semibold text-slate-700 shadow-xs transition hover:bg-slate-50 hover:text-blue-600 active:scale-95 disabled:opacity-50"
+            title="Export Billing Data to CSV for Accounts / CA"
+          >
+            <Download size={16} className="text-slate-500 sm:w-4 sm:h-4" />
+            <span>Export CSV</span>
+          </button>
+
           <div className="flex items-center gap-1.5 sm:gap-2 rounded-lg border border-slate-200 bg-white px-2.5 sm:px-4 py-1.5 sm:py-2.5 shadow-xs">
             <Calendar size={16} className="text-blue-600 sm:w-4.5 sm:h-4.5" />
 
@@ -1167,22 +1403,169 @@ export default function Billing() {
 
       {/* =========================================
 
-          Collection Summary
+          Daily Cash vs UPI Tally Card (Day-End Settlement)
 
       ========================================= */}
 
-      <div className="rounded-xl border border-slate-200 bg-white p-2 sm:p-3 shadow-xs">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <p className="text-[10px] sm:text-xs text-slate-500 font-medium">Today's Collection</p>
-            <h2 className="mt-0.5 text-sm sm:text-xl font-bold text-emerald-600">
-              ₹{totalCollected.toLocaleString("en-IN")}
-            </h2>
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white p-3.5 sm:p-5 shadow-xs">
+
+        {/* Tally Card Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3.5 border-b border-slate-100">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-100 shadow-2xs shrink-0">
+              <WalletCards size={18} className="sm:w-5 sm:h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm sm:text-base font-bold text-slate-900 tracking-tight">
+                  Day-End Settlement & Cash vs UPI Tally
+                </h3>
+                <span className="hidden sm:inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 border border-emerald-200">
+                  <CheckCircle2 size={11} /> {datePreset === "all" ? "All Recorded Time" : datePreset === "today" ? "Today" : datePreset === "yesterday" ? "Yesterday" : datePreset === "this_week" ? "Last 7 Days" : datePreset === "this_month" ? "This Month" : customDate || "Custom Date"}
+                </span>
+              </div>
+              <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5">
+                Reception shift reconciliation: match physical cash in drawer with digital bank collections.
+              </p>
+            </div>
           </div>
 
-          <div className="inline-flex items-center gap-1.5 rounded-lg bg-green-50 px-2 sm:px-2.5 py-1 text-[11px] sm:text-xs font-semibold text-green-700 shrink-0">
-            <Banknote size={13} className="shrink-0" />
-            <span>Collection</span>
+          <div className="flex flex-wrap items-center gap-2 self-start sm:self-center">
+            <button
+              onClick={handleOpenDailyHistory}
+              className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-700 transition active:scale-95 shadow-2xs cursor-pointer"
+              title="View Day-by-Day Historical Collections"
+            >
+              <Calendar size={13} className="text-blue-600" />
+              <span>Daily History</span>
+            </button>
+
+            <button
+              onClick={() => setShowSettlementModal(true)}
+              className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 transition active:scale-95 shadow-2xs cursor-pointer"
+              title="Print Shift Settlement Handover Slip"
+            >
+              <Printer size={14} className="text-slate-600" />
+              <span>Settlement Slip</span>
+            </button>
+          </div>
+        </div>
+
+        {/* 3-Column Tally Metrics */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-4 my-3.5">
+          {/* 1. Cash in Drawer */}
+          <div className="rounded-xl border border-emerald-200/80 bg-gradient-to-br from-emerald-50/60 to-white p-3 sm:p-4 shadow-2xs">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] sm:text-xs font-bold text-emerald-800 uppercase tracking-wider flex items-center gap-1.5">
+                <Banknote size={14} className="text-emerald-600" />
+                Cash In Drawer
+              </span>
+              <span className="rounded-md bg-emerald-100/80 px-1.5 py-0.5 text-[10px] font-black text-emerald-800">
+                {cashPercent}%
+              </span>
+            </div>
+            <div className="mt-2 flex items-baseline gap-1">
+              <span className="text-lg sm:text-2xl font-black text-slate-900">
+                ₹{tallyCash.toLocaleString("en-IN")}
+              </span>
+            </div>
+            <p className="mt-1 text-[10px] sm:text-[11px] text-emerald-700/90 font-medium">
+              Physical cash received at counter (handover amount)
+            </p>
+          </div>
+
+          {/* 2. UPI & Online */}
+          <div className="rounded-xl border border-blue-200/80 bg-gradient-to-br from-blue-50/60 to-white p-3 sm:p-4 shadow-2xs">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] sm:text-xs font-bold text-blue-800 uppercase tracking-wider flex items-center gap-1.5">
+                <Smartphone size={14} className="text-blue-600" />
+                UPI / QR Digital
+              </span>
+              <span className="rounded-md bg-blue-100/80 px-1.5 py-0.5 text-[10px] font-black text-blue-800">
+                {upiPercent}%
+              </span>
+            </div>
+            <div className="mt-2 flex items-baseline gap-1">
+              <span className="text-lg sm:text-2xl font-black text-slate-900">
+                ₹{tallyUpi.toLocaleString("en-IN")}
+              </span>
+            </div>
+            <p className="mt-1 text-[10px] sm:text-[11px] text-blue-700/90 font-medium">
+              Direct clinic bank credit (GPay, PhonePe, Paytm QR)
+            </p>
+          </div>
+
+          {/* 3. Total Realized Collection */}
+          <div className="rounded-xl border border-indigo-200/80 bg-gradient-to-br from-indigo-50/60 to-white p-3 sm:p-4 shadow-2xs">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] sm:text-xs font-bold text-indigo-800 uppercase tracking-wider flex items-center gap-1.5">
+                <Receipt size={14} className="text-indigo-600" />
+                Total Settlement
+              </span>
+              <span className="rounded-md bg-indigo-100/80 px-1.5 py-0.5 text-[10px] font-black text-indigo-800">
+                100%
+              </span>
+            </div>
+            <div className="mt-2 flex items-baseline gap-1">
+              <span className="text-lg sm:text-2xl font-black text-indigo-950">
+                ₹{tallyTotalCollected.toLocaleString("en-IN")}
+              </span>
+            </div>
+            <p className="mt-1 text-[10px] sm:text-[11px] text-indigo-700/90 font-medium">
+              Total realized payments collected today
+            </p>
+          </div>
+        </div>
+
+        {/* Visual Progress Split Bar */}
+        <div className="space-y-1.5 pt-1">
+          <div className="flex items-center justify-between text-[11px] font-semibold text-slate-600">
+            <span>Payment Mode Distribution</span>
+            <span>
+              Cash: ₹{tallyCash.toLocaleString("en-IN")} ({cashPercent}%) • UPI: ₹{tallyUpi.toLocaleString("en-IN")} ({upiPercent}%)
+              {tallyCard > 0 && ` • Card: ₹${tallyCard.toLocaleString("en-IN")} (${cardPercent}%)`}
+            </span>
+          </div>
+
+          <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-100 flex">
+            <div
+              style={{ width: `${cashPercent}%` }}
+              className="h-full bg-emerald-500 transition-all duration-500"
+              title={`Cash: ${cashPercent}%`}
+            />
+            <div
+              style={{ width: `${upiPercent}%` }}
+              className="h-full bg-blue-500 transition-all duration-500"
+              title={`UPI: ${upiPercent}%`}
+            />
+            {tallyCard > 0 && (
+              <div
+                style={{ width: `${cardPercent}%` }}
+                className="h-full bg-purple-500 transition-all duration-500"
+                title={`Card: ${cardPercent}%`}
+              />
+            )}
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-[10px] sm:text-[11px] text-slate-500">
+            <div className="flex items-center gap-3">
+              <span className="flex items-center gap-1 font-medium">
+                <span className="h-2 w-2 rounded-full bg-emerald-500 inline-block" /> Cash in Hand
+              </span>
+              <span className="flex items-center gap-1 font-medium">
+                <span className="h-2 w-2 rounded-full bg-blue-500 inline-block" /> UPI / QR
+              </span>
+              {tallyCard > 0 && (
+                <span className="flex items-center gap-1 font-medium">
+                  <span className="h-2 w-2 rounded-full bg-purple-500 inline-block" /> Card / POS
+                </span>
+              )}
+            </div>
+
+            <div className="font-semibold text-slate-700 flex items-center gap-1">
+              <span>Shift Reconciliation:</span>
+              <span className="text-emerald-700">✓ Tally Matched</span>
+            </div>
           </div>
         </div>
       </div>
@@ -1211,8 +1594,50 @@ export default function Billing() {
             />
           </div>
 
+          {/* Date Filter Dropdown */}
+          <div className="relative sm:w-44 shrink-0">
+            <Calendar
+              size={13}
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 z-10"
+            />
+
+            <select
+              value={datePreset}
+              onChange={(e) => {
+                setDatePreset(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="w-full h-9 sm:h-10 appearance-none rounded-lg border border-slate-200 bg-slate-50/70 py-2 pl-9 pr-8 text-xs sm:text-sm font-medium text-slate-700 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100 cursor-pointer"
+            >
+              <option value="all">All Dates</option>
+              <option value="today">Today</option>
+              <option value="yesterday">Yesterday</option>
+              <option value="this_week">Last 7 Days</option>
+              <option value="this_month">This Month</option>
+              <option value="custom">Custom Date...</option>
+            </select>
+
+            <ChevronDown
+              size={13}
+              className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400"
+            />
+          </div>
+
+          {/* Custom Date Input */}
+          {datePreset === "custom" && (
+            <input
+              type="date"
+              value={customDate}
+              onChange={(e) => {
+                setCustomDate(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="h-9 sm:h-10 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 outline-none focus:border-blue-500 cursor-pointer shrink-0"
+            />
+          )}
+
           {/* Status Dropdown */}
-          <div className="relative sm:w-48 shrink-0">
+          <div className="relative sm:w-44 shrink-0">
             <Filter
               size={13}
               className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 z-10"
@@ -1444,14 +1869,19 @@ export default function Billing() {
                         <button
                           onClick={() => handleSendToDoctorQueue(bill)}
                           title={
-                            bill.tokenNumber
+                            (bill.dueAmount > 0 || (bill.paymentStatus && bill.paymentStatus !== "Paid"))
+                              ? `Due: ₹${bill.dueAmount || bill.totalAmount} Pending — Click to Collect Payment`
+                              : bill.tokenNumber
                               ? `Token: ${bill.tokenNumber} (Click to re-sync in Queue)`
                               : "Send to Doctor Queue"
                           }
-                          className={`rounded-md border p-1 sm:p-1.5 transition flex items-center gap-1 ${bill.tokenNumber
+                          className={`rounded-md border p-1 sm:p-1.5 transition flex items-center gap-1 ${
+                            (bill.dueAmount > 0 || (bill.paymentStatus && bill.paymentStatus !== "Paid"))
+                              ? "border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100"
+                              : bill.tokenNumber
                               ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-semibold text-[11px]"
                               : "border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-100"
-                            }`}
+                          }`}
                         >
                           <Stethoscope size={13} />
 
@@ -1510,6 +1940,55 @@ export default function Billing() {
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Server-Side Pagination Bar */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-slate-200 px-4 py-3 bg-white">
+          <div className="text-xs text-slate-500">
+            Showing <span className="font-semibold text-slate-700">{totalBillsCount > 0 ? (currentPage - 1) * pageSize + 1 : 0}</span> to{" "}
+            <span className="font-semibold text-slate-700">{Math.min(currentPage * pageSize, totalBillsCount)}</span> of{" "}
+            <span className="font-semibold text-slate-700">{totalBillsCount}</span> bills
+          </div>
+
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 text-xs text-slate-500 mr-2">
+              <span>Rows per page:</span>
+              <select
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700 outline-none focus:border-blue-500 cursor-pointer"
+              >
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+              </select>
+            </div>
+
+            <button
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage <= 1 || loadingBills}
+              className="flex items-center justify-center rounded-lg border border-slate-200 p-1.5 text-slate-600 transition hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+              title="Previous Page"
+            >
+              <ChevronLeft size={16} />
+            </button>
+
+            <span className="text-xs font-semibold text-slate-700 px-2">
+              Page {currentPage} of {totalPages || 1}
+            </span>
+
+            <button
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              disabled={currentPage >= totalPages || loadingBills}
+              className="flex items-center justify-center rounded-lg border border-slate-200 p-1.5 text-slate-600 transition hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+              title="Next Page"
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -2985,16 +3464,17 @@ export default function Billing() {
         document.body,
       )}
 
-      {/* Print Stylesheet for Official OPD Receipt */}
+      {/* Print Stylesheet for Official OPD Receipt & Day-End Settlement Sheet */}
       <style>{`
         @media print {
           body * {
             visibility: hidden !important;
           }
-          #printable-billing-receipt, #printable-billing-receipt * {
+          #printable-billing-receipt, #printable-billing-receipt *,
+          #printable-settlement-slip, #printable-settlement-slip * {
             visibility: visible !important;
           }
-          #printable-billing-receipt {
+          #printable-billing-receipt, #printable-settlement-slip {
             position: absolute !important;
             left: 0 !important;
             top: 0 !important;
@@ -3335,6 +3815,369 @@ export default function Billing() {
                     {addingToQueue ? "Adding..." : "Yes, Add to Queue"}
                   </button>
                 </div>
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )}
+
+      {/* =====================================================
+          Day-End Settlement & Shift Handover Slip Modal
+      ===================================================== */}
+      {showSettlementModal &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto cursor-pointer"
+            onClick={() => setShowSettlementModal(false)}
+          >
+            <div
+              className="w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-2xl border border-slate-200 cursor-default animate-in zoom-in-95 duration-200 my-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Modal Top Actions */}
+              <div className="flex items-center justify-between border-b border-slate-200 px-5 py-3 bg-slate-50/70">
+                <div className="flex items-center gap-2">
+                  <WalletCards size={18} className="text-emerald-700" />
+                  <span className="text-xs sm:text-sm font-bold text-slate-900">
+                    Day-End Shift Settlement Sheet
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowSettlementModal(false)}
+                  className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-200 hover:text-slate-700 transition"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Printable Settlement Slip Body */}
+              <div id="printable-settlement-slip" className="p-5 sm:p-6 bg-white space-y-4">
+                {/* Clinic Header */}
+                <div className="border-b-2 border-slate-800 pb-3 text-center">
+                  <h2 className="text-base sm:text-lg font-black text-slate-900 uppercase tracking-tight">
+                    Dr. Vinish Kumar Singh
+                  </h2>
+                  <p className="text-[11px] font-semibold text-slate-700">
+                    M.S., M.Ch. (Urology) • Senior Consultant Urologist & Andrologist
+                  </p>
+                  <p className="text-[10px] text-slate-500 mt-0.5">
+                    Rudraksh IVF & Urology Centre (Sharda Nagar) / Dr. Shilpi Maternity Centre
+                  </p>
+                  <div className="mt-2 inline-block rounded-md bg-slate-900 px-3 py-1 text-[10px] sm:text-xs font-bold uppercase tracking-wider text-white">
+                    OPD Shift Settlement & Cash Tally Sheet
+                  </div>
+                </div>
+
+                {/* Shift Meta */}
+                <div className="grid grid-cols-2 gap-2 text-xs border-b border-slate-200 pb-3">
+                  <div>
+                    <span className="text-slate-400 text-[10px] block">Settlement Date:</span>
+                    <span className="font-bold text-slate-800">
+                      {new Date().toLocaleDateString("en-GB", {
+                        day: "2-digit",
+                        month: "short",
+                        year: "numeric",
+                      })}
+                    </span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-slate-400 text-[10px] block">Generated At:</span>
+                    <span className="font-bold text-slate-800">
+                      {new Date().toLocaleTimeString("en-IN", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        hour12: true,
+                      })}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 text-[10px] block">Desk Operator:</span>
+                    <span className="font-semibold text-slate-700">Reception Counter #1</span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-slate-400 text-[10px] block">Total Invoices:</span>
+                    <span className="font-bold text-blue-700">
+                      {totalBillsCount || bills.length} Bills
+                    </span>
+                  </div>
+                </div>
+
+                {/* Detailed Financial Breakdown Table */}
+                <div className="space-y-2">
+                  <h4 className="text-[11px] font-black uppercase tracking-wider text-slate-500">
+                    Collections Reconciliation
+                  </h4>
+
+                  <div className="rounded-xl border border-slate-200 overflow-hidden text-xs">
+                    <div className="flex items-center justify-between p-2.5 bg-emerald-50/70 border-b border-slate-200">
+                      <div className="flex items-center gap-2">
+                        <Banknote size={15} className="text-emerald-700" />
+                        <div>
+                          <span className="font-bold text-slate-900 block">Physical Cash In Drawer</span>
+                          <span className="text-[10px] text-slate-500">Physical notes to hand over</span>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <span className="font-black text-sm text-emerald-800 block">
+                          ₹{tallyCash.toLocaleString("en-IN")}
+                        </span>
+                        <span className="text-[10px] text-emerald-700 font-semibold">{cashPercent}% of total</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between p-2.5 bg-blue-50/70 border-b border-slate-200">
+                      <div className="flex items-center gap-2">
+                        <Smartphone size={15} className="text-blue-700" />
+                        <div>
+                          <span className="font-bold text-slate-900 block">UPI / QR Digital Payments</span>
+                          <span className="text-[10px] text-slate-500">Direct clinic bank credit</span>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <span className="font-black text-sm text-blue-800 block">
+                          ₹{tallyUpi.toLocaleString("en-IN")}
+                        </span>
+                        <span className="text-[10px] text-blue-700 font-semibold">{upiPercent}% of total</span>
+                      </div>
+                    </div>
+
+                    {tallyCard > 0 && (
+                      <div className="flex items-center justify-between p-2.5 bg-purple-50/70 border-b border-slate-200">
+                        <div className="flex items-center gap-2">
+                          <CreditCard size={15} className="text-purple-700" />
+                          <div>
+                            <span className="font-bold text-slate-900 block">Card / POS Swipe</span>
+                            <span className="text-[10px] text-slate-500">Card machine terminal</span>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <span className="font-black text-sm text-purple-800 block">
+                            ₹{tallyCard.toLocaleString("en-IN")}
+                          </span>
+                          <span className="text-[10px] text-purple-700 font-semibold">{cardPercent}% of total</span>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-between p-3 bg-slate-900 text-white">
+                      <div>
+                        <span className="font-bold text-sm block">Total Realized Collection</span>
+                        <span className="text-[10px] text-slate-300">All modes combined (100%)</span>
+                      </div>
+                      <div className="text-right">
+                        <span className="font-black text-base text-emerald-400">
+                          ₹{tallyTotalCollected.toLocaleString("en-IN")}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Pending Balance Notice */}
+                  {tallyTotalDue > 0 && (
+                    <div className="flex items-center justify-between rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800 border border-amber-200">
+                      <span className="font-medium">Total Pending Patient Due:</span>
+                      <span className="font-black">₹{tallyTotalDue.toLocaleString("en-IN")}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Handover & Verification Signatures */}
+                <div className="pt-6 grid grid-cols-2 gap-8 text-center text-xs">
+                  <div className="border-t border-slate-300 pt-1.5">
+                    <p className="font-bold text-slate-800">Cashier / Receptionist</p>
+                    <p className="text-[10px] text-slate-400">(Cash Handed Over)</p>
+                  </div>
+                  <div className="border-t border-slate-300 pt-1.5">
+                    <p className="font-bold text-slate-800">Doctor / Manager</p>
+                    <p className="text-[10px] text-slate-400">(Verified & Received)</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Modal Bottom Action Buttons */}
+              <div className="flex items-center justify-between border-t border-slate-200 bg-slate-50 px-5 py-3">
+                <p className="text-[11px] text-slate-500">
+                  Ready to print for shift handover.
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowSettlementModal(false)}
+                    className="rounded-lg border border-slate-200 bg-white px-3.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition"
+                  >
+                    Close
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => window.print()}
+                    className="flex items-center gap-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 px-4 py-1.5 text-xs font-bold text-white shadow-xs transition active:scale-95 cursor-pointer"
+                  >
+                    <Printer size={14} />
+                    <span>Print Settlement Slip</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )}
+
+      {/* =====================================================
+          Daily Collection History Modal (Roj Ka Hisaab)
+      ===================================================== */}
+      {showDailyHistoryModal &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto cursor-pointer"
+            onClick={() => setShowDailyHistoryModal(false)}
+          >
+            <div
+              className="w-full max-w-3xl overflow-hidden rounded-2xl bg-white shadow-2xl border border-slate-200 cursor-default animate-in zoom-in-95 duration-200 my-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between border-b border-slate-200 px-5 py-3.5 bg-slate-50/80">
+                <div className="flex items-center gap-2.5">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-blue-700 border border-blue-100">
+                    <Calendar size={18} />
+                  </div>
+                  <div>
+                    <h3 className="text-sm sm:text-base font-bold text-slate-900">
+                      Daily Collection History (Roj Ka Hisaab)
+                    </h3>
+                    <p className="text-[11px] sm:text-xs text-slate-500">
+                      Day-by-day revenue breakdown of Cash in Drawer vs UPI / Online collections.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowDailyHistoryModal(false)}
+                  className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-200 hover:text-slate-700 transition"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="p-4 sm:p-6 max-h-[65vh] overflow-y-auto">
+                {loadingDailyHistory ? (
+                  <div className="py-12 text-center text-slate-400 text-xs">
+                    <Clock size={24} className="mx-auto mb-2 animate-spin text-blue-500" />
+                    Loading daily collection history...
+                  </div>
+                ) : dailyHistoryList.length === 0 ? (
+                  <div className="py-12 text-center text-slate-400 text-xs">
+                    No billing history records found in database.
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto rounded-xl border border-slate-200">
+                    <table className="w-full min-w-[620px] text-left text-xs border-collapse">
+                      <thead>
+                        <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase text-[10px] tracking-wider">
+                          <th className="py-2.5 px-3">Date (Tareekh)</th>
+                          <th className="py-2.5 px-3 text-center">Bills</th>
+                          <th className="py-2.5 px-3 text-right">Cash in Hand</th>
+                          <th className="py-2.5 px-3 text-right">UPI / Online</th>
+                          <th className="py-2.5 px-3 text-right">Total Collection</th>
+                          <th className="py-2.5 px-3 text-right">Due Balance</th>
+                          <th className="py-2.5 px-3 text-center">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {dailyHistoryList.map((day) => {
+                          const dateObj = new Date(day._id + "T00:00:00");
+                          const formattedDate = !isNaN(dateObj.getTime())
+                            ? dateObj.toLocaleDateString("en-GB", {
+                                day: "2-digit",
+                                month: "short",
+                                year: "numeric",
+                              })
+                            : day._id;
+
+                          const isToday =
+                            day._id === new Date().toISOString().split("T")[0];
+
+                          return (
+                            <tr
+                              key={day._id}
+                              className={`hover:bg-slate-50/80 transition ${
+                                isToday ? "bg-blue-50/40 font-semibold" : ""
+                              }`}
+                            >
+                              <td className="py-2.5 px-3 font-medium text-slate-900">
+                                <div className="flex items-center gap-1.5">
+                                  <span>{formattedDate}</span>
+                                  {isToday && (
+                                    <span className="rounded-full bg-blue-100 px-1.5 py-0.2 text-[9px] font-bold text-blue-700">
+                                      Today
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+
+                              <td className="py-2.5 px-3 text-center font-bold text-slate-700">
+                                {day.totalBills}
+                              </td>
+
+                              <td className="py-2.5 px-3 text-right text-emerald-700 font-bold">
+                                ₹{Number(day.cashTotal || 0).toLocaleString("en-IN")}
+                              </td>
+
+                              <td className="py-2.5 px-3 text-right text-blue-700 font-bold">
+                                ₹{Number(day.upiTotal || 0).toLocaleString("en-IN")}
+                              </td>
+
+                              <td className="py-2.5 px-3 text-right font-black text-slate-900">
+                                ₹{Number(day.totalCollected || 0).toLocaleString("en-IN")}
+                              </td>
+
+                              <td className="py-2.5 px-3 text-right text-slate-500">
+                                {day.totalDue > 0 ? (
+                                  <span className="text-amber-700 font-bold">
+                                    ₹{Number(day.totalDue).toLocaleString("en-IN")}
+                                  </span>
+                                ) : (
+                                  <span className="text-emerald-600 font-medium">₹0</span>
+                                )}
+                              </td>
+
+                              <td className="py-2.5 px-3 text-center">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setDatePreset("custom");
+                                    setCustomDate(day._id);
+                                    setShowDailyHistoryModal(false);
+                                    toast.info(`Filtered billing to ${formattedDate}`);
+                                  }}
+                                  className="rounded-md border border-slate-200 bg-white hover:bg-blue-50 hover:border-blue-200 px-2 py-1 text-[11px] font-bold text-blue-600 transition shadow-2xs cursor-pointer"
+                                >
+                                  View Day
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="flex items-center justify-between border-t border-slate-200 bg-slate-50 px-5 py-3">
+                <span className="text-[11px] text-slate-500">
+                  Click <strong>View Day</strong> on any date to filter all records and print that day's settlement slip.
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowDailyHistoryModal(false)}
+                  className="rounded-lg border border-slate-200 bg-white px-4 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition"
+                >
+                  Close
+                </button>
               </div>
             </div>
           </div>,

@@ -1,14 +1,27 @@
 import API from './axios';
 
-// Get all real patients aggregated from database
-export const getPatientsApi = async () => {
+// Get all real patients aggregated from database (supports server-side pagination & filters)
+export const getPatientsApi = async (filters = {}) => {
   try {
-    const res = await API.get('/admin/patients');
-    if (res?.data?.data && Array.isArray(res.data.data)) {
-      return res.data.data;
+    const params = {};
+    if (filters.search && String(filters.search).trim()) {
+      params.search = String(filters.search).trim();
     }
-    if (Array.isArray(res?.data)) {
-      return res.data;
+    if (filters.gender && filters.gender !== 'All') {
+      params.gender = filters.gender;
+    }
+    if (filters.page) {
+      params.page = filters.page;
+    }
+    if (filters.limit) {
+      params.limit = filters.limit;
+    }
+
+    const res = await API.get('/admin/patients', { params });
+    if (res?.data) {
+      if (Array.isArray(res.data)) return res.data;
+      if (Array.isArray(res.data.data)) return res.data.data;
+      if (res.data.data) return res.data;
     }
     return [];
   } catch (error) {

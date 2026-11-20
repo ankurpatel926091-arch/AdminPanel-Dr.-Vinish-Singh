@@ -14,12 +14,25 @@ export const saveConsultationApi = async (consultationData) => {
   }
 };
 
-// Get all consultations (for Medical Records & History)
-export const getConsultationsApi = async () => {
+// Get all consultations (for Medical Records & History, supports server-side pagination & search)
+export const getConsultationsApi = async (filters = {}) => {
   try {
-    const res = await API.get('/consultations');
-    if (res?.data?.data && Array.isArray(res.data.data)) {
-      return res.data.data;
+    const params = {};
+    if (filters.search && String(filters.search).trim()) {
+      params.search = String(filters.search).trim();
+    }
+    if (filters.page) {
+      params.page = filters.page;
+    }
+    if (filters.limit) {
+      params.limit = filters.limit;
+    }
+
+    const res = await API.get('/consultations', { params });
+    if (res?.data) {
+      if (Array.isArray(res.data)) return res.data;
+      if (Array.isArray(res.data.data)) return res.data.data;
+      if (res.data.data) return res.data;
     }
     return [];
   } catch (error) {

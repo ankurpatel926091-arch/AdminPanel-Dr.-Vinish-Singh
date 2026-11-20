@@ -260,40 +260,56 @@ export default function DoctorQueue() {
 
       {/* 2. Current Consultation Banner */}
       {currentConsulting ? (
-        <div className="bg-gradient-to-r from-blue-900 to-slate-900 rounded-2xl p-5 text-white shadow-md border border-blue-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="min-w-[56px] px-2.5 h-12 rounded-xl bg-blue-600 text-white font-extrabold text-base flex items-center justify-center shadow whitespace-nowrap tracking-tight shrink-0">
-              {currentConsulting.tokenNumber}
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/20 text-blue-300 border border-blue-400/30 uppercase">
-                  Currently Consulting
-                </span>
-                <span className="text-xs text-slate-300 font-mono">
-                  Started: {currentConsulting.startTime}
-                </span>
-              </div>
-              <h3 className="text-lg font-bold text-white mt-0.5">
-                {currentConsulting.patientName}{" "}
-                <span className="text-xs font-normal text-slate-300">
-                  ({currentConsulting.gender}, {currentConsulting.age} yrs)
-                </span>
-              </h3>
-              <p className="text-xs text-slate-300">
-                {currentConsulting.patientId} • Doctor: {currentConsulting.doctorName}
-              </p>
-            </div>
-          </div>
+        <div className="bg-gradient-to-r from-[#071d49] via-[#0b2b68] to-[#0a1f46] rounded-2xl p-3 sm:p-4 text-white shadow-md border border-blue-700/50 relative overflow-hidden">
+          {/* Decorative glow */}
+          <div className="absolute -top-10 -right-10 w-28 h-28 bg-blue-400/10 rounded-full blur-xl pointer-events-none" />
 
-          <div className="flex items-center gap-2.5 self-end sm:self-center">
+          {/* Top Row: Live Status + Time + Details Button */}
+          <div className="flex items-center justify-between gap-2 pb-2.5 mb-2.5 border-b border-blue-800/60">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 uppercase tracking-wider shrink-0">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                In Consultation
+              </span>
+              {currentConsulting.startTime && (
+                <span className="text-[11px] text-blue-200/80 font-mono truncate">
+                  Started {currentConsulting.startTime}
+                </span>
+              )}
+            </div>
+
             <button
               onClick={() => setSelectedPatientModal(currentConsulting)}
-              className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold flex items-center gap-1.5 border border-slate-700 shadow-xs transition"
+              className="px-2.5 py-1 rounded-lg bg-blue-500/20 hover:bg-blue-500/30 text-blue-200 hover:text-white text-xs font-semibold flex items-center gap-1 border border-blue-400/30 shadow-2xs transition active:scale-95 cursor-pointer shrink-0"
             >
-              <Eye className="w-4 h-4 text-blue-400" />
-              View Details
+              <Eye className="w-3.5 h-3.5 text-blue-300" />
+              <span>Details</span>
             </button>
+          </div>
+
+          {/* Main Info: Token Number + Patient Details */}
+          <div className="flex items-center gap-3">
+            <div className="px-2.5 py-1.5 rounded-xl bg-blue-600 text-white font-black text-sm sm:text-base flex items-center justify-center shadow-inner tracking-tight border border-blue-400/30 shrink-0">
+              {currentConsulting.tokenNumber}
+            </div>
+
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <h3 className="text-sm sm:text-base font-bold text-white tracking-tight truncate">
+                  {currentConsulting.patientName}
+                </h3>
+                {(currentConsulting.gender || currentConsulting.age) && (
+                  <span className="text-xs text-blue-200/70 font-medium">
+                    ({[currentConsulting.gender, currentConsulting.age ? `${currentConsulting.age} yrs` : null].filter(Boolean).join(", ")})
+                  </span>
+                )}
+              </div>
+              {currentConsulting.patientId && (
+                <p className="text-[11px] text-blue-300/80 font-mono mt-0.5 truncate">
+                  {currentConsulting.patientId}
+                </p>
+              )}
+            </div>
           </div>
         </div>
       ) : (

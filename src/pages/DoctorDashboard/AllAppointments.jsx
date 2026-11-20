@@ -131,11 +131,11 @@ const AllAppointments = () => {
   };
 
   return (
-    <div className="p-6 md:p-8 min-h-full bg-slate-50">
+    <div className="space-y-4 sm:space-y-6">
 
       {/* Header */}
-      <div className="mb-6">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
           <div>
             <h1 className="text-xl sm:text-2xl font-bold text-slate-800 tracking-tight">
               All Appointments

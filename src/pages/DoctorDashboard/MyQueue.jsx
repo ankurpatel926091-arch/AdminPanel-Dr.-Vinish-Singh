@@ -37,7 +37,13 @@ export default function MyQueue() {
   // Helper to normalize status for comparison
   const normalizeStatus = (st) => {
     const s = String(st || "").toUpperCase();
-    if (s === "WAITING") return "WAITING";
+    if (
+      ["WAITING", "CHECKED_IN", "CHECKED-IN", "IN_QUEUE", "PENDING_QUEUE"].includes(
+        s,
+      )
+    ) {
+      return "WAITING";
+    }
     if (s === "IN_CONSULTATION" || s === "CONSULTING") return "IN_CONSULTATION";
     if (s === "COMPLETED") return "COMPLETED";
     if (s === "SKIPPED" || s === "CANCELLED") return "SKIPPED";

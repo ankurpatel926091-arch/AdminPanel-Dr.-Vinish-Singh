@@ -1,8 +1,8 @@
 import API from './axios';
 
-// Get all blogs for Admin panel (including drafts)
-export const getAdminBlogsApi = async () => {
-  const response = await API.get('/blogs/admin/all');
+// Get all blogs for Admin panel (including drafts, supports server-side pagination & search)
+export const getAdminBlogsApi = async (params = {}) => {
+  const response = await API.get('/blogs/admin/all', { params });
   return response.data;
 };
 

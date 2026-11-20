@@ -279,24 +279,24 @@ export default function Consultation() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 p-4 md:p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
 
         {/* Page Header */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-slate-800">
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-slate-800 tracking-tight">
               Consultation
             </h1>
 
-            <p className="text-sm text-slate-500 mt-1">
+            <p className="text-xs sm:text-sm text-slate-500 mt-0.5 sm:mt-1">
               Review patient history and record the current consultation
             </p>
           </div>
 
           <div className="flex items-center gap-2">
             {isSaved && (
-              <span className="flex items-center gap-1.5 text-sm text-green-600 font-medium">
+              <span className="flex items-center gap-1.5 text-xs sm:text-sm text-green-600 font-medium">
                 <CheckCircle className="w-4 h-4" />
                 Saved
               </span>

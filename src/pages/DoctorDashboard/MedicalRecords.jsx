@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
 import useDebouncedValue from "../../hooks/useDebouncedValue";
 import { getConsultationsApi } from "../../api/consultationApi";
 import {
@@ -72,72 +72,88 @@ export default function MedicalRecords() {
   const [selectedRecord, setSelectedRecord] = useState(null);
 
   // ✅ NEW: Pagination states
+  // Server-Side Pagination & Data State
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [totalRecordsCount, setTotalRecordsCount] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+
+  const fetchRecords = useCallback(async (page = currentPage) => {
+    setLoading(true);
+    try {
+      const res = await getConsultationsApi({
+        search: debouncedSearch,
+        page,
+        limit: itemsPerPage,
+      });
+
+      const rawList = res?.data && Array.isArray(res.data) ? res.data : (Array.isArray(res) ? res : []);
+      const total = res?.total ?? rawList.length;
+      setTotalRecordsCount(total);
+      setTotalPages(res?.totalPages || Math.ceil(total / itemsPerPage) || 1);
+
+      const mapped = rawList.map((item, idx) => ({
+        id: item.recordKey || item._id || `MR-${idx + 1001}`,
+        patientId: item.patientId || "—",
+        patientName: item.patientName || "Patient",
+        age: item.age || "—",
+        gender: item.gender || "—",
+        phone: item.mobile || "—",
+        bloodGroup: "—",
+        visitDate: item.completedAt
+          ? new Date(item.completedAt).toLocaleDateString("en-IN", {
+              day: "2-digit",
+              month: "short",
+              year: "numeric",
+            })
+          : item.createdAt
+          ? new Date(item.createdAt).toLocaleDateString("en-IN", {
+              day: "2-digit",
+              month: "short",
+              year: "numeric",
+            })
+          : "—",
+        diagnosis: item.diagnosis || "General Consultation",
+        complaint: item.chiefComplaint || "No complaint specified",
+        doctor: item.doctorName || "Dr. Vinish Kumar Singh",
+        status: item.status === "COMPLETED" ? "Active" : "Under Investigation",
+        medicalHistory: item.clinicalNotes ? [item.clinicalNotes] : ["No prior history noted"],
+        allergies: ["No known allergies"],
+        medications: (item.medicines || [])
+          .filter((m) => m && m.name)
+          .map(
+            (m) =>
+              `${m.name} ${m.dosage ? `(${m.dosage})` : ""} ${m.frequency || ""}`.trim()
+          ),
+        clinicalNotes: item.clinicalNotes || "—",
+        investigations: item.investigation
+          ? [
+              {
+                name: item.investigation,
+                date: "Prescribed",
+                result: "Pending",
+                remarks: "Advised in consultation",
+              },
+            ]
+          : [],
+        treatmentPlan:
+          item.advice || item.followUpInstructions || "Follow prescribed advice.",
+      }));
+      setRecords(mapped);
+    } catch (err) {
+      console.warn("Failed to load consultations:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [debouncedSearch, itemsPerPage, currentPage]);
 
   useEffect(() => {
-    let isMounted = true;
-    setLoading(true);
-    getConsultationsApi()
-      .then((data) => {
-        if (!isMounted) return;
-        const mapped = (data || []).map((item, idx) => ({
-          id: item.recordKey || item._id || `MR-${idx + 1001}`,
-          patientId: item.patientId || "—",
-          patientName: item.patientName || "Patient",
-          age: item.age || "—",
-          gender: item.gender || "—",
-          phone: item.mobile || "—",
-          bloodGroup: "—",
-          visitDate: item.completedAt
-            ? new Date(item.completedAt).toLocaleDateString("en-IN", {
-                day: "2-digit",
-                month: "short",
-                year: "numeric",
-              })
-            : item.createdAt
-            ? new Date(item.createdAt).toLocaleDateString("en-IN", {
-                day: "2-digit",
-                month: "short",
-                year: "numeric",
-              })
-            : "—",
-          diagnosis: item.diagnosis || "General Consultation",
-          complaint: item.chiefComplaint || "No complaint specified",
-          doctor: item.doctorName || "Dr. Vinish Kumar Singh",
-          status: item.status === "COMPLETED" ? "Active" : "Under Investigation",
-          medicalHistory: item.clinicalNotes ? [item.clinicalNotes] : ["No prior history noted"],
-          allergies: ["No known allergies"],
-          medications: (item.medicines || [])
-            .filter((m) => m && m.name)
-            .map(
-              (m) =>
-                `${m.name} ${m.dosage ? `(${m.dosage})` : ""} ${m.frequency || ""}`.trim()
-            ),
-          clinicalNotes: item.clinicalNotes || "—",
-          investigations: item.investigation
-            ? [
-                {
-                  name: item.investigation,
-                  date: "Prescribed",
-                  result: "Pending",
-                  remarks: "Advised in consultation",
-                },
-              ]
-            : [],
-          treatmentPlan:
-            item.advice || item.followUpInstructions || "Follow prescribed advice.",
-        }));
-        setRecords(mapped);
-      })
-      .catch((err) => console.warn("Failed to load consultations:", err))
-      .finally(() => {
-        if (isMounted) setLoading(false);
-      });
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+    setCurrentPage(1);
+  }, [debouncedSearch]);
+
+  useEffect(() => {
+    fetchRecords(currentPage);
+  }, [debouncedSearch, currentPage, itemsPerPage]);
 
   // Necessary Clinical Stats
   const totalRecords = records.length;
@@ -252,15 +268,10 @@ export default function MedicalRecords() {
   }, [records, debouncedSearch, statusFilter]);
 
   /* =========================================================
-     ✅ NEW: Pagination logic
+     ✅ Server-Side Pagination
   ========================================================= */
 
-  const totalPages = Math.ceil(filteredRecords.length / itemsPerPage) || 1;
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedRecords = filteredRecords.slice(
-    startIndex,
-    startIndex + itemsPerPage
-  );
+  const paginatedRecords = filteredRecords;
 
   // Reset to page 1 when search or status filter changes
   useEffect(() => {
@@ -275,9 +286,9 @@ export default function MedicalRecords() {
   }, [totalPages, currentPage]);
 
   return (
-    <div className="min-h-screen bg-slate-50 p-4 md:p-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-800">
             Medical Records
@@ -290,72 +301,72 @@ export default function MedicalRecords() {
         <button
           onClick={exportToCSV}
           disabled={records.length === 0}
-          className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-xs sm:text-sm font-semibold text-slate-700 shadow-xs transition hover:bg-slate-50 hover:text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-3.5 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-slate-700 shadow-xs transition hover:bg-slate-50 hover:text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto"
           title="Export Medical Records to CSV"
         >
           <Download size={15} className="text-slate-500" />
-          Export CSV
+          <span>Export CSV</span>
         </button>
       </div>
 
-      {/* Summary Cards - Necessary Clinical Stats */}
-      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      {/* Summary Cards - Necessary Clinical Stats (2x2 on mobile, 4 on desktop) */}
+      <div className="grid grid-cols-2 gap-2 sm:gap-3.5 lg:grid-cols-4">
+        <div className="rounded-xl border border-slate-200 bg-white p-2.5 sm:p-4 shadow-xs">
           <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-slate-500">Total Consultations</p>
-              <h2 className="mt-1 text-2xl font-bold text-slate-900">
+            <div className="min-w-0 pr-1">
+              <p className="text-[11px] sm:text-sm font-medium text-slate-500 truncate">Total Consultations</p>
+              <h2 className="mt-0.5 sm:mt-1 text-lg sm:text-2xl font-bold text-slate-900">
                 {totalRecords}
               </h2>
             </div>
 
-            <div className="rounded-xl bg-blue-50 p-3 text-blue-600">
-              <FileText size={22} />
+            <div className="rounded-lg sm:rounded-xl bg-blue-50 p-2 sm:p-3 text-blue-600 shrink-0">
+              <FileText className="w-4 h-4 sm:w-5.5 sm:h-5.5" />
             </div>
           </div>
         </div>
 
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="rounded-xl border border-slate-200 bg-white p-2.5 sm:p-4 shadow-xs">
           <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-slate-500">Unique Patients</p>
-              <h2 className="mt-1 text-2xl font-bold text-slate-900">
+            <div className="min-w-0 pr-1">
+              <p className="text-[11px] sm:text-sm font-medium text-slate-500 truncate">Unique Patients</p>
+              <h2 className="mt-0.5 sm:mt-1 text-lg sm:text-2xl font-bold text-slate-900">
                 {uniquePatients}
               </h2>
             </div>
 
-            <div className="rounded-xl bg-emerald-50 p-3 text-emerald-600">
-              <Users size={22} />
+            <div className="rounded-lg sm:rounded-xl bg-emerald-50 p-2 sm:p-3 text-emerald-600 shrink-0">
+              <Users className="w-4 h-4 sm:w-5.5 sm:h-5.5" />
             </div>
           </div>
         </div>
 
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="rounded-xl border border-slate-200 bg-white p-2.5 sm:p-4 shadow-xs">
           <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-slate-500">Prescriptions Issued</p>
-              <h2 className="mt-1 text-2xl font-bold text-slate-900">
+            <div className="min-w-0 pr-1">
+              <p className="text-[11px] sm:text-sm font-medium text-slate-500 truncate">Prescriptions Issued</p>
+              <h2 className="mt-0.5 sm:mt-1 text-lg sm:text-2xl font-bold text-slate-900">
                 {prescriptionsCount}
               </h2>
             </div>
 
-            <div className="rounded-xl bg-indigo-50 p-3 text-indigo-600">
-              <Pill size={22} />
+            <div className="rounded-lg sm:rounded-xl bg-indigo-50 p-2 sm:p-3 text-indigo-600 shrink-0">
+              <Pill className="w-4 h-4 sm:w-5.5 sm:h-5.5" />
             </div>
           </div>
         </div>
 
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="rounded-xl border border-slate-200 bg-white p-2.5 sm:p-4 shadow-xs">
           <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-slate-500">Investigations Advised</p>
-              <h2 className="mt-1 text-2xl font-bold text-slate-900">
+            <div className="min-w-0 pr-1">
+              <p className="text-[11px] sm:text-sm font-medium text-slate-500 truncate">Investigations Advised</p>
+              <h2 className="mt-0.5 sm:mt-1 text-lg sm:text-2xl font-bold text-slate-900">
                 {investigationsCount}
               </h2>
             </div>
 
-            <div className="rounded-xl bg-amber-50 p-3 text-amber-600">
-              <TestTube size={22} />
+            <div className="rounded-lg sm:rounded-xl bg-amber-50 p-2 sm:p-3 text-amber-600 shrink-0">
+              <TestTube className="w-4 h-4 sm:w-5.5 sm:h-5.5" />
             </div>
           </div>
         </div>
@@ -554,12 +565,12 @@ export default function MedicalRecords() {
         {/* =====================================================
             ✅ NEW: PAGINATION FOOTER
         ===================================================== */}
-        {filteredRecords.length > 0 && (
+        {records.length > 0 && (
           <div className="px-5 py-3.5 bg-slate-50/50 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500 font-medium">
             <div>
-              Showing {startIndex + 1} to{" "}
-              {Math.min(startIndex + itemsPerPage, filteredRecords.length)} of{" "}
-              {filteredRecords.length} records
+              Showing {totalRecordsCount > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0} to{" "}
+              {Math.min(currentPage * itemsPerPage, totalRecordsCount)} of{" "}
+              {totalRecordsCount} records
             </div>
 
             <div className="flex items-center gap-3">
@@ -619,44 +630,44 @@ export default function MedicalRecords() {
 
       {/* View Record Modal */}
       {selectedRecord && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-2.5 sm:p-4 backdrop-blur-xs">
           <div className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-slate-50 shadow-2xl">
             {/* Modal Header */}
-            <div className="flex items-center justify-between border-b border-slate-200 bg-white px-5 py-4">
+            <div className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3 sm:px-5 sm:py-4 sticky top-0 z-10">
               <div>
-                <h2 className="text-lg font-bold text-slate-900">
+                <h2 className="text-base sm:text-lg font-bold text-slate-900">
                   Medical Record
                 </h2>
 
-                <p className="text-sm text-slate-500">
+                <p className="text-xs sm:text-sm text-slate-500">
                   {selectedRecord.id} • {selectedRecord.patientId}
                 </p>
               </div>
 
               <button
                 onClick={() => setSelectedRecord(null)}
-                className="rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-800"
+                className="rounded-lg p-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 cursor-pointer"
               >
-                <X size={21} />
+                <X size={19} />
               </button>
             </div>
 
             {/* Modal Content */}
-            <div className="overflow-y-auto p-5">
+            <div className="overflow-y-auto p-3.5 sm:p-5">
               {/* Patient Header */}
-              <div className="mb-5 rounded-xl border border-slate-200 bg-white p-5">
-                <div className="flex flex-col justify-between gap-5 md:flex-row">
-                  <div className="flex items-center gap-4">
-                    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-blue-50 text-blue-600">
-                      <User size={30} />
+              <div className="mb-4 sm:mb-5 rounded-xl border border-slate-200 bg-white p-3.5 sm:p-5">
+                <div className="flex flex-col justify-between gap-3 sm:gap-5 md:flex-row">
+                  <div className="flex items-center gap-3 sm:gap-4">
+                    <div className="flex h-12 w-12 sm:h-16 sm:w-16 items-center justify-center rounded-full bg-blue-50 text-blue-600 shrink-0">
+                      <User className="w-6 h-6 sm:w-7 sm:h-7" />
                     </div>
 
                     <div>
-                      <h2 className="text-xl font-bold text-slate-900">
+                      <h2 className="text-base sm:text-xl font-bold text-slate-900">
                         {selectedRecord.patientName}
                       </h2>
 
-                      <p className="mt-1 text-sm text-slate-500">
+                      <p className="mt-0.5 text-xs sm:text-sm text-slate-500">
                         {selectedRecord.patientId} •{" "}
                         {selectedRecord.age} years •{" "}
                         {selectedRecord.gender}
@@ -665,7 +676,7 @@ export default function MedicalRecords() {
                   </div>
 
                   <span
-                    className={`h-fit rounded-full border px-3 py-1.5 text-xs font-semibold ${
+                    className={`h-fit self-start rounded-full border px-2.5 py-1 sm:px-3 sm:py-1.5 text-[11px] sm:text-xs font-semibold ${
                       statusStyles[selectedRecord.status]
                     }`}
                   >
@@ -673,7 +684,7 @@ export default function MedicalRecords() {
                   </span>
                 </div>
 
-                <div className="mt-5 grid grid-cols-1 gap-4 border-t border-slate-100 pt-5 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="mt-3.5 sm:mt-5 grid grid-cols-2 gap-2.5 sm:gap-4 border-t border-slate-100 pt-3.5 sm:pt-5 lg:grid-cols-4">
                   <InfoItem
                     icon={Phone}
                     label="Phone"

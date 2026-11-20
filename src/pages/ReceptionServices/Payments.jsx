@@ -239,29 +239,29 @@ export default function Payments() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 p-4 md:p-6">
+    <div className="space-y-4 sm:space-y-6">
 
       {/* =========================================
           Header
       ========================================= */}
 
-      <div className="mb-6 flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
+      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
 
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
             Payments
           </h1>
 
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-0.5 text-xs sm:text-sm text-slate-500">
             Manage payment transactions, receipts and
             payment history.
           </p>
         </div>
 
-        <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 shadow-sm">
+        <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 sm:px-4 py-2 sm:py-2.5 shadow-xs w-fit">
           <Calendar
-            size={18}
-            className="text-blue-600"
+            size={16}
+            className="text-blue-600 sm:w-4.5 sm:h-4.5"
           />
 
           <span className="text-sm font-medium text-slate-700">

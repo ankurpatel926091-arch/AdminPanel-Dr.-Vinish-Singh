@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useCallback } from "react";
 import useDebouncedValue from "../../hooks/useDebouncedValue";
 import {
   Search,
@@ -14,6 +14,9 @@ import {
   Loader2,
   Activity,
   User,
+  Download,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { getPatientsApi, registerPatientApi } from "../../api/patientApi";
 import { toast } from "react-toastify";
@@ -39,16 +42,35 @@ const Patient = () => {
   const debouncedSearch = useDebouncedValue(search);
   const [genderFilter, setGenderFilter] = useState("All");
 
+  // Server-side pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [totalPatients, setTotalPatients] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [editingPatient, setEditingPatient] = useState(null);
 
-  // Fetch real patients from MongoDB
-  const fetchPatients = async () => {
+  // Fetch real patients from MongoDB via Backend API
+  const fetchPatients = useCallback(async (page = currentPage) => {
     setLoading(true);
     try {
-      const data = await getPatientsApi();
-      if (Array.isArray(data)) {
-        setPatients(data);
+      const res = await getPatientsApi({
+        search: debouncedSearch,
+        gender: genderFilter,
+        page,
+        limit: pageSize,
+      });
+
+      if (res && res.data && Array.isArray(res.data)) {
+        setPatients(res.data);
+        const total = res.total ?? res.data.length;
+        setTotalPatients(total);
+        setTotalPages(res.totalPages || Math.ceil(total / pageSize) || 1);
+      } else if (Array.isArray(res)) {
+        setPatients(res);
+        setTotalPatients(res.length);
+        setTotalPages(Math.ceil(res.length / pageSize) || 1);
       }
     } catch (error) {
       console.error("Error fetching patients:", error);
@@ -56,40 +78,92 @@ const Patient = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [debouncedSearch, genderFilter, pageSize, currentPage]);
 
   useEffect(() => {
-    fetchPatients();
-  }, []);
+    setCurrentPage(1);
+  }, [debouncedSearch, genderFilter]);
 
-  // Filter Patients
-  const filteredPatients = useMemo(() => {
-    return patients.filter((patient) => {
-      const pFirst = patient.firstName || "";
-      const pLast = patient.lastName || "";
-      const fullName = (patient.name || `${pFirst} ${pLast}`).toLowerCase();
-
-      const searchValue = (debouncedSearch || "").toLowerCase();
-
-      const matchesSearch =
-        fullName.includes(searchValue) ||
-        (patient.uhid && patient.uhid.toLowerCase().includes(searchValue)) ||
-        (patient.mobile && String(patient.mobile).includes(searchValue)) ||
-        (patient.email && patient.email.toLowerCase().includes(searchValue));
-
-      const matchesGender =
-        genderFilter === "All" ||
-        (patient.gender || "").toLowerCase() === genderFilter.toLowerCase();
-
-      return matchesSearch && matchesGender;
-    });
-  }, [patients, debouncedSearch, genderFilter]);
+  useEffect(() => {
+    fetchPatients(currentPage);
+  }, [debouncedSearch, genderFilter, currentPage, pageSize]);
 
   // Reset Filters
   const resetFilters = () => {
     setSearch("");
     setGenderFilter("All");
-    fetchPatients();
+    setCurrentPage(1);
+  };
+
+  // Export Patients to CSV (fetches full matching set from backend)
+  const exportToCSV = async () => {
+    try {
+      toast.info("Preparing full patients list for export...");
+      const fullRes = await getPatientsApi({
+        search: debouncedSearch,
+        gender: genderFilter,
+      });
+      const dataToExport = Array.isArray(fullRes) ? fullRes : (fullRes?.data || patients);
+
+      if (!dataToExport || dataToExport.length === 0) {
+        toast.warning("No patient records to export");
+        return;
+      }
+
+      const headers = [
+        "UHID",
+        "Patient Name",
+        "Age",
+        "Gender",
+        "Mobile",
+        "Email",
+        "Total OPD Visits",
+        "Registration Date",
+        "Latest Consultation / Problem",
+        "Address",
+        "Emergency Contact",
+      ];
+
+      const rows = dataToExport.map((p) => {
+        const fullName = (
+          p.name || `${p.firstName || ""} ${p.lastName || ""}`
+        ).trim() || "Patient";
+        return [
+          `"${p.uhid || ""}"`,
+          `"${fullName.replace(/"/g, '""')}"`,
+          `"${p.age || ""}"`,
+          `"${p.gender || ""}"`,
+          `"${p.mobile || ""}"`,
+          `"${p.email || ""}"`,
+          `"${p.totalVisits || 1}"`,
+          `"${p.registeredOn || ""}"`,
+          `"${(p.latestProblem || "").replace(/"/g, '""')}"`,
+          `"${(p.address || "").replace(/"/g, '""')}"`,
+          `"${p.emergencyContact || p.mobile || ""}"`,
+        ];
+      });
+
+      const csvContent = [
+        headers.join(","),
+        ...rows.map((row) => row.join(",")),
+      ].join("\n");
+
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute(
+        "download",
+        `Dr_Vinish_Patients_${new Date().toISOString().slice(0, 10)}.csv`
+      );
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast.success(`Exported ${dataToExport.length} patient records to CSV`);
+    } catch (err) {
+      toast.error("Failed to export patients CSV");
+    }
   };
 
   // Save or Register Patient
@@ -164,43 +238,55 @@ const Patient = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 p-4 md:p-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 sm:gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-slate-800">
+          <div className="flex items-center gap-2.5 sm:gap-3 flex-wrap">
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-800 tracking-tight">
               Patients Directory
             </h1>
-            <span className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
-              {patients.length} Registered Patients
+            <span className="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 sm:px-3 sm:py-1 text-xs font-semibold text-blue-700">
+              {totalPatients} Registered Patients
             </span>
           </div>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-0.5 sm:mt-1 text-xs sm:text-sm text-slate-500">
             Comprehensive database of registered clinic patients and OPD consultation history
           </p>
         </div>
 
-        <button
-          onClick={fetchPatients}
-          disabled={loading}
-          className="flex items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:opacity-60"
-        >
-          <RefreshCw
-            size={16}
-            className={loading ? "animate-spin text-blue-600" : "text-slate-500"}
-          />
-          Refresh Directory
-        </button>
+        <div className="flex items-center gap-2 sm:gap-2.5 w-full sm:w-auto">
+          <button
+            onClick={exportToCSV}
+            disabled={patients.length === 0}
+            className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 sm:gap-2 rounded-lg border border-slate-300 bg-white px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-medium text-slate-700 shadow-xs transition hover:bg-slate-50 hover:text-blue-600 disabled:opacity-50"
+            title="Export Patients to CSV"
+          >
+            <Download size={15} className="text-slate-500" />
+            <span>Export CSV</span>
+          </button>
+
+          <button
+            onClick={fetchPatients}
+            disabled={loading}
+            className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 sm:gap-2 rounded-lg border border-slate-300 bg-white px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-medium text-slate-700 shadow-xs transition hover:bg-slate-50 disabled:opacity-60"
+          >
+            <RefreshCw
+              size={15}
+              className={loading ? "animate-spin text-blue-600" : "text-slate-500"}
+            />
+            <span>Refresh</span>
+          </button>
+        </div>
       </div>
 
       {/* Search & Filters */}
-      <div className="mb-6 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-        <div className="flex flex-col gap-3 sm:flex-row">
+      <div className="rounded-xl border border-slate-200 bg-white p-3 sm:p-4 shadow-xs">
+        <div className="flex flex-col gap-2.5 sm:flex-row">
           {/* Search */}
           <div className="relative flex-1">
             <Search
-              size={19}
+              size={17}
               className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
             />
 
@@ -209,56 +295,49 @@ const Patient = () => {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search by name, UHID, mobile or email..."
-              className="w-full rounded-lg border border-slate-300 py-2.5 pl-10 pr-4 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              className="w-full rounded-lg border border-slate-300 py-2 sm:py-2.5 pl-9 sm:pl-10 pr-3 sm:pr-4 text-xs sm:text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
             />
           </div>
 
-          {/* Gender */}
-          <select
-            value={genderFilter}
-            onChange={(e) => setGenderFilter(e.target.value)}
-            className="rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm outline-none focus:border-blue-500"
-          >
-            <option value="All">All Genders</option>
-            <option value="Male">Male</option>
-            <option value="Female">Female</option>
-          </select>
-
-          {/* Reset */}
-          <button
-            onClick={resetFilters}
-            className="flex items-center justify-center gap-2 rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50"
-          >
-            <RefreshCw size={16} />
-            Reset
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Gender */}
+            <select
+              value={genderFilter}
+              onChange={(e) => setGenderFilter(e.target.value)}
+              className="w-full sm:w-auto rounded-lg border border-slate-300 bg-white px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm outline-none focus:border-blue-500 cursor-pointer"
+            >
+              <option value="All">All Genders</option>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+            </select>
+          </div>
         </div>
 
-        <div className="mt-3 flex items-center gap-2 text-xs text-slate-500">
-          <Filter size={14} />
-          Showing {filteredPatients.length} of {patients.length} patients
+        <div className="mt-2.5 flex items-center gap-2 text-[11px] sm:text-xs text-slate-500">
+          <Filter size={13} />
+          Showing {totalPatients > 0 ? (currentPage - 1) * pageSize + 1 : 0} to {Math.min(currentPage * pageSize, totalPatients)} of {totalPatients} patients
         </div>
       </div>
 
       {/* Patient Table */}
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-        <div className="border-b border-slate-200 px-4 py-4">
-          <h2 className="font-semibold text-slate-800">
+        <div className="border-b border-slate-200 px-4 py-3">
+          <h2 className="text-sm font-semibold text-slate-800">
             Patient List
           </h2>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[900px] text-left">
-            <thead className="bg-slate-50 text-xs uppercase text-slate-500">
+          <table className="w-full min-w-[820px] text-left">
+            <thead className="bg-slate-50 text-[11px] uppercase text-slate-500">
               <tr>
-                <th className="px-5 py-3 font-semibold">UHID</th>
-                <th className="px-5 py-3 font-semibold">Patient</th>
-                <th className="px-5 py-3 font-semibold">Age / Gender</th>
-                <th className="px-5 py-3 font-semibold">Mobile</th>
-                <th className="px-5 py-3 font-semibold">Email</th>
-                <th className="px-5 py-3 font-semibold">Total Visits</th>
-                <th className="px-5 py-3 text-center font-semibold">
+                <th className="px-3 py-2.5 font-semibold">UHID</th>
+                <th className="px-3 py-2.5 font-semibold">Patient</th>
+                <th className="px-3 py-2.5 font-semibold">Age / Gender</th>
+                <th className="px-3 py-2.5 font-semibold">Mobile</th>
+                <th className="px-3 py-2.5 font-semibold">Email</th>
+                <th className="px-3 py-2.5 font-semibold">Total Visits</th>
+                <th className="px-3 py-2.5 text-center font-semibold">
                   Action
                 </th>
               </tr>
@@ -280,8 +359,8 @@ const Patient = () => {
                     </p>
                   </td>
                 </tr>
-              ) : filteredPatients.length > 0 ? (
-                filteredPatients.map((patient) => {
+              ) : patients.length > 0 ? (
+                patients.map((patient) => {
                   const pFirst = patient.firstName || "";
                   const pLast = patient.lastName || "";
                   const fullName = (patient.name || `${pFirst} ${pLast}`).trim() || "Patient";
@@ -293,66 +372,66 @@ const Patient = () => {
                       key={patient.id || patient.uhid || fullName}
                       className="transition hover:bg-slate-50"
                     >
-                      <td className="px-5 py-4">
-                        <span className="font-semibold text-blue-600">
+                      <td className="px-3 py-2.5">
+                        <span className="text-sm font-semibold text-blue-600">
                           {patient.uhid || "—"}
                         </span>
                         {patient.visitId && (
-                          <span className="block text-[11px] text-slate-400">
+                          <span className="block text-[10px] text-slate-400">
                             {patient.visitId}
                           </span>
                         )}
                       </td>
 
-                      <td className="px-5 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-blue-100 text-sm font-semibold text-blue-600">
+                      <td className="px-3 py-2.5">
+                        <div className="flex items-center gap-2">
+                          <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-blue-100 text-xs font-semibold text-blue-600">
                             {initialFirst}{initialLast}
                           </div>
 
                           <div>
-                            <p className="font-medium text-slate-800">
+                            <p className="text-sm font-medium text-slate-800">
                               {fullName}
                             </p>
-                            <p className="mt-0.5 text-xs text-slate-500">
+                            <p className="mt-0.5 text-[11px] text-slate-500">
                               Registered: {patient.registeredOn || "Recent"}
                             </p>
                           </div>
                         </div>
                       </td>
 
-                      <td className="px-5 py-4">
-                        <p className="text-sm font-medium text-slate-700">
+                      <td className="px-3 py-2.5">
+                        <p className="text-xs font-medium text-slate-700">
                           {patient.age ? `${patient.age} Yrs` : "—"}
                         </p>
-                        <p className="text-xs text-slate-500">
+                        <p className="mt-0.5 text-[11px] text-slate-500">
                           {patient.gender || "Not specified"}
                         </p>
                       </td>
 
-                      <td className="px-5 py-4 text-sm font-medium text-slate-700">
+                      <td className="whitespace-nowrap px-3 py-2.5 text-xs font-medium text-slate-700">
                         {patient.mobile || "—"}
                       </td>
 
-                      <td className="px-5 py-4 text-sm text-slate-500">
+                      <td className="px-3 py-2.5 text-xs text-slate-500">
                         {patient.email || "—"}
                       </td>
 
-                      <td className="px-5 py-4">
-                        <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-100 bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">
-                          <Activity size={13} />
+                      <td className="px-3 py-2.5">
+                        <span className="inline-flex items-center gap-1 rounded-full border border-blue-100 bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-700">
+                          <Activity size={12} />
                           {patient.totalVisits || 1} {patient.totalVisits > 1 ? "visits" : "visit"}
                         </span>
                       </td>
 
-                      <td className="px-5 py-4">
-                        <div className="flex justify-center gap-2">
+                      <td className="px-3 py-2.5">
+                        <div className="flex justify-center gap-1.5">
                           <button
                             onClick={() => setSelectedPatient(patient)}
                             title="View Patient Details"
-                            className="rounded-lg border border-slate-200 p-2 text-slate-600 transition hover:bg-slate-100 hover:text-blue-600"
+                            className="rounded-md border border-slate-200 p-1.5 text-slate-600 transition hover:bg-slate-100 hover:text-blue-600"
                           >
-                            <Eye size={17} />
+                            <Eye size={15} />
                           </button>
 
                           <button
@@ -360,9 +439,9 @@ const Patient = () => {
                               setEditingPatient({ ...patient })
                             }
                             title="Edit Patient"
-                            className="rounded-lg border border-slate-200 p-2 text-slate-600 transition hover:bg-slate-100 hover:text-blue-600"
+                            className="rounded-md border border-slate-200 p-1.5 text-slate-600 transition hover:bg-slate-100 hover:text-blue-600"
                           >
-                            <Edit size={17} />
+                            <Edit size={15} />
                           </button>
                         </div>
                       </td>
@@ -392,6 +471,55 @@ const Patient = () => {
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Server-Side Pagination Bar */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-slate-200 px-4 py-3 bg-white">
+          <div className="text-xs text-slate-500">
+            Showing <span className="font-semibold text-slate-700">{totalPatients > 0 ? (currentPage - 1) * pageSize + 1 : 0}</span> to{" "}
+            <span className="font-semibold text-slate-700">{Math.min(currentPage * pageSize, totalPatients)}</span> of{" "}
+            <span className="font-semibold text-slate-700">{totalPatients}</span> patients
+          </div>
+
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 text-xs text-slate-500 mr-2">
+              <span>Rows per page:</span>
+              <select
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700 outline-none focus:border-blue-500 cursor-pointer"
+              >
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+              </select>
+            </div>
+
+            <button
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage <= 1 || loading}
+              className="flex items-center justify-center rounded-lg border border-slate-200 p-1.5 text-slate-600 transition hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+              title="Previous Page"
+            >
+              <ChevronLeft size={16} />
+            </button>
+
+            <span className="text-xs font-semibold text-slate-700 px-2">
+              Page {currentPage} of {totalPages || 1}
+            </span>
+
+            <button
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              disabled={currentPage >= totalPages || loading}
+              className="flex items-center justify-center rounded-lg border border-slate-200 p-1.5 text-slate-600 transition hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+              title="Next Page"
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -614,11 +742,11 @@ const Patient = () => {
               </div>
             </div>
 
-            <div className="mt-6 flex justify-end gap-3">
+            <div className="mt-6 flex flex-col-reverse sm:flex-row sm:justify-end gap-2.5 sm:gap-3">
               <button
                 type="button"
                 onClick={() => setEditingPatient(null)}
-                className="rounded-lg border border-slate-300 px-5 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
+                className="w-full sm:w-auto rounded-lg border border-slate-300 px-5 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50 cursor-pointer"
               >
                 Cancel
               </button>
@@ -626,7 +754,7 @@ const Patient = () => {
               <button
                 type="submit"
                 disabled={saving}
-                className="flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-blue-700 disabled:opacity-60"
+                className="w-full sm:w-auto flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-blue-700 disabled:opacity-60 cursor-pointer"
               >
                 {saving && <Loader2 size={16} className="animate-spin" />}
                 {editingPatient.id
@@ -647,13 +775,13 @@ const Patient = () => {
 
 const InfoItem = ({ icon, label, value }) => {
   return (
-    <div className="rounded-lg border border-slate-200 p-3">
+    <div className="rounded-lg border border-slate-200 p-2.5 sm:p-3">
       <div className="mb-1 flex items-center gap-2 text-xs text-slate-400">
         {icon}
         {label}
       </div>
 
-      <p className="break-words text-sm font-medium text-slate-700">
+      <p className="break-words text-xs sm:text-sm font-medium text-slate-700">
         {value || "—"}
       </p>
     </div>
@@ -669,7 +797,7 @@ const Input = ({
 }) => {
   return (
     <div>
-      <label className="mb-1.5 block text-sm font-medium text-slate-700">
+      <label className="mb-1.5 block text-xs sm:text-sm font-medium text-slate-700">
         {label}
       </label>
 
@@ -678,7 +806,7 @@ const Input = ({
         value={value}
         required={required}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+        className="w-full rounded-lg border border-slate-300 px-3 py-2 sm:py-2.5 text-xs sm:text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
       />
     </div>
   );
@@ -686,22 +814,22 @@ const Input = ({
 
 const Modal = ({ title, children, onClose }) => {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl bg-white shadow-xl">
-        <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
-          <h2 className="text-lg font-semibold text-slate-800">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-2.5 sm:p-4 backdrop-blur-xs">
+      <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white shadow-xl">
+        <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3 sm:px-5 sm:py-4 sticky top-0 bg-white z-10">
+          <h2 className="text-base sm:text-lg font-semibold text-slate-800">
             {title}
           </h2>
 
           <button
             onClick={onClose}
-            className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 cursor-pointer"
           >
-            <X size={19} />
+            <X size={18} />
           </button>
         </div>
 
-        <div className="p-5">{children}</div>
+        <div className="p-3.5 sm:p-5">{children}</div>
       </div>
     </div>
   );

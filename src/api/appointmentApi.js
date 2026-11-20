@@ -16,6 +16,12 @@ export const getAdminAppointmentsApi = async (filters = {}) => {
     if (filters.search && String(filters.search).trim()) {
       params.search = String(filters.search).trim();
     }
+    if (filters.page) {
+      params.page = filters.page;
+    }
+    if (filters.limit) {
+      params.limit = filters.limit;
+    }
 
     const response = await API.get('/appointments/admin/all', { params });
     return response.data;
