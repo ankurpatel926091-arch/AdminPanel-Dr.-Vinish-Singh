@@ -311,7 +311,7 @@ export default function CheckIn() {
       closeModal();
       const tokenDisplay = updatedApt.tokenNumber ? `Token #${updatedApt.tokenNumber}` : 'Assigned';
       toast.success(
-        `Check-In completed for ${updatedApt.patientName}! (${tokenDisplay}). Complete billing to send patient to Doctor Queue.`
+        `Check-In completed for ${updatedApt.patientName}! (${tokenDisplay}). Pending bill added to Billing.`
       );
     } catch (error) {
       toast.error(error?.response?.data?.message || error?.message || "Failed to check in patient");
@@ -446,25 +446,52 @@ export default function CheckIn() {
       ===================================================== */}
 
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-        <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 px-5 py-4 bg-white">
           <div>
             <h2 className="font-semibold text-slate-800">Confirmed Appointments</h2>
-            <p className="mt-1 text-xs text-slate-500">
-              {filteredAppointments.length} appointment
-              {filteredAppointments.length !== 1 ? "s" : ""} found
+            <p className="mt-0.5 text-xs text-slate-500">
+              Showing <span className="font-semibold text-slate-700">{filteredAppointments.length > 0 ? startIndex + 1 : 0}</span> to{" "}
+              <span className="font-semibold text-slate-700">{Math.min(startIndex + itemsPerPage, filteredAppointments.length)}</span> of{" "}
+              <span className="font-semibold text-blue-600">{filteredAppointments.length}</span> appointments
             </p>
           </div>
 
-          <button
-            onClick={() => {
-              setSearch("");
-              setCurrentPage(1);
-            }}
-            className="hidden items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-50 sm:flex"
-          >
-            <RefreshCw size={14} />
-            Reset
-          </button>
+          <div className="flex items-center gap-3">
+            <div className="inline-flex items-center gap-1">
+              <button
+                type="button"
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                className="w-7 h-7 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center transition-all cursor-pointer"
+              >
+                <ChevronLeft className="w-4 h-4 text-slate-600" />
+              </button>
+
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                <button
+                  key={page}
+                  type="button"
+                  onClick={() => setCurrentPage(page)}
+                  className={`w-7 h-7 rounded-lg font-extrabold text-xs flex items-center justify-center transition-all cursor-pointer ${
+                    currentPage === page
+                      ? "bg-blue-600 text-white shadow-xs"
+                      : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-100"
+                  }`}
+                >
+                  {page}
+                </button>
+              ))}
+
+              <button
+                type="button"
+                disabled={currentPage === totalPages}
+                onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                className="w-7 h-7 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center transition-all cursor-pointer"
+              >
+                <ChevronRight className="w-4 h-4 text-slate-600" />
+              </button>
+            </div>
+          </div>
         </div>
 
         <div className="overflow-x-auto">

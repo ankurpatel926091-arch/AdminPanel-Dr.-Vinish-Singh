@@ -142,15 +142,16 @@ export default function Sidebar({ isOpen, isCollapsed, onClose }) {
                 },
               ]
             : []),
+          
+          {
+            path: "/doctor/medical-records",
+            label: "OPD Patient Records ",
+            icon: FileText,
+          },
           {
             path: "/doctor/patients",
             label: "Patients",
             icon: User,
-          },
-          {
-            path: "/doctor/medical-records",
-            label: "Medical Records",
-            icon: FileText,
           },
         ]
       : [];

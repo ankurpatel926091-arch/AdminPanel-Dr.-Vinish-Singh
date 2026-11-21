@@ -29,12 +29,7 @@ export const getConsultationsApi = async (filters = {}) => {
     }
 
     const res = await API.get('/consultations', { params });
-    if (res?.data) {
-      if (Array.isArray(res.data)) return res.data;
-      if (Array.isArray(res.data.data)) return res.data.data;
-      if (res.data.data) return res.data;
-    }
-    return [];
+    return res?.data || { success: false, data: [] };
   } catch (error) {
     console.error('Get Consultations API Error:', error);
     return [];

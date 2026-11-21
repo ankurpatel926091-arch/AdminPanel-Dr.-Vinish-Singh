@@ -552,8 +552,7 @@ const TodaysAppointments = () => {
             <option value="All">All Patients</option>
             <option value="Waiting">Waiting</option>
             <option value="In Consultation">In Consultation</option>
-            <option value="Completed">Completed</option>
-            <option value="Not Checked-in">Not Checked-in</option>
+            <option value="Completed">Completed</option>         
           </select>
         </div>
       </div>

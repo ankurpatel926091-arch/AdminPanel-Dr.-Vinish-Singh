@@ -633,7 +633,7 @@ const DoctorDash = () => {
                 </div>
                 <div>
                   <p className="text-xs font-bold text-slate-800 group-hover:text-purple-700">
-                    Medical Records
+                    OPD Records 
                   </p>
                   <p className="text-[11px] text-slate-500 font-medium">
                     Patient history & Rx

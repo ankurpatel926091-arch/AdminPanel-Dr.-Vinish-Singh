@@ -312,19 +312,61 @@ const Patient = () => {
             </select>
           </div>
         </div>
-
-        <div className="mt-2.5 flex items-center gap-2 text-[11px] sm:text-xs text-slate-500">
-          <Filter size={13} />
-          Showing {totalPatients > 0 ? (currentPage - 1) * pageSize + 1 : 0} to {Math.min(currentPage * pageSize, totalPatients)} of {totalPatients} patients
-        </div>
       </div>
 
       {/* Patient Table */}
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-        <div className="border-b border-slate-200 px-4 py-3">
-          <h2 className="text-sm font-semibold text-slate-800">
-            Patient List
-          </h2>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 px-4 py-3 bg-white">
+          <div>
+            <h2 className="text-sm font-semibold text-slate-800">
+              Patient List
+            </h2>
+            <p className="mt-0.5 text-xs text-slate-500">
+              Showing <span className="font-semibold text-slate-700">{totalPatients > 0 ? (currentPage - 1) * pageSize + 1 : 0}</span> to{" "}
+              <span className="font-semibold text-slate-700">{Math.min(currentPage * pageSize, totalPatients)}</span> of{" "}
+              <span className="font-semibold text-blue-600">{totalPatients}</span> patients
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 text-xs text-slate-500 mr-2">
+              <span>Rows per page:</span>
+              <select
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700 outline-none focus:border-blue-500 cursor-pointer"
+              >
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+              </select>
+            </div>
+
+            <button
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage <= 1 || loading}
+              className="flex items-center justify-center rounded-lg border border-slate-200 p-1.5 text-slate-600 transition hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+              title="Previous Page"
+            >
+              <ChevronLeft size={16} />
+            </button>
+
+            <span className="text-xs font-semibold text-slate-700 px-1 whitespace-nowrap">
+              Page {currentPage} of {totalPages || 1}
+            </span>
+
+            <button
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              disabled={currentPage >= totalPages || loading}
+              className="flex items-center justify-center rounded-lg border border-slate-200 p-1.5 text-slate-600 transition hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+              title="Next Page"
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
         </div>
 
         <div className="overflow-x-auto">

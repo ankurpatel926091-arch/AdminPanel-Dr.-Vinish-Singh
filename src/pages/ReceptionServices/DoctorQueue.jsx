@@ -401,7 +401,7 @@ export default function DoctorQueue() {
           >
             <option value="ALL">All Status</option>
             <option value="Waiting">Waiting</option>
-            <option value="Consulting">Consulting</option>
+            <option value="Consulting">In Consultation</option>
             <option value="Completed">Completed</option>
             <option value="Cancelled">Cancelled</option>
           </select>
@@ -499,7 +499,7 @@ export default function DoctorQueue() {
                         {item.status === "Consulting" && (
                           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-700 border border-blue-200">
                             <span className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse"></span>
-                            In Cabin
+                            In Consultation
                           </span>
                         )}
                         {item.status === "Waiting" && (
@@ -570,7 +570,7 @@ export default function DoctorQueue() {
                       : "bg-emerald-50 text-emerald-700 border-emerald-200"
                   }`}
                 >
-                  {selectedPatientModal.status}
+                  {selectedPatientModal.status === "Consulting" ? "In Consultation" : selectedPatientModal.status}
                 </span>
                 <button
                   onClick={() => setSelectedPatientModal(null)}

@@ -561,6 +561,54 @@ export default function Appointments() {
 
       {/* ================= 3. APPOINTMENTS TABLE CARD ================= */}
       <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm overflow-hidden">
+        {/* Top Pagination Bar */}
+        {filtered.length > 0 && (
+          <div className="px-5 py-3 border-b border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500 font-medium bg-slate-50/50">
+            <div>
+              Showing <span className="font-semibold text-slate-700">{startIndex + 1}</span> to{" "}
+              <span className="font-semibold text-slate-700">{Math.min(startIndex + itemsPerPage, filtered.length)}</span> of{" "}
+              <span className="font-semibold text-blue-600">{filtered.length}</span> appointments
+            </div>
+
+            <div className="flex items-center gap-3">
+              <div className="inline-flex items-center gap-1">
+                <button
+                  type="button"
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  className="w-7 h-7 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center transition-all cursor-pointer"
+                >
+                  <ChevronLeft className="w-4 h-4 text-slate-600" />
+                </button>
+
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                  <button
+                    key={page}
+                    type="button"
+                    onClick={() => setCurrentPage(page)}
+                    className={`w-7 h-7 rounded-lg font-extrabold text-xs flex items-center justify-center transition-all cursor-pointer ${
+                      currentPage === page
+                        ? 'bg-blue-600 text-white shadow-xs'
+                        : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
+                    }`}
+                  >
+                    {page}
+                  </button>
+                ))}
+
+                <button
+                  type="button"
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  className="w-7 h-7 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center transition-all cursor-pointer"
+                >
+                  <ChevronRight className="w-4 h-4 text-slate-600" />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse min-w-[1280px]">
             <thead>

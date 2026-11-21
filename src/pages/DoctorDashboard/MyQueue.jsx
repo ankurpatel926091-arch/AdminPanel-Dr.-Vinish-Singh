@@ -62,8 +62,10 @@ export default function MyQueue() {
   };
 
   const [queue, setQueue] = useState([]);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const fetchQueueFromDB = useCallback(async () => {
+  const fetchQueueFromDB = useCallback(async (isManual = false) => {
+    if (isManual) setIsRefreshing(true);
     try {
       const data = await getTodayQueueApi();
       if (Array.isArray(data)) {
@@ -86,8 +88,18 @@ export default function MyQueue() {
         const normalized = cleanedReversed.reverse();
         setQueue(normalized);
       }
+      if (isManual) {
+        toast.success("OPD queue refreshed successfully!");
+      }
     } catch (e) {
       console.warn("Failed to load queue from database", e);
+      if (isManual) {
+        toast.error("Failed to refresh queue");
+      }
+    } finally {
+      if (isManual) {
+        setTimeout(() => setIsRefreshing(false), 500);
+      }
     }
   }, []);
 
@@ -417,12 +429,13 @@ export default function MyQueue() {
         <div className="p-4 bg-slate-50/70 border-b border-slate-200 flex items-center justify-between">
           <h2 className="font-bold text-slate-800 text-sm">Today's Patient Tokens</h2>
           <button
-            onClick={fetchQueueFromDB}
+            onClick={() => fetchQueueFromDB(true)}
+            disabled={isRefreshing}
             title="Refresh OPD Queue"
-            className="text-xs font-semibold text-slate-600 hover:text-blue-600 flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 shadow-2xs transition"
+            className="text-xs font-semibold text-slate-600 hover:text-blue-600 flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 shadow-2xs transition disabled:opacity-60 cursor-pointer"
           >
-            <RotateCw className="w-3.5 h-3.5" />
-            Refresh
+            <RotateCw className={`w-3.5 h-3.5 transition-transform duration-300 ${isRefreshing ? "animate-spin text-blue-600" : ""}`} />
+            <span>{isRefreshing ? "Refreshing..." : "Refresh"}</span>
           </button>
         </div>
 

@@ -555,9 +555,9 @@ export default function Billing() {
 
   ========================================= */
 
-  const totalBills = bills.length;
+  const totalBills = totalBillsCount || bills.length;
 
-  const paidBills = bills.filter(
+  const paidBills = billingSummary?.paidCount ?? bills.filter(
     (bill) => bill.paymentStatus === "Paid",
   ).length;
 
@@ -565,13 +565,13 @@ export default function Billing() {
     (bill) => bill.paymentStatus === "Partial",
   ).length;
 
-  const pendingBills = bills.filter(
+  const pendingBills = billingSummary?.pendingCount ?? bills.filter(
     (bill) => bill.paymentStatus === "Pending" || bill.paymentStatus === "Partial",
   ).length;
 
-  const totalDue = bills.reduce((sum, bill) => sum + bill.dueAmount, 0);
+  const totalDue = billingSummary?.totalDue ?? bills.reduce((sum, bill) => sum + bill.dueAmount, 0);
 
-  const totalCollected = bills.reduce((sum, bill) => sum + bill.paidAmount, 0);
+  const totalCollected = billingSummary?.totalCollected ?? bills.reduce((sum, bill) => sum + bill.paidAmount, 0);
 
   // Day-End Settlement Tally Metrics (from DB summary or page fallback)
   const tallyCash = billingSummary.cashTotal || bills.reduce((sum, b) => {
@@ -1420,13 +1420,11 @@ export default function Billing() {
                 <h3 className="text-sm sm:text-base font-bold text-slate-900 tracking-tight">
                   Day-End Settlement & Cash vs UPI Tally
                 </h3>
-                <span className="hidden sm:inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 border border-emerald-200">
+                {/* <span className="hidden sm:inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 border border-emerald-200">
                   <CheckCircle2 size={11} /> {datePreset === "all" ? "All Recorded Time" : datePreset === "today" ? "Today" : datePreset === "yesterday" ? "Yesterday" : datePreset === "this_week" ? "Last 7 Days" : datePreset === "this_month" ? "This Month" : customDate || "Custom Date"}
-                </span>
+                </span> */}
               </div>
-              <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5">
-                Reception shift reconciliation: match physical cash in drawer with digital bank collections.
-              </p>
+             
             </div>
           </div>
 
@@ -1469,9 +1467,9 @@ export default function Billing() {
                 ₹{tallyCash.toLocaleString("en-IN")}
               </span>
             </div>
-            <p className="mt-1 text-[10px] sm:text-[11px] text-emerald-700/90 font-medium">
+            {/* <p className="mt-1 text-[10px] sm:text-[11px] text-emerald-700/90 font-medium">
               Physical cash received at counter (handover amount)
-            </p>
+            </p> */}
           </div>
 
           {/* 2. UPI & Online */}
@@ -1490,9 +1488,9 @@ export default function Billing() {
                 ₹{tallyUpi.toLocaleString("en-IN")}
               </span>
             </div>
-            <p className="mt-1 text-[10px] sm:text-[11px] text-blue-700/90 font-medium">
+            {/* <p className="mt-1 text-[10px] sm:text-[11px] text-blue-700/90 font-medium">
               Direct clinic bank credit (GPay, PhonePe, Paytm QR)
-            </p>
+            </p> */}
           </div>
 
           {/* 3. Total Realized Collection */}
@@ -1511,14 +1509,14 @@ export default function Billing() {
                 ₹{tallyTotalCollected.toLocaleString("en-IN")}
               </span>
             </div>
-            <p className="mt-1 text-[10px] sm:text-[11px] text-indigo-700/90 font-medium">
+            {/* <p className="mt-1 text-[10px] sm:text-[11px] text-indigo-700/90 font-medium">
               Total realized payments collected today
-            </p>
+            </p> */}
           </div>
         </div>
 
         {/* Visual Progress Split Bar */}
-        <div className="space-y-1.5 pt-1">
+        {/* <div className="space-y-1.5 pt-1">
           <div className="flex items-center justify-between text-[11px] font-semibold text-slate-600">
             <span>Payment Mode Distribution</span>
             <span>
@@ -1567,7 +1565,7 @@ export default function Billing() {
               <span className="text-emerald-700">✓ Tally Matched</span>
             </div>
           </div>
-        </div>
+        </div> */}
       </div>
 
       {/* =========================================
@@ -1669,26 +1667,68 @@ export default function Billing() {
       ========================================= */}
 
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
-        <div className="flex items-center justify-between border-b border-slate-200 px-3 sm:px-4 py-2 sm:py-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 px-3 sm:px-4 py-2 sm:py-3 bg-white">
           <div>
-            <h2 className="text-xs sm:text-sm font-bold text-slate-800">OPD Bills</h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-xs sm:text-sm font-bold text-slate-800">OPD Bills</h2>
+              <span className="hidden items-center gap-1 text-[11px] text-slate-400 sm:inline-flex">
+                <Lock size={12} />
+                Protected
+              </span>
+            </div>
 
             <p className="mt-0.5 text-[10px] sm:text-xs text-slate-500">
-              {filteredBills.length} bill
-              {filteredBills.length !== 1 ? "s" : ""} found
+              Showing <span className="font-semibold text-slate-700">{totalBillsCount > 0 ? (currentPage - 1) * pageSize + 1 : 0}</span> to{" "}
+              <span className="font-semibold text-slate-700">{Math.min(currentPage * pageSize, totalBillsCount)}</span> of{" "}
+              <span className="font-semibold text-blue-600">{totalBillsCount}</span> bills
             </p>
           </div>
 
-          <div className="hidden items-center gap-1.5 text-xs text-slate-400 sm:flex">
-            <Lock size={13} />
-            Paid invoices are protected
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 text-xs text-slate-500 mr-2">
+              <span>Rows per page:</span>
+              <select
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700 outline-none focus:border-blue-500 cursor-pointer"
+              >
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+              </select>
+            </div>
+
+            <button
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage <= 1 || loadingBills}
+              className="flex items-center justify-center rounded-lg border border-slate-200 p-1.5 text-slate-600 transition hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+              title="Previous Page"
+            >
+              <ChevronLeft size={16} />
+            </button>
+
+            <span className="text-xs font-semibold text-slate-700 px-1 whitespace-nowrap">
+              Page {currentPage} of {totalPages || 1}
+            </span>
+
+            <button
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              disabled={currentPage >= totalPages || loadingBills}
+              className="flex items-center justify-center rounded-lg border border-slate-200 p-1.5 text-slate-600 transition hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+              title="Next Page"
+            >
+              <ChevronRight size={16} />
+            </button>
           </div>
         </div>
 
         {/* Mobile Swipe Hint */}
         <div className="flex items-center justify-between bg-blue-50/70 px-3 py-1 border-b border-blue-100/80 text-[10px] font-medium text-blue-700 sm:hidden">
           <span>← Swipe horizontally for actions →</span>
-          <span className="font-bold">{filteredBills.length} Bills</span>
+          <span className="font-bold">{totalBillsCount} Bills</span>
         </div>
 
         <div className="overflow-x-auto">
