@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState, useCallback } from "react";
+import { createPortal } from "react-dom";
 import useDebouncedValue from "../../hooks/useDebouncedValue";
 import { getConsultationsApi } from "../../api/consultationApi";
 import {
@@ -157,19 +158,6 @@ export default function MedicalRecords() {
 
   // Necessary Clinical Stats
   const totalRecords = records.length;
-  const uniquePatients = useMemo(() => {
-    const set = new Set();
-    records.forEach((r) => {
-      const key = (
-        r.patientId && r.patientId !== "—" ? r.patientId : r.patientName
-      )
-        .toLowerCase()
-        .trim();
-      if (key) set.add(key);
-    });
-    return set.size;
-  }, [records]);
-
   const prescriptionsCount = useMemo(() => {
     return records.filter((r) => r.medications && r.medications.length > 0)
       .length;
@@ -309,64 +297,49 @@ export default function MedicalRecords() {
         </button>
       </div>
 
-      {/* Summary Cards - Necessary Clinical Stats (2x2 on mobile, 4 on desktop) */}
-      <div className="grid grid-cols-2 gap-2 sm:gap-3.5 lg:grid-cols-4">
-        <div className="rounded-xl border border-slate-200 bg-white p-2.5 sm:p-4 shadow-xs">
+      {/* Summary Cards - Necessary Clinical Stats (3 cards grid) */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-4">
+        <div className="rounded-xl border border-slate-200 bg-white p-3 sm:p-4 shadow-xs">
           <div className="flex items-center justify-between">
             <div className="min-w-0 pr-1">
-              <p className="text-[11px] sm:text-sm font-medium text-slate-500 truncate">Total Consultations</p>
-              <h2 className="mt-0.5 sm:mt-1 text-lg sm:text-2xl font-bold text-slate-900">
+              <p className="text-xs sm:text-sm font-medium text-slate-500 truncate">Total Consultations</p>
+              <h2 className="mt-0.5 sm:mt-1 text-xl sm:text-2xl font-bold text-slate-900">
                 {totalRecords}
               </h2>
             </div>
 
-            <div className="rounded-lg sm:rounded-xl bg-blue-50 p-2 sm:p-3 text-blue-600 shrink-0">
-              <FileText className="w-4 h-4 sm:w-5.5 sm:h-5.5" />
+            <div className="rounded-xl bg-blue-50 p-2.5 sm:p-3 text-blue-600 shrink-0">
+              <FileText className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
           </div>
         </div>
 
-        <div className="rounded-xl border border-slate-200 bg-white p-2.5 sm:p-4 shadow-xs">
+        <div className="rounded-xl border border-slate-200 bg-white p-3 sm:p-4 shadow-xs">
           <div className="flex items-center justify-between">
             <div className="min-w-0 pr-1">
-              <p className="text-[11px] sm:text-sm font-medium text-slate-500 truncate">Unique Patients</p>
-              <h2 className="mt-0.5 sm:mt-1 text-lg sm:text-2xl font-bold text-slate-900">
-                {uniquePatients}
-              </h2>
-            </div>
-
-            <div className="rounded-lg sm:rounded-xl bg-emerald-50 p-2 sm:p-3 text-emerald-600 shrink-0">
-              <Users className="w-4 h-4 sm:w-5.5 sm:h-5.5" />
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-xl border border-slate-200 bg-white p-2.5 sm:p-4 shadow-xs">
-          <div className="flex items-center justify-between">
-            <div className="min-w-0 pr-1">
-              <p className="text-[11px] sm:text-sm font-medium text-slate-500 truncate">Prescriptions Issued</p>
-              <h2 className="mt-0.5 sm:mt-1 text-lg sm:text-2xl font-bold text-slate-900">
+              <p className="text-xs sm:text-sm font-medium text-slate-500 truncate">Prescriptions Issued</p>
+              <h2 className="mt-0.5 sm:mt-1 text-xl sm:text-2xl font-bold text-slate-900">
                 {prescriptionsCount}
               </h2>
             </div>
 
-            <div className="rounded-lg sm:rounded-xl bg-indigo-50 p-2 sm:p-3 text-indigo-600 shrink-0">
-              <Pill className="w-4 h-4 sm:w-5.5 sm:h-5.5" />
+            <div className="rounded-xl bg-indigo-50 p-2.5 sm:p-3 text-indigo-600 shrink-0">
+              <Pill className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
           </div>
         </div>
 
-        <div className="rounded-xl border border-slate-200 bg-white p-2.5 sm:p-4 shadow-xs">
+        <div className="rounded-xl border border-slate-200 bg-white p-3 sm:p-4 shadow-xs">
           <div className="flex items-center justify-between">
             <div className="min-w-0 pr-1">
-              <p className="text-[11px] sm:text-sm font-medium text-slate-500 truncate">Investigations Advised</p>
-              <h2 className="mt-0.5 sm:mt-1 text-lg sm:text-2xl font-bold text-slate-900">
+              <p className="text-xs sm:text-sm font-medium text-slate-500 truncate">Investigations Advised</p>
+              <h2 className="mt-0.5 sm:mt-1 text-xl sm:text-2xl font-bold text-slate-900">
                 {investigationsCount}
               </h2>
             </div>
 
-            <div className="rounded-lg sm:rounded-xl bg-amber-50 p-2 sm:p-3 text-amber-600 shrink-0">
-              <TestTube className="w-4 h-4 sm:w-5.5 sm:h-5.5" />
+            <div className="rounded-xl bg-amber-50 p-2.5 sm:p-3 text-amber-600 shrink-0">
+              <TestTube className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
           </div>
         </div>
@@ -677,262 +650,223 @@ export default function MedicalRecords() {
       </div>
 
       {/* View Record Modal */}
-      {selectedRecord && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-2.5 sm:p-4 backdrop-blur-xs">
-          <div className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-slate-50 shadow-2xl">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3 sm:px-5 sm:py-4 sticky top-0 z-10">
-              <div>
-                <h2 className="text-base sm:text-lg font-bold text-slate-900">
-                  Medical Record
-                </h2>
+      {selectedRecord &&
+        createPortal(
+          <div
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setSelectedRecord(null);
+            }}
+            className="fixed inset-0 z-[9999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 overflow-y-auto animate-in fade-in duration-200"
+          >
+            <div className="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] flex flex-col shadow-2xl border border-slate-100 overflow-hidden my-auto animate-in zoom-in-95 duration-200">
+              {/* Modal Header */}
+              <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-white shrink-0">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                    <FileText className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-bold text-slate-900 text-base">
+                        Medical Record Details
+                      </h3>
+                      <span
+                        className={`px-2.5 py-0.5 rounded-full text-xs font-semibold border ${
+                          selectedRecord.status === "Active"
+                            ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                            : "bg-amber-50 text-amber-700 border-amber-200"
+                        }`}
+                      >
+                        {selectedRecord.status}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-500 font-mono mt-0.5">
+                      Visit: {selectedRecord.id} • UHID: {selectedRecord.patientId}
+                    </p>
+                  </div>
+                </div>
 
-                <p className="text-xs sm:text-sm text-slate-500">
-                  {selectedRecord.id} • {selectedRecord.patientId}
-                </p>
+                <button
+                  onClick={() => setSelectedRecord(null)}
+                  className="text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg p-1.5 transition cursor-pointer"
+                  title="Close"
+                >
+                  <X className="w-5 h-5" />
+                </button>
               </div>
 
-              <button
-                onClick={() => setSelectedRecord(null)}
-                className="rounded-lg p-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 cursor-pointer"
-              >
-                <X size={19} />
-              </button>
-            </div>
-
-            {/* Modal Content */}
-            <div className="overflow-y-auto p-3.5 sm:p-5">
-              {/* Patient Header */}
-              <div className="mb-4 sm:mb-5 rounded-xl border border-slate-200 bg-white p-3.5 sm:p-5">
-                <div className="flex flex-col justify-between gap-3 sm:gap-5 md:flex-row">
-                  <div className="flex items-center gap-3 sm:gap-4">
-                    <div className="flex h-12 w-12 sm:h-16 sm:w-16 items-center justify-center rounded-full bg-blue-50 text-blue-600 shrink-0">
-                      <User className="w-6 h-6 sm:w-7 sm:h-7" />
+              {/* Modal Body */}
+              <div className="p-6 overflow-y-auto space-y-5">
+                {/* Patient Quick Info Card */}
+                <div className="p-4 bg-slate-50/80 rounded-xl border border-slate-100">
+                  <div className="flex items-center gap-3 pb-3 border-b border-slate-200/60">
+                    <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-sm shrink-0">
+                      {selectedRecord.patientName ? selectedRecord.patientName.charAt(0).toUpperCase() : "P"}
                     </div>
-
-                    <div>
-                      <h2 className="text-base sm:text-xl font-bold text-slate-900">
+                    <div className="min-w-0">
+                      <h4 className="font-bold text-slate-900 text-sm">
                         {selectedRecord.patientName}
-                      </h2>
-
-                      <p className="mt-0.5 text-xs sm:text-sm text-slate-500">
-                        {selectedRecord.patientId} •{" "}
-                        {selectedRecord.age} years •{" "}
-                        {selectedRecord.gender}
+                      </h4>
+                      <p className="text-xs text-slate-500">
+                        {selectedRecord.age} Years • {selectedRecord.gender}
                       </p>
                     </div>
                   </div>
 
-                  <span
-                    className={`h-fit self-start rounded-full border px-2.5 py-1 sm:px-3 sm:py-1.5 text-[11px] sm:text-xs font-semibold ${
-                      statusStyles[selectedRecord.status]
-                    }`}
-                  >
-                    {selectedRecord.status}
-                  </span>
-                </div>
-
-                <div className="mt-3.5 sm:mt-5 grid grid-cols-2 gap-2.5 sm:gap-4 border-t border-slate-100 pt-3.5 sm:pt-5 lg:grid-cols-4">
-                  <InfoItem
-                    icon={Phone}
-                    label="Phone"
-                    value={selectedRecord.phone}
-                  />
-
-                  <InfoItem
-                    icon={Calendar}
-                    label="Visit Date"
-                    value={selectedRecord.visitDate}
-                  />
-
-                  <InfoItem
-                    icon={Activity}
-                    label="Blood Group"
-                    value={selectedRecord.bloodGroup}
-                  />
-
-                  <InfoItem
-                    icon={Stethoscope}
-                    label="Doctor"
-                    value={selectedRecord.doctor}
-                  />
-                </div>
-              </div>
-
-              {/* Main Grid */}
-              <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-                {/* Current Visit */}
-                <Section icon={ClipboardList} title="Current Visit">
-                  <div className="space-y-4">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-3 text-xs">
                     <div>
-                      <p className="text-xs font-medium text-slate-500">
-                        Chief Complaint
-                      </p>
+                      <span className="text-[11px] text-slate-400 font-medium block">Phone</span>
+                      <span className="font-semibold text-slate-800">{selectedRecord.phone}</span>
+                    </div>
+                    <div>
+                      <span className="text-[11px] text-slate-400 font-medium block">Visit Date</span>
+                      <span className="font-semibold text-slate-800">{selectedRecord.visitDate}</span>
+                    </div>
+                    <div>
+                      <span className="text-[11px] text-slate-400 font-medium block">Blood Group</span>
+                      <span className="font-semibold text-slate-800">{selectedRecord.bloodGroup || "—"}</span>
+                    </div>
+                    <div>
+                      <span className="text-[11px] text-slate-400 font-medium block">Consulting Doctor</span>
+                      <span className="font-semibold text-slate-800">{selectedRecord.doctor}</span>
+                    </div>
+                  </div>
+                </div>
 
-                      <p className="mt-1 text-sm text-slate-700">
+                {/* Current Visit & Clinical Details */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Chief Complaint & Diagnosis */}
+                  <div className="p-4 bg-white rounded-xl border border-slate-200/80 shadow-2xs space-y-3">
+                    <div className="flex items-center gap-2 text-slate-900 font-bold text-xs uppercase tracking-wider">
+                      <ClipboardList className="w-4 h-4 text-blue-600" />
+                      Current Visit
+                    </div>
+                    <div>
+                      <span className="text-[11px] text-slate-400 block font-medium">Chief Complaint</span>
+                      <p className="text-xs font-semibold text-slate-800 mt-0.5">
                         {selectedRecord.complaint}
                       </p>
                     </div>
-
                     <div>
-                      <p className="text-xs font-medium text-slate-500">
-                        Diagnosis
-                      </p>
-
-                      <p className="mt-1 font-semibold text-slate-800">
+                      <span className="text-[11px] text-slate-400 block font-medium">Diagnosis</span>
+                      <p className="text-xs font-semibold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-lg mt-0.5 inline-block">
                         {selectedRecord.diagnosis}
                       </p>
                     </div>
-
                     <div>
-                      <p className="text-xs font-medium text-slate-500">
-                        Clinical Notes
-                      </p>
-
-                      <p className="mt-1 text-sm leading-6 text-slate-700">
+                      <span className="text-[11px] text-slate-400 block font-medium">Clinical Notes</span>
+                      <p className="text-xs text-slate-600 mt-0.5 leading-relaxed">
                         {selectedRecord.clinicalNotes}
                       </p>
                     </div>
                   </div>
-                </Section>
 
-                {/* Medical History */}
-                <Section icon={Activity} title="Medical History">
-                  <div className="space-y-3">
-                    {selectedRecord.medicalHistory.map((item, index) => (
-                      <div
-                        key={index}
-                        className="flex items-start gap-2 text-sm text-slate-700"
-                      >
-                        <span className="mt-2 h-1.5 w-1.5 rounded-full bg-blue-500" />
-                        {item}
+                  {/* Medical History & Allergies */}
+                  <div className="p-4 bg-white rounded-xl border border-slate-200/80 shadow-2xs space-y-3">
+                    <div className="flex items-center gap-2 text-slate-900 font-bold text-xs uppercase tracking-wider">
+                      <Activity className="w-4 h-4 text-emerald-600" />
+                      Medical History & Allergies
+                    </div>
+                    <div>
+                      <span className="text-[11px] text-slate-400 block font-medium">Medical History</span>
+                      <div className="mt-1 space-y-1">
+                        {selectedRecord.medicalHistory && selectedRecord.medicalHistory.length > 0 ? (
+                          selectedRecord.medicalHistory.map((item, i) => (
+                            <div key={i} className="flex items-center gap-1.5 text-xs text-slate-700">
+                              <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" />
+                              <span>{item}</span>
+                            </div>
+                          ))
+                        ) : (
+                          <span className="text-xs text-slate-400">No prior history noted</span>
+                        )}
                       </div>
-                    ))}
+                    </div>
+                    <div className="pt-2 border-t border-slate-100">
+                      <span className="text-[11px] text-slate-400 block font-medium">Allergies</span>
+                      <div className="mt-1 flex flex-wrap gap-1.5">
+                        {selectedRecord.allergies && selectedRecord.allergies.length > 0 ? (
+                          selectedRecord.allergies.map((item, i) => (
+                            <span key={i} className="px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded text-[11px]">
+                              {item}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="text-xs text-slate-400">No allergies recorded</span>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                </Section>
+                </div>
 
-                {/* Allergies */}
-                <Section icon={AlertCircle} title="Allergies">
-                  <div className="space-y-2">
-                    {selectedRecord.allergies.length > 0 ? (
-                      selectedRecord.allergies.map((item, index) => (
-                        <div
-                          key={index}
-                          className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700"
-                        >
-                          {item}
-                        </div>
-                      ))
-                    ) : (
-                      <p className="text-sm text-slate-500">
-                        No allergies recorded.
-                      </p>
-                    )}
+                {/* Prescribed Medications */}
+                <div className="p-4 bg-white rounded-xl border border-slate-200/80 shadow-2xs space-y-2.5">
+                  <div className="flex items-center gap-2 text-slate-900 font-bold text-xs uppercase tracking-wider">
+                    <Pill className="w-4 h-4 text-purple-600" />
+                    Prescriptions & Medications
                   </div>
-                </Section>
-
-                {/* Current Medication */}
-                <Section icon={Pill} title="Current Medications">
-                  {selectedRecord.medications.length > 0 ? (
-                    <div className="space-y-2">
-                      {selectedRecord.medications.map((medicine, index) => (
-                        <div
-                          key={index}
-                          className="rounded-lg bg-blue-50 px-3 py-2 text-sm font-medium text-blue-700"
-                        >
-                          {medicine}
+                  {selectedRecord.medications && selectedRecord.medications.length > 0 ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {selectedRecord.medications.map((med, i) => (
+                        <div key={i} className="p-2.5 bg-purple-50/50 rounded-lg border border-purple-100 text-xs text-purple-900 font-medium flex items-center gap-2">
+                          <span className="w-1.5 h-1.5 rounded-full bg-purple-500 shrink-0" />
+                          <span>{med}</span>
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <p className="text-sm text-slate-500">
-                      No medications recorded.
-                    </p>
+                    <p className="text-xs text-slate-400 italic">No medications recorded for this visit.</p>
                   )}
-                </Section>
-
-                {/* Investigations */}
-                <div className="lg:col-span-2">
-                  <Section icon={TestTube} title="Investigations">
-                    {selectedRecord.investigations.length > 0 ? (
-                      <div className="overflow-x-auto">
-                        <table className="w-full min-w-[650px]">
-                          <thead>
-                            <tr className="border-b border-slate-200">
-                              <th className="px-3 py-3 text-left text-xs font-semibold uppercase text-slate-500">
-                                Test
-                              </th>
-
-                              <th className="px-3 py-3 text-left text-xs font-semibold uppercase text-slate-500">
-                                Date
-                              </th>
-
-                              <th className="px-3 py-3 text-left text-xs font-semibold uppercase text-slate-500">
-                                Result
-                              </th>
-
-                              <th className="px-3 py-3 text-left text-xs font-semibold uppercase text-slate-500">
-                                Remarks
-                              </th>
-                            </tr>
-                          </thead>
-
-                          <tbody className="divide-y divide-slate-100">
-                            {selectedRecord.investigations.map(
-                              (test, index) => (
-                                <tr key={index}>
-                                  <td className="px-3 py-3 text-sm font-medium text-slate-800">
-                                    {test.name}
-                                  </td>
-
-                                  <td className="px-3 py-3 text-sm text-slate-600">
-                                    {test.date}
-                                  </td>
-
-                                  <td className="px-3 py-3 text-sm text-slate-700">
-                                    {test.result}
-                                  </td>
-
-                                  <td className="px-3 py-3 text-sm text-slate-500">
-                                    {test.remarks}
-                                  </td>
-                                </tr>
-                              )
-                            )}
-                          </tbody>
-                        </table>
-                      </div>
-                    ) : (
-                      <p className="text-sm text-slate-500">
-                        No investigations recorded.
-                      </p>
-                    )}
-                  </Section>
                 </div>
 
-                {/* Treatment Plan */}
-                <div className="lg:col-span-2">
-                  <Section icon={Stethoscope} title="Treatment Plan">
-                    <p className="text-sm leading-6 text-slate-700">
+                {/* Investigations (if any) */}
+                {selectedRecord.investigations && selectedRecord.investigations.length > 0 && (
+                  <div className="p-4 bg-white rounded-xl border border-slate-200/80 shadow-2xs space-y-2.5">
+                    <div className="flex items-center gap-2 text-slate-900 font-bold text-xs uppercase tracking-wider">
+                      <TestTube className="w-4 h-4 text-teal-600" />
+                      Investigations Advised
+                    </div>
+                    <div className="divide-y divide-slate-100 border border-slate-100 rounded-lg overflow-hidden">
+                      {selectedRecord.investigations.map((test, i) => (
+                        <div key={i} className="p-2.5 bg-teal-50/30 flex items-center justify-between text-xs">
+                          <span className="font-semibold text-slate-800">{test.name}</span>
+                          <span className="text-slate-500">{test.result || test.remarks || "Advised"}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Treatment Plan (if any) */}
+                {selectedRecord.treatmentPlan && (
+                  <div className="p-4 bg-white rounded-xl border border-slate-200/80 shadow-2xs space-y-1.5">
+                    <div className="flex items-center gap-2 text-slate-900 font-bold text-xs uppercase tracking-wider">
+                      <Stethoscope className="w-4 h-4 text-blue-600" />
+                      Treatment Plan
+                    </div>
+                    <p className="text-xs text-slate-700 leading-relaxed">
                       {selectedRecord.treatmentPlan}
                     </p>
-                  </Section>
-                </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Modal Footer */}
+              <div className="px-6 py-3.5 bg-slate-50 border-t border-slate-100 flex items-center justify-between shrink-0">
+                <p className="text-xs text-slate-400">
+                  Hospital Information System • Dr. Vinish Kumar Singh
+                </p>
+                <button
+                  onClick={() => setSelectedRecord(null)}
+                  className="px-5 py-2 bg-slate-800 hover:bg-slate-900 text-white font-semibold text-xs rounded-xl shadow-xs transition cursor-pointer"
+                >
+                  Close
+                </button>
               </div>
             </div>
-
-            {/* Modal Footer */}
-            <div className="flex justify-end border-t border-slate-200 bg-white px-5 py-4">
-              <button
-                onClick={() => setSelectedRecord(null)}
-                className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
     </div>
   );
 }

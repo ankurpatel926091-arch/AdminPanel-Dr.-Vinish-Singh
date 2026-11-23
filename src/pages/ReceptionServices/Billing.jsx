@@ -447,8 +447,12 @@ export default function Billing() {
 
   useEffect(() => {
     if (location.state) {
-      const { appointment, visitId, patientId, patientName, autoOpenPayment } =
-        location.state;
+      const prefill = location.state.prefillPatient || {};
+      const appointment = location.state.appointment || prefill;
+      const visitId = location.state.visitId || prefill.visitId || appointment?.visitId;
+      const patientId = location.state.patientId || prefill.patientId || appointment?.patientId;
+      const patientName = location.state.patientName || prefill.name || appointment?.name || appointment?.patientName;
+      const autoOpenPayment = location.state.autoOpenPayment;
 
       const query =
         visitId ||
@@ -532,15 +536,16 @@ export default function Billing() {
 
   const filteredBills = useMemo(() => {
     return bills.filter((bill) => {
-      const searchText = debouncedSearch.toLowerCase();
+      const searchText = (debouncedSearch || "").toLowerCase().trim();
 
       const matchesSearch =
-        bill.billId.toLowerCase().includes(searchText) ||
-        bill.visitId.toLowerCase().includes(searchText) ||
-        bill.patientName.toLowerCase().includes(searchText) ||
-        bill.patientId.toLowerCase().includes(searchText) ||
-        (bill.diagnosis && bill.diagnosis.toLowerCase().includes(searchText)) ||
-        (bill.phone && bill.phone.includes(searchText));
+        !searchText ||
+        String(bill.billId || "").toLowerCase().includes(searchText) ||
+        String(bill.visitId || "").toLowerCase().includes(searchText) ||
+        String(bill.patientName || "").toLowerCase().includes(searchText) ||
+        String(bill.patientId || "").toLowerCase().includes(searchText) ||
+        String(bill.diagnosis || "").toLowerCase().includes(searchText) ||
+        String(bill.phone || "").includes(searchText);
 
       const matchesStatus =
         statusFilter === "All" || bill.paymentStatus === statusFilter;

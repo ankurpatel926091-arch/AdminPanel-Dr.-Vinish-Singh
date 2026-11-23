@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import useDebouncedValue from "../../hooks/useDebouncedValue";
@@ -844,29 +845,31 @@ const TodaysAppointments = () => {
       </div>
 
       {/* ================= PATIENT DETAILS MODAL ================= */}
-      {selectedPatient && (
-        <div
-          className="
-          fixed
-          inset-0
-          z-[100]
-          bg-black/50
-          flex
-          items-center
-          justify-center
-          p-4
-        "
-        >
+      {selectedPatient &&
+        createPortal(
           <div
             className="
-            bg-white
-            w-full
-            max-w-2xl
-            rounded-2xl
-            shadow-2xl
-            overflow-hidden
+            fixed
+            inset-0
+            z-[9999]
+            bg-slate-900/60
+            backdrop-blur-xs
+            flex
+            items-center
+            justify-center
+            p-4
           "
           >
+            <div
+              className="
+              bg-white
+              w-full
+              max-w-2xl
+              rounded-2xl
+              shadow-2xl
+              overflow-hidden
+            "
+            >
             {/* Modal Header */}
             <div
               className="
@@ -1059,7 +1062,8 @@ const TodaysAppointments = () => {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

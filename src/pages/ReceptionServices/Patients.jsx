@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import useDebouncedValue from "../../hooks/useDebouncedValue";
 import {
   Search,
@@ -855,8 +856,8 @@ const Input = ({
 };
 
 const Modal = ({ title, children, onClose }) => {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-2.5 sm:p-4 backdrop-blur-xs">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/60 p-2.5 sm:p-4 backdrop-blur-xs">
       <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white shadow-xl">
         <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3 sm:px-5 sm:py-4 sticky top-0 bg-white z-10">
           <h2 className="text-base sm:text-lg font-semibold text-slate-800">
@@ -873,7 +874,8 @@ const Modal = ({ title, children, onClose }) => {
 
         <div className="p-3.5 sm:p-5">{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 
