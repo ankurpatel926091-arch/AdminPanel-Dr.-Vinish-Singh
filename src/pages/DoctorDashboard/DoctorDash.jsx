@@ -173,10 +173,10 @@ const DoctorDash = () => {
 
   useEffect(() => {
     fetchDashboardData();
-    // Auto-refresh every 20 seconds
+    // Auto-refresh every 45 seconds
     const interval = setInterval(() => {
       fetchDashboardData();
-    }, 20000);
+    }, 45000);
     return () => clearInterval(interval);
   }, [fetchDashboardData]);
 

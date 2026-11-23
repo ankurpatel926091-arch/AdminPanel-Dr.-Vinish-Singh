@@ -279,9 +279,10 @@ const TodaysAppointments = () => {
 
   useEffect(() => {
     fetchTodaysAppointments();
+    // Auto-refresh every 45 seconds
     const interval = setInterval(() => {
       fetchTodaysAppointments();
-    }, 15000);
+    }, 45000);
     return () => clearInterval(interval);
   }, [fetchTodaysAppointments]);
 

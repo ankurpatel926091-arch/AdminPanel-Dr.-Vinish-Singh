@@ -117,12 +117,12 @@ export default function MyQueue() {
     window.addEventListener("focus", handleFocusOrVisible);
     document.addEventListener("visibilitychange", handleFocusOrVisible);
 
-    // Smart Polling: every 30s only when tab is actively visible
+    // Smart Polling: every 45s only when tab is actively visible
     const interval = setInterval(() => {
       if (document.visibilityState === "visible") {
         fetchQueueFromDB();
       }
-    }, 30000);
+    }, 45000);
 
     return () => {
       window.removeEventListener("focus", handleFocusOrVisible);
