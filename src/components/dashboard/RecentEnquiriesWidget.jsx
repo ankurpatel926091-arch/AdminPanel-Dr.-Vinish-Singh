@@ -1,11 +1,30 @@
 import React from 'react';
 import { useAdminData } from '../../context/AdminDataContext';
-import StatusBadge from '../common/StatusBadge';
 import { Link } from 'react-router-dom';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, Calendar as CalendarIcon, Clock } from 'lucide-react';
 
 export default function RecentEnquiriesWidget() {
   const { enquiries } = useAdminData();
+
+  const formatEnquiryDateTime = (enq) => {
+    if (enq.createdAt) {
+      const d = new Date(enq.createdAt);
+      if (!isNaN(d.getTime())) {
+        const datePart = d.toLocaleDateString('en-GB', {
+          day: '2-digit',
+          month: 'short',
+          year: 'numeric',
+        });
+        const timePart = d.toLocaleTimeString('en-US', {
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: true,
+        });
+        return { date: datePart, time: timePart };
+      }
+    }
+    return { date: enq.date || '—', time: enq.time || '' };
+  };
 
   return (
     <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/80 shadow-xs hover:shadow-md transition-all duration-300">
@@ -24,27 +43,47 @@ export default function RecentEnquiriesWidget() {
         <table className="w-full text-left border-collapse text-xs">
           <thead>
             <tr className="border-b border-slate-200/60 text-slate-400 font-bold uppercase text-[10px] tracking-wider bg-slate-50/60">
-              <th className="py-2.5 px-3 rounded-l-lg w-10"></th>
+              <th className="py-2.5 px-3 rounded-l-lg w-10">#</th>
               <th className="py-2.5 px-3">Name</th>
               <th className="py-2.5 px-3">Phone</th>
               <th className="py-2.5 px-3">Subject</th>
-              <th className="py-2.5 px-3">Status</th>
-              <th className="py-2.5 px-3 text-right rounded-r-lg">Date</th>
+              <th className="py-2.5 px-3 text-right rounded-r-lg">Date & Time</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 font-medium">
-            {enquiries.slice(0, 5).map((enq, index) => (
-              <tr key={enq.id || index} className="hover:bg-blue-50/30 transition-colors group cursor-pointer">
-                <td className="py-3 px-3 font-bold text-slate-400">{index + 1}</td>
-                <td className="py-3 px-3 font-bold text-slate-800 group-hover:text-blue-700 transition-colors">{enq.name}</td>
-                <td className="py-3 px-3 text-slate-500 font-medium">{enq.phone}</td>
-                <td className="py-3 px-3 text-slate-700 font-semibold max-w-xs truncate">{enq.subject}</td>
-                <td className="py-3 px-3">
-                  <StatusBadge status={enq.status} />
+            {enquiries.length === 0 ? (
+              <tr>
+                <td colSpan="5" className="py-8 text-center text-slate-400 font-medium">
+                  No recent contact enquiries found.
                 </td>
-                <td className="py-3 px-3 text-right text-slate-400 font-medium">{enq.date}</td>
               </tr>
-            ))}
+            ) : (
+              enquiries.slice(0, 5).map((enq, index) => {
+                const dt = formatEnquiryDateTime(enq);
+                return (
+                  <tr key={enq.id || index} className="hover:bg-blue-50/30 transition-colors group cursor-pointer">
+                    <td className="py-3 px-3 font-bold text-slate-400">{index + 1}</td>
+                    <td className="py-3 px-3 font-bold text-slate-800 group-hover:text-blue-700 transition-colors">{enq.name}</td>
+                    <td className="py-3 px-3 text-slate-500 font-medium">{enq.phone}</td>
+                    <td className="py-3 px-3 text-slate-700 font-semibold max-w-xs truncate">{enq.subject}</td>
+                    <td className="py-3 px-3 text-right">
+                      <div className="inline-flex flex-col items-end">
+                        <span className="font-semibold text-slate-700 flex items-center gap-1">
+                          <CalendarIcon className="w-3 h-3 text-blue-500 shrink-0" />
+                          {dt.date}
+                        </span>
+                        {dt.time && (
+                          <span className="text-[10px] text-slate-400 flex items-center gap-1 mt-0.5">
+                            <Clock className="w-2.5 h-2.5 text-slate-400 shrink-0" />
+                            {dt.time}
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })
+            )}
           </tbody>
         </table>
       </div>

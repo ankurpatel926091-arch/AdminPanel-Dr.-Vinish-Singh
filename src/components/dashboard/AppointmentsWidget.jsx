@@ -1,7 +1,7 @@
 import React from 'react';
 import { useAdminData } from '../../context/AdminDataContext';
 import StatusBadge from '../common/StatusBadge';
-import { User, Calendar as CalendarIcon, ChevronRight, Mail, MapPin, Stethoscope, Clock } from 'lucide-react';
+import { Calendar as CalendarIcon, ChevronRight, Mail, MapPin, Stethoscope, Clock } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export default function AppointmentsWidget() {
@@ -23,69 +23,75 @@ export default function AppointmentsWidget() {
 
       {/* Table Container - Responsive Scroll on Mobile */}
       <div className="overflow-x-auto w-full">
-        <div className="min-w-[620px]">
+        <div className="min-w-[780px]">
           {/* Table Header - Fixed column widths for perfect alignment */}
-          <div className="grid grid-cols-[40px_100px_minmax(0,1fr)_120px_110px_minmax(0,1fr)] items-center gap-4 px-6 py-3 bg-slate-50 border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+          <div className="grid grid-cols-[36px_minmax(140px,1fr)_140px_110px_105px_minmax(140px,1fr)_115px] items-center gap-4 px-6 py-3 bg-slate-50 border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
             <span>#</span>
-            <span>Status</span>
             <span>Patient</span>
+            <span>Date & Time</span>
             <span>Phone</span>
             <span>Type</span>
             <span>Clinic</span>
+            <span className="text-right">Status</span>
           </div>
 
           {/* Table Rows */}
           <div className="flex-1 divide-y divide-slate-50 overflow-auto">
-            {appointments.slice(0, 6).map((apt, idx) => {
-              const clinicName = apt.clinic?.name || (typeof apt.clinic === 'string' ? apt.clinic : '—');
-              const clinicAddress = apt.clinic?.address || apt.clinic?.city || '';
-              const consultType = apt.consultationType || apt.type || null;
+            {appointments.length === 0 ? (
+              <div className="py-8 text-center text-slate-400 font-medium text-xs">
+                No upcoming appointments found.
+              </div>
+            ) : (
+              appointments.slice(0, 6).map((apt, idx) => {
+                const clinicName = apt.clinic?.name || (typeof apt.clinic === 'string' ? apt.clinic : '—');
+                const clinicAddress = apt.clinic?.address || apt.clinic?.city || '';
+                const consultType = apt.consultationType || apt.type || null;
 
-              return (
-                <div
-                  key={apt.id}
-                  className="grid grid-cols-[40px_100px_minmax(0,1fr)_120px_110px_minmax(0,1fr)] items-center gap-4 px-6 py-3 hover:bg-blue-50/40 transition-colors group cursor-pointer"
-                >
+                return (
+                  <div
+                    key={apt.id || apt._id || idx}
+                    className="grid grid-cols-[36px_minmax(140px,1fr)_140px_110px_105px_minmax(140px,1fr)_115px] items-center gap-4 px-6 py-3 hover:bg-blue-50/40 transition-colors group cursor-pointer"
+                  >
                   {/* S.No */}
                   <span className="text-xs font-bold text-slate-500">{idx + 1}</span>
-
-                  {/* Status */}
-                  <div className="flex justify-start">
-                    <StatusBadge status={apt.status} />
-                  </div>
 
                   {/* Patient Name + Email */}
                   <div className="min-w-0">
                     <p className="text-xs font-bold text-slate-800 group-hover:text-blue-700 truncate transition-colors">
                       {apt.name}
                     </p>
-                    {apt.email && (
+                    {apt.email ? (
                       <p className="text-[10px] text-slate-400 flex items-center gap-1.5 truncate mt-0.5">
                         <Mail className="w-3 h-3 flex-shrink-0 text-slate-400" />
                         {apt.email}
                       </p>
+                    ) : (
+                      <p className="text-[10px] text-slate-400 mt-0.5">Walk-in / Direct</p>
                     )}
-                    {/* Date + Time */}
-                    <p className="text-[10px] text-slate-500 flex items-center gap-1.5 mt-1">
-                      <CalendarIcon className="w-3 h-3 text-blue-500 flex-shrink-0" />
-                      {apt.date}
-                      {apt.time && (
-                        <span className="ml-1 flex items-center gap-1">
-                          <Clock className="w-3 h-3 text-slate-400" />
-                          {apt.time}
-                        </span>
-                      )}
+                  </div>
+
+                  {/* Date & Time */}
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold text-slate-700 flex items-center gap-1.5 whitespace-nowrap">
+                      <CalendarIcon className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                      <span>{apt.date || "—"}</span>
                     </p>
+                    {apt.time && (
+                      <p className="text-[10px] text-slate-500 flex items-center gap-1 mt-0.5 pl-5 whitespace-nowrap">
+                        <Clock className="w-3 h-3 text-slate-400 shrink-0" />
+                        <span>{apt.time}</span>
+                      </p>
+                    )}
                   </div>
 
                   {/* Phone */}
-                  <p className="text-xs font-semibold text-slate-700 truncate">{apt.phone}</p>
+                  <p className="text-xs font-semibold text-slate-700 truncate">{apt.phone || "—"}</p>
 
                   {/* Consultation Type */}
                   <div className="flex justify-start">
                     {consultType ? (
                       <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold bg-teal-50 text-teal-700 border border-teal-100 whitespace-nowrap">
-                        <Stethoscope className="w-3 h-3" />
+                        <Stethoscope className="w-3 h-3 shrink-0" />
                         {consultType}
                       </span>
                     ) : (
@@ -105,9 +111,14 @@ export default function AppointmentsWidget() {
                       </p>
                     )}
                   </div>
+
+                  {/* Status */}
+                  <div className="flex justify-end">
+                    <StatusBadge status={apt.status} />
+                  </div>
                 </div>
               );
-            })}
+            }))}
           </div>
         </div>
       </div>

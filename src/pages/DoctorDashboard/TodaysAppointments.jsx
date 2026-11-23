@@ -16,6 +16,8 @@ import {
   Users,
   RefreshCw,
   Loader2,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { getAdminAppointmentsApi } from "../../api/appointmentApi";
 import { getTodayQueueApi, updateQueueStatusApi } from "../../api/queueApi";
@@ -79,6 +81,8 @@ const TodaysAppointments = () => {
   const debouncedSearch = useDebouncedValue(search);
   const [statusFilter, setStatusFilter] = useState("All");
   const [selectedPatient, setSelectedPatient] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   // Fetch real appointments & queue from database
   const fetchTodaysAppointments = useCallback(async (showToast = false) => {
@@ -357,6 +361,28 @@ const TodaysAppointments = () => {
     });
   }, [appointments, debouncedSearch, statusFilter]);
 
+  // =======================================
+  // Pagination Calculations
+  // =======================================
+  const totalItems = filteredAppointments.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage));
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedAppointments = useMemo(() => {
+    return filteredAppointments.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredAppointments, startIndex, itemsPerPage]);
+
+  // Reset to page 1 on filter or search
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearch, statusFilter]);
+
+  // Safety check on page boundaries
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [totalPages, currentPage]);
+
   // ---------------------------------------
   // Status Styling
   // ---------------------------------------
@@ -560,22 +586,77 @@ const TodaysAppointments = () => {
       </div>
 
       {/* ================= APPOINTMENT TABLE ================= */}
-      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-        <div className="px-5 py-4 border-b border-slate-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="font-semibold text-slate-800">
-                Today's OPD Queue
-              </h2>
+      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-xs">
+        <div className="px-5 py-4 border-b border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div>
+            <h2 className="font-semibold text-slate-800">
+              Today's OPD Queue
+            </h2>
 
-              <p className="text-xs text-slate-500 mt-1">
-                Patients assigned to Dr. Vinish Kumar Singh
-              </p>
+            <p className="text-xs text-slate-500 mt-1">
+              Patients assigned to Dr. Vinish Kumar Singh
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2 sm:gap-3">
+            <span className="text-xs text-slate-500 font-medium whitespace-nowrap">
+              Showing <span className="font-semibold text-slate-700">{totalItems > 0 ? startIndex + 1 : 0}</span> to{" "}
+              <span className="font-semibold text-slate-700">{Math.min(startIndex + itemsPerPage, totalItems)}</span> of{" "}
+              <span className="font-semibold text-blue-600">{totalItems}</span> patients
+            </span>
+
+            <div className="flex items-center gap-1.5 text-xs text-slate-500 mr-1 sm:mr-2">
+              <span>Rows per page:</span>
+              <select
+                value={itemsPerPage}
+                onChange={(e) => {
+                  setItemsPerPage(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-700 outline-none focus:border-blue-500 cursor-pointer shadow-2xs"
+              >
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+              </select>
             </div>
 
-            <span className="text-sm text-slate-500">
-              {filteredAppointments.length} Patients
-            </span>
+            <div className="inline-flex items-center gap-1">
+              <button
+                type="button"
+                disabled={currentPage <= 1 || loading}
+                onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                className="w-7 h-7 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center transition-all cursor-pointer"
+                title="Previous Page"
+              >
+                <ChevronLeft className="w-4 h-4 text-slate-600" />
+              </button>
+
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                <button
+                  key={page}
+                  type="button"
+                  onClick={() => setCurrentPage(page)}
+                  className={`w-7 h-7 rounded-lg font-extrabold text-xs flex items-center justify-center transition-all cursor-pointer ${
+                    currentPage === page
+                      ? "bg-blue-600 text-white shadow-xs"
+                      : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-100"
+                  }`}
+                >
+                  {page}
+                </button>
+              ))}
+
+              <button
+                type="button"
+                disabled={currentPage >= totalPages || loading}
+                onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                className="w-7 h-7 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center transition-all cursor-pointer"
+                title="Next Page"
+              >
+                <ChevronRight className="w-4 h-4 text-slate-600" />
+              </button>
+            </div>
           </div>
         </div>
 
@@ -623,8 +704,8 @@ const TodaysAppointments = () => {
                     </p>
                   </td>
                 </tr>
-              ) : filteredAppointments.length > 0 ? (
-                filteredAppointments.map((appointment, idx) => (
+              ) : paginatedAppointments.length > 0 ? (
+                paginatedAppointments.map((appointment, idx) => (
                   <tr
                     key={appointment.rawId || appointment.appointmentId || idx}
                     className="hover:bg-slate-50 transition"
@@ -843,6 +924,72 @@ const TodaysAppointments = () => {
             </tbody>
           </table>
         </div>
+
+        {/* ================= PAGINATION FOOTER ================= */}
+        {totalItems > 0 && (
+          <div className="px-5 py-3.5 bg-slate-50/60 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500 font-medium">
+            <div>
+              Showing <span className="font-semibold text-slate-700">{startIndex + 1}</span> to{" "}
+              <span className="font-semibold text-slate-700">{Math.min(startIndex + itemsPerPage, totalItems)}</span> of{" "}
+              <span className="font-semibold text-blue-600">{totalItems}</span> patients
+            </div>
+
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1.5 text-xs text-slate-500 mr-1 sm:mr-2">
+                <span>Rows per page:</span>
+                <select
+                  value={itemsPerPage}
+                  onChange={(e) => {
+                    setItemsPerPage(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
+                  className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-700 outline-none focus:border-blue-500 cursor-pointer shadow-2xs"
+                >
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                </select>
+              </div>
+
+              <div className="inline-flex items-center gap-1">
+                <button
+                  type="button"
+                  disabled={currentPage <= 1 || loading}
+                  onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                  className="w-7 h-7 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center transition-all cursor-pointer"
+                  title="Previous Page"
+                >
+                  <ChevronLeft className="w-4 h-4 text-slate-600" />
+                </button>
+
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                  <button
+                    key={page}
+                    type="button"
+                    onClick={() => setCurrentPage(page)}
+                    className={`w-7 h-7 rounded-lg font-extrabold text-xs flex items-center justify-center transition-all cursor-pointer ${
+                      currentPage === page
+                        ? "bg-blue-600 text-white shadow-xs"
+                        : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-100"
+                    }`}
+                  >
+                    {page}
+                  </button>
+                ))}
+
+                <button
+                  type="button"
+                  disabled={currentPage >= totalPages || loading}
+                  onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                  className="w-7 h-7 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center transition-all cursor-pointer"
+                  title="Next Page"
+                >
+                  <ChevronRight className="w-4 h-4 text-slate-600" />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ================= PATIENT DETAILS MODAL ================= */}

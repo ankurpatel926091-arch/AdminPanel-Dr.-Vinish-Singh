@@ -78,20 +78,26 @@ export default function MedicalRecords() {
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [totalRecordsCount, setTotalRecordsCount] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
+  const [summaryStats, setSummaryStats] = useState({ total: 0, prescriptions: 0, investigations: 0 });
 
   const fetchRecords = useCallback(async (page = currentPage) => {
     setLoading(true);
     try {
       const res = await getConsultationsApi({
         search: debouncedSearch,
+        filter: statusFilter,
         page,
         limit: itemsPerPage,
       });
 
+      if (res?.stats) {
+        setSummaryStats(res.stats);
+      }
+
       const rawList = res?.data && Array.isArray(res.data) ? res.data : (Array.isArray(res) ? res : []);
-      const total = res?.total ?? rawList.length;
+      const total = typeof res?.total === "number" ? res.total : rawList.length;
       setTotalRecordsCount(total);
-      setTotalPages(res?.totalPages || Math.ceil(total / itemsPerPage) || 1);
+      setTotalPages(res?.totalPages || Math.max(1, Math.ceil(total / itemsPerPage)));
 
       const mapped = rawList.map((item, idx) => ({
         id: item.recordKey || item._id || `MR-${idx + 1001}`,
@@ -146,15 +152,15 @@ export default function MedicalRecords() {
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, itemsPerPage, currentPage]);
+  }, [debouncedSearch, statusFilter, itemsPerPage, currentPage]);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedSearch]);
+  }, [debouncedSearch, statusFilter]);
 
   useEffect(() => {
     fetchRecords(currentPage);
-  }, [debouncedSearch, currentPage, itemsPerPage]);
+  }, [debouncedSearch, statusFilter, currentPage, itemsPerPage]);
 
   // Necessary Clinical Stats
   const totalRecords = records.length;
@@ -229,49 +235,22 @@ export default function MedicalRecords() {
     URL.revokeObjectURL(url);
   };
 
-  const filteredRecords = useMemo(() => {
-    return records.filter((record) => {
-      const searchText = debouncedSearch.toLowerCase();
-
-      const matchesSearch =
-        record.patientName.toLowerCase().includes(searchText) ||
-        record.patientId.toLowerCase().includes(searchText) ||
-        record.phone.includes(searchText) ||
-        record.diagnosis.toLowerCase().includes(searchText) ||
-        record.complaint.toLowerCase().includes(searchText);
-
-      let matchesStatus = true;
-      if (statusFilter === "With Rx") {
-        matchesStatus =
-          record.medications && record.medications.length > 0;
-      } else if (statusFilter === "With Tests") {
-        matchesStatus =
-          record.investigations && record.investigations.length > 0;
-      } else if (statusFilter !== "All") {
-        matchesStatus = record.status === statusFilter;
-      }
-
-      return matchesSearch && matchesStatus;
-    });
-  }, [records, debouncedSearch, statusFilter]);
-
   /* =========================================================
      ✅ Server-Side Pagination
   ========================================================= */
 
-  const paginatedRecords = filteredRecords;
-
-  // Reset to page 1 when search or status filter changes
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [debouncedSearch, statusFilter]);
+  const paginatedRecords = records;
+  const displayedTotal = totalRecordsCount;
+  const effectiveTotalPages = totalPages;
+  const startItem = displayedTotal > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0;
+  const endItem = Math.min(currentPage * itemsPerPage, displayedTotal);
 
   // Safety: agar current page total pages se zyada ho jaye
   useEffect(() => {
-    if (currentPage > totalPages) {
-      setCurrentPage(totalPages);
+    if (currentPage > effectiveTotalPages && effectiveTotalPages > 0) {
+      setCurrentPage(effectiveTotalPages);
     }
-  }, [totalPages, currentPage]);
+  }, [effectiveTotalPages, currentPage]);
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -304,7 +283,7 @@ export default function MedicalRecords() {
             <div className="min-w-0 pr-1">
               <p className="text-xs sm:text-sm font-medium text-slate-500 truncate">Total Consultations</p>
               <h2 className="mt-0.5 sm:mt-1 text-xl sm:text-2xl font-bold text-slate-900">
-                {totalRecords}
+                {summaryStats.total || totalRecordsCount}
               </h2>
             </div>
 
@@ -319,7 +298,7 @@ export default function MedicalRecords() {
             <div className="min-w-0 pr-1">
               <p className="text-xs sm:text-sm font-medium text-slate-500 truncate">Prescriptions Issued</p>
               <h2 className="mt-0.5 sm:mt-1 text-xl sm:text-2xl font-bold text-slate-900">
-                {prescriptionsCount}
+                {summaryStats.prescriptions}
               </h2>
             </div>
 
@@ -334,7 +313,7 @@ export default function MedicalRecords() {
             <div className="min-w-0 pr-1">
               <p className="text-xs sm:text-sm font-medium text-slate-500 truncate">Investigations Advised</p>
               <h2 className="mt-0.5 sm:mt-1 text-xl sm:text-2xl font-bold text-slate-900">
-                {investigationsCount}
+                {summaryStats.investigations}
               </h2>
             </div>
 
@@ -383,8 +362,8 @@ export default function MedicalRecords() {
               className="w-full sm:w-auto min-w-[170px] appearance-none rounded-lg border border-slate-200 bg-slate-50/70 py-2 pl-9 pr-8 text-xs sm:text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 cursor-pointer font-medium text-slate-700"
             >
               <option value="All">All Consultations</option>
-              <option value="With Rx">With Prescriptions</option>
-              <option value="With Tests">With Investigations</option>
+              <option value="With Prescriptions">With Prescriptions</option>
+              <option value="With Investigations">With Investigations</option>
             </select>
 
             <ChevronDown
@@ -400,23 +379,40 @@ export default function MedicalRecords() {
         {/* Top Pagination & Header Bar */}
         <div className="px-4 py-3 border-b border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500 font-medium bg-white">
           <div>
-            Showing <span className="font-semibold text-slate-700">{totalRecordsCount > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0}</span> to{" "}
-            <span className="font-semibold text-slate-700">{Math.min(currentPage * itemsPerPage, totalRecordsCount)}</span> of{" "}
-            <span className="font-semibold text-blue-600">{totalRecordsCount}</span> records
+            Showing <span className="font-semibold text-slate-700">{startItem}</span> to{" "}
+            <span className="font-semibold text-slate-700">{endItem}</span> of{" "}
+            <span className="font-semibold text-blue-600">{displayedTotal}</span> records
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="flex items-center gap-1.5 text-xs text-slate-500 mr-1 sm:mr-2">
+              <span>Rows per page:</span>
+              <select
+                value={itemsPerPage}
+                onChange={(e) => {
+                  setItemsPerPage(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-700 outline-none focus:border-blue-500 cursor-pointer shadow-2xs"
+              >
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+              </select>
+            </div>
+
             <div className="inline-flex items-center gap-1">
               <button
                 type="button"
-                disabled={currentPage === 1}
+                disabled={currentPage <= 1 || loading}
                 onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
                 className="w-7 h-7 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center transition-all cursor-pointer"
+                title="Previous Page"
               >
                 <ChevronLeft className="w-4 h-4 text-slate-600" />
               </button>
 
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+              {Array.from({ length: effectiveTotalPages }, (_, i) => i + 1).map((page) => (
                 <button
                   key={page}
                   type="button"
@@ -433,11 +429,12 @@ export default function MedicalRecords() {
 
               <button
                 type="button"
-                disabled={currentPage === totalPages}
+                disabled={currentPage >= effectiveTotalPages || loading}
                 onClick={() =>
-                  setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+                  setCurrentPage((prev) => Math.min(effectiveTotalPages, prev + 1))
                 }
                 className="w-7 h-7 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center transition-all cursor-pointer"
+                title="Next Page"
               >
                 <ChevronRight className="w-4 h-4 text-slate-600" />
               </button>
@@ -469,6 +466,10 @@ export default function MedicalRecords() {
                   Prescription
                 </th>
 
+                <th className="px-4 py-2.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                  Investigation
+                </th>
+
                 <th className="px-4 py-2.5 text-center text-[11px] font-bold uppercase tracking-wider text-slate-500">
                   Action
                 </th>
@@ -476,7 +477,14 @@ export default function MedicalRecords() {
             </thead>
 
             <tbody className="divide-y divide-slate-100">
-              {paginatedRecords.length > 0 ? (
+              {loading ? (
+                <tr>
+                  <td colSpan="7" className="py-12 text-center">
+                    <Loader2 className="w-8 h-8 text-blue-600 animate-spin mx-auto mb-2" />
+                    <p className="text-xs font-semibold text-slate-500">Loading medical records...</p>
+                  </td>
+                </tr>
+              ) : paginatedRecords.length > 0 ? (
                 paginatedRecords.map((record) => (
                   <tr
                     key={record.id}
@@ -541,6 +549,22 @@ export default function MedicalRecords() {
                       )}
                     </td>
 
+                    <td className="px-4 py-2.5">
+                      {record.investigations && record.investigations.length > 0 ? (
+                        <span
+                          className="inline-flex items-center gap-1 rounded-full border border-teal-100 bg-teal-50 px-2.5 py-0.5 text-[11px] font-semibold text-teal-700 max-w-[170px] truncate"
+                          title={record.investigations[0].name}
+                        >
+                          <TestTube size={11} className="shrink-0" />
+                          <span className="truncate">{record.investigations[0].name}</span>
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center rounded-full border border-slate-100 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-400">
+                          None
+                        </span>
+                      )}
+                    </td>
+
                     <td className="px-4 py-2.5 text-center">
                       <button
                         onClick={() => setSelectedRecord(record)}
@@ -554,7 +578,7 @@ export default function MedicalRecords() {
                 ))
               ) : loading ? (
                 <tr>
-                  <td colSpan="6" className="px-5 py-12 text-center">
+                  <td colSpan="7" className="px-5 py-12 text-center">
                     <Loader2 size={32} className="mx-auto text-blue-600 animate-spin" />
                     <p className="mt-2 text-sm text-slate-500 font-medium">
                       Loading patient medical records...
@@ -563,7 +587,7 @@ export default function MedicalRecords() {
                 </tr>
               ) : (
                 <tr>
-                  <td colSpan="6" className="px-5 py-12 text-center">
+                  <td colSpan="7" className="px-5 py-12 text-center">
                     <FileText
                       size={38}
                       className="mx-auto text-slate-300"
@@ -584,33 +608,50 @@ export default function MedicalRecords() {
         </div>
 
         {/* =====================================================
-            ✅ NEW: PAGINATION FOOTER
+            ✅ PAGINATION FOOTER
         ===================================================== */}
         {records.length > 0 && (
           <div className="px-5 py-3.5 bg-slate-50/50 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500 font-medium">
             <div>
-              Showing {totalRecordsCount > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0} to{" "}
-              {Math.min(currentPage * itemsPerPage, totalRecordsCount)} of{" "}
-              {totalRecordsCount} records
+              Showing <span className="font-semibold text-slate-700">{startItem}</span> to{" "}
+              <span className="font-semibold text-slate-700">{endItem}</span> of{" "}
+              <span className="font-semibold text-blue-600">{displayedTotal}</span> records
             </div>
 
             <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1.5 text-xs text-slate-500 mr-1 sm:mr-2">
+                <span>Rows per page:</span>
+                <select
+                  value={itemsPerPage}
+                  onChange={(e) => {
+                    setItemsPerPage(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
+                  className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-700 outline-none focus:border-blue-500 cursor-pointer shadow-2xs"
+                >
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                </select>
+              </div>
+
               <div className="inline-flex items-center gap-1">
                 <button
                   type="button"
-                  disabled={currentPage === 1}
+                  disabled={currentPage <= 1 || loading}
                   onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
-                  className="w-7 h-7 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center transition-all"
+                  className="w-7 h-7 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center transition-all cursor-pointer"
+                  title="Previous Page"
                 >
                   <ChevronLeft className="w-4 h-4 text-slate-600" />
                 </button>
 
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                {Array.from({ length: effectiveTotalPages }, (_, i) => i + 1).map((page) => (
                   <button
                     key={page}
                     type="button"
                     onClick={() => setCurrentPage(page)}
-                    className={`w-7 h-7 rounded-lg font-extrabold text-xs flex items-center justify-center transition-all ${
+                    className={`w-7 h-7 rounded-lg font-extrabold text-xs flex items-center justify-center transition-all cursor-pointer ${
                       currentPage === page
                         ? "bg-blue-600 text-white shadow-xs"
                         : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-100"
@@ -622,28 +663,16 @@ export default function MedicalRecords() {
 
                 <button
                   type="button"
-                  disabled={currentPage === totalPages}
+                  disabled={currentPage >= effectiveTotalPages || loading}
                   onClick={() =>
-                    setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+                    setCurrentPage((prev) => Math.min(effectiveTotalPages, prev + 1))
                   }
-                  className="w-7 h-7 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center transition-all"
+                  className="w-7 h-7 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center transition-all cursor-pointer"
+                  title="Next Page"
                 >
                   <ChevronRight className="w-4 h-4 text-slate-600" />
                 </button>
               </div>
-
-              <select
-                value={itemsPerPage}
-                onChange={(e) => {
-                  setItemsPerPage(Number(e.target.value));
-                  setCurrentPage(1);
-                }}
-                className="px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:outline-none cursor-pointer"
-              >
-                <option value={10}>10 / page</option>
-                <option value={20}>20 / page</option>
-                <option value={50}>50 / page</option>
-              </select>
             </div>
           </div>
         )}

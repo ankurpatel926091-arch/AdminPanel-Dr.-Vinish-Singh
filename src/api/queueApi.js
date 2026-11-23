@@ -1,9 +1,9 @@
 import API from './axios';
 
 // Get today's doctor queue
-export const getTodayQueueApi = async () => {
+export const getTodayQueueApi = async (params = {}) => {
   try {
-    const res = await API.get('/queue/today');
+    const res = await API.get('/queue/today', { params });
     if (res?.data) {
       if (Array.isArray(res.data.data)) return res.data.data;
       if (Array.isArray(res.data)) return res.data;

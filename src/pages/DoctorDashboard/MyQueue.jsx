@@ -23,6 +23,7 @@ import {
   MessageSquare,
   ArrowRight,
   User,
+  Loader2,
 } from "lucide-react";
 import { normalizeQueueItem } from "../../utils/staticAppointmentFlow";
 import {
@@ -135,6 +136,7 @@ export default function MyQueue() {
   const debouncedSearchQuery = useDebouncedValue(searchQuery);
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [selectedPatientModal, setSelectedPatientModal] = useState(null);
+  const [isCallingNext, setIsCallingNext] = useState(false);
 
   // Statistics
   const stats = useMemo(() => {
@@ -243,6 +245,7 @@ export default function MyQueue() {
     }
 
     try {
+      setIsCallingNext(true);
       const res = await callNextPatientApi();
       await fetchQueueFromDB();
       if (res?.success) {
@@ -253,6 +256,8 @@ export default function MyQueue() {
       }
     } catch (e) {
       toast.error("Failed to call next patient.");
+    } finally {
+      setIsCallingNext(false);
     }
   };
 
@@ -327,15 +332,19 @@ export default function MyQueue() {
           <div className="flex items-center gap-2">
             <button
               onClick={handleCallNextPatient}
-              disabled={!nextWaitingPatient}
+              disabled={!nextWaitingPatient || isCallingNext}
               className={`px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-1.5 shadow-lg transition-all duration-200 ${
-                nextWaitingPatient
+                nextWaitingPatient && !isCallingNext
                   ? "bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white shadow-emerald-950/50 ring-1 ring-emerald-400/30 hover:scale-[1.02]"
                   : "bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700"
               }`}
             >
-              <Play className="w-3.5 h-3.5 fill-current" />
-              <span>Call Next Patient</span>
+              {isCallingNext ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Play className="w-3.5 h-3.5 fill-current" />
+              )}
+              <span>{isCallingNext ? "Calling..." : "Call Next Patient"}</span>
             </button>
           </div>
         </div>

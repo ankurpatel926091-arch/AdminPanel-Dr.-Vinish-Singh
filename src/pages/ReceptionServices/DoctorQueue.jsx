@@ -5,12 +5,10 @@ import useDebouncedValue from "../../hooks/useDebouncedValue";
 import {
   getTodayQueueApi,
   updateQueueStatusApi,
-  callNextPatientApi,
 } from "../../api/queueApi";
 import {
   Users,
   Clock,
-  Play,
   CheckCircle2,
   Search,
   RotateCw,
@@ -156,48 +154,6 @@ export default function DoctorQueue() {
     });
   }, [queue, debouncedSearchQuery, statusFilter]);
 
-  // Operational Actions (MongoDB Sync)
-  const handleCallNextPatient = async () => {
-    if (!nextWaitingPatient) {
-      toast.info("No waiting patients in queue!");
-      return;
-    }
-
-    try {
-      const res = await callNextPatientApi();
-      await fetchQueueFromDB();
-      if (res?.success) {
-        toast.success(
-          `Called Token ${nextWaitingPatient.tokenNumber} (${nextWaitingPatient.patientName}) to Doctor Consultation.`
-        );
-      }
-    } catch (e) {
-      toast.error("Failed to call next patient.");
-    }
-  };
-
-  const handleCallSpecificPatient = async (id) => {
-    try {
-      await updateQueueStatusApi(id, { status: "Consulting" });
-      await fetchQueueFromDB();
-      const pt = queue.find((q) => q.id === id || q._id === id);
-      toast.success(`Token ${pt?.tokenNumber || ""} (${pt?.patientName || ""}) is now Consulting.`);
-    } catch (e) {
-      toast.error("Failed to update status.");
-    }
-  };
-
-  const handleFinishConsultation = async (id) => {
-    try {
-      await updateQueueStatusApi(id, { status: "Completed" });
-      await fetchQueueFromDB();
-      const pt = queue.find((q) => q.id === id || q._id === id);
-      toast.success(`Consultation finished for Token ${pt?.tokenNumber || id}`);
-    } catch (e) {
-      toast.error("Failed to finish consultation.");
-    }
-  };
-
   const handleRefresh = async () => {
     await fetchQueueFromDB();
     toast.success("Doctor queue refreshed successfully!");
@@ -229,20 +185,6 @@ export default function DoctorQueue() {
         </div>
 
         <div className="flex items-center gap-3">
-          {/* 3. Call Next Patient Button */}
-          <button
-            onClick={handleCallNextPatient}
-            disabled={!nextWaitingPatient}
-            className={`px-5 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 shadow transition ${
-              nextWaitingPatient
-                ? "bg-blue-600 hover:bg-blue-700 text-white shadow-blue-600/30"
-                : "bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200"
-            }`}
-          >
-            <Play className="w-4 h-4 fill-current" />
-            Call Next Patient
-          </button>
-
           {/* Refresh Button */}
           <button
             onClick={handleRefresh}
@@ -316,7 +258,7 @@ export default function DoctorQueue() {
         <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-xs text-slate-500 flex items-center gap-2">
           <Clock className="w-4 h-4 text-amber-500 shrink-0" />
           <span>
-            No patient currently consulting. Click <strong className="text-blue-600">Call Next Patient</strong> to invite the next token.
+            No patient currently consulting. Waiting for doctor to call the next patient from consultation room.
           </span>
         </div>
       )}
@@ -403,7 +345,7 @@ export default function DoctorQueue() {
             <option value="Waiting">Waiting</option>
             <option value="Consulting">In Consultation</option>
             <option value="Completed">Completed</option>
-            <option value="Cancelled">Cancelled</option>
+            {/* <option value="Cancelled">Cancelled</option> */}
           </select>
         </div>
       </div>
@@ -512,11 +454,11 @@ export default function DoctorQueue() {
                             Completed
                           </span>
                         )}
-                        {item.status === "Cancelled" && (
+                        {/* {item.status === "Cancelled" && (
                           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-500 border border-slate-200">
                             Cancelled
                           </span>
-                        )}
+                        )} */}
                       </td>
 
                       {/* Actions (Monitor View) */}

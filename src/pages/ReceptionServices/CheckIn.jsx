@@ -25,6 +25,7 @@ import {
   Sparkles,
   ChevronLeft,
   ChevronRight,
+  Loader2,
 } from "lucide-react";
 import {
   toCheckInAppointment,
@@ -1059,8 +1060,17 @@ export default function CheckIn() {
                         : "bg-blue-300 cursor-not-allowed"
                     }`}
                   >
-                    <UserCheck size={14} />
-                    {isCheckingIn ? "Checking in..." : "Confirm Check-in"}
+                    {isCheckingIn ? (
+                      <>
+                        <Loader2 size={14} className="animate-spin" />
+                        <span>Checking in...</span>
+                      </>
+                    ) : (
+                      <>
+                        <UserCheck size={14} />
+                        <span>Confirm Check-in</span>
+                      </>
+                    )}
                   </button>
                 </>
               )}

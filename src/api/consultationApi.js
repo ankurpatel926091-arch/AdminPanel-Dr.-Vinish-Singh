@@ -27,6 +27,12 @@ export const getConsultationsApi = async (filters = {}) => {
     if (filters.limit) {
       params.limit = filters.limit;
     }
+    if (filters.filter && filters.filter !== 'All') {
+      params.filter = filters.filter;
+    }
+    if (filters.status && filters.status !== 'All') {
+      params.status = filters.status;
+    }
 
     const res = await API.get('/consultations', { params });
     return res?.data || { success: false, data: [] };

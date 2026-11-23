@@ -7,6 +7,7 @@ import useDebouncedValue from "../../hooks/useDebouncedValue";
 import { useLocation } from "react-router-dom";
 
 import { toast } from "react-toastify";
+import Swal from "sweetalert2";
 
 import { useAdminData } from "../../context/AdminDataContext";
 
@@ -18,7 +19,7 @@ import {
   getDailyCollectionSummaryApi,
 } from "../../api/billingApi";
 
-import { addToQueueApi } from "../../api/queueApi";
+import { addToQueueApi, getTodayQueueApi } from "../../api/queueApi";
 
 import {
   Search,
@@ -51,6 +52,7 @@ import {
   Pencil,
   ArrowRight,
   Download,
+  Loader2,
 } from "lucide-react";
 
 /* =========================================
@@ -141,6 +143,83 @@ export default function Billing() {
   const adminData = useAdminData();
 
   const appointments = adminData?.appointments || [];
+
+  // Live Today's Doctor Queue state (for consultation status checks)
+  const [todayQueue, setTodayQueue] = useState([]);
+
+  const fetchTodayQueue = useCallback(async () => {
+    try {
+      const qData = await getTodayQueueApi();
+      if (Array.isArray(qData)) {
+        setTodayQueue(qData);
+      }
+    } catch (e) {
+      console.warn("Queue fetch error in Billing:", e);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchTodayQueue();
+  }, [fetchTodayQueue]);
+
+  // Helper: Find patient item from today's active doctor queue
+  const getPatientQueueItem = useCallback(
+    (bill) => {
+      if (!bill || !todayQueue || todayQueue.length === 0) return null;
+      return (
+        todayQueue.find((q) => {
+          if (bill.visitId && q.visitId && q.visitId === bill.visitId) return true;
+          if (bill.tokenNumber && q.tokenNumber && q.tokenNumber === bill.tokenNumber) return true;
+          const cleanBillPhone = bill.phone ? String(bill.phone).replace(/\D/g, "").slice(-10) : "";
+          const cleanQPhone = q.mobile ? String(q.mobile).replace(/\D/g, "").slice(-10) : "";
+          if (cleanBillPhone && cleanQPhone && cleanBillPhone === cleanQPhone) return true;
+          if (
+            bill.patientName &&
+            q.patientName &&
+            q.patientName.trim().toLowerCase() === bill.patientName.trim().toLowerCase()
+          ) {
+            return true;
+          }
+          return false;
+        }) || null
+      );
+    },
+    [todayQueue]
+  );
+
+  // Helper: Check if patient has already completed consultation
+  const getPatientConsultationStatus = useCallback(
+    (bill) => {
+      if (!bill) return "PENDING";
+
+      // 1. Check matching appointment status
+      const matchedApt = appointments.find(
+        (a) =>
+          (bill.appointment && String(a._id || a.id) === String(bill.appointment)) ||
+          (bill.visitId && a.visitId && a.visitId === bill.visitId) ||
+          (bill.phone && a.phone && a.phone.replace(/\D/g, "") === bill.phone.replace(/\D/g, ""))
+      );
+
+      if (matchedApt) {
+        const aptStatus = String(matchedApt.status || "").toUpperCase();
+        if (aptStatus === "VISITED" || aptStatus === "COMPLETED") {
+          return "COMPLETED";
+        }
+      }
+
+      // 2. Check today's doctor queue
+      const matchedQ = getPatientQueueItem(bill);
+      if (matchedQ) {
+        const qStatus = String(matchedQ.status || "").toUpperCase();
+        if (qStatus === "COMPLETED") return "COMPLETED";
+        if (qStatus === "IN_CONSULTATION" || qStatus === "CONSULTING") return "IN_CONSULTATION";
+        if (qStatus === "WAITING") return "WAITING";
+      }
+
+      return "PENDING";
+    },
+    [appointments, getPatientQueueItem]
+  );
 
   // Persisted Bills from MongoDB Database (with Server-Side Pagination)
   const [bills, setBills] = useState([]);
@@ -256,6 +335,10 @@ export default function Billing() {
   // Queue Addition Prompt State
   const [queueConfirmData, setQueueConfirmData] = useState(null);
   const [addingToQueue, setAddingToQueue] = useState(false);
+
+  // Submit / Loading states
+  const [isCreatingBill, setIsCreatingBill] = useState(false);
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
   // Collect Payment state
 
@@ -783,13 +866,10 @@ export default function Billing() {
 
   ========================================= */
 
-  const addPatientToDoctorQueue = (bill) => {
+  const addPatientToDoctorQueue = async (bill) => {
     try {
-      const tokenNumber =
-        bill.tokenNumber || `T-${Math.floor(100 + Math.random() * 900)}`;
-
       const payload = {
-        tokenNumber,
+        tokenNumber: bill.tokenNumber || undefined,
         patientId: bill.patientId,
         patientName: bill.patientName,
         age: Number(bill.age) || 35,
@@ -805,20 +885,53 @@ export default function Billing() {
         } (₹${bill.paidAmount || bill.totalAmount})`,
       };
 
-      // Save to MongoDB DoctorQueue collection
-      addToQueueApi(payload).catch((err) =>
-        console.warn("Queue API Error:", err),
-      );
-
-      return tokenNumber;
+      const res = await addToQueueApi(payload);
+      return res;
     } catch (err) {
       console.warn("Failed to add patient to doctor queue:", err);
-      return null;
+      throw err;
     }
   };
 
-  // Manual Trigger to Send / View Bill in Doctor Queue
-  const handleSendToDoctorQueue = (bill) => {
+  // Manual Trigger to Send / View Bill in Doctor Queue (SweetAlert Enhanced)
+  const handleSendToDoctorQueue = async (bill) => {
+    const consultStatus = getPatientConsultationStatus(bill);
+    if (consultStatus === "COMPLETED") {
+      Swal.fire({
+        title: "Consultation Completed",
+        html: `Patient <strong>${bill.patientName}</strong> has already completed consultation (Visited).`,
+        icon: "info",
+        confirmButtonText: "OK",
+        confirmButtonColor: "#059669",
+      });
+      return;
+    }
+
+    // Safeguard: Check if patient is already in today's active Doctor Queue
+    const existingQ = getPatientQueueItem(bill);
+    if (existingQ) {
+      const statusLabel = existingQ.status || "Waiting";
+      const tokenLabel = existingQ.tokenNumber ? `#${existingQ.tokenNumber}` : "Assigned";
+      Swal.fire({
+        title: "Already in Doctor Queue!",
+        html: `
+          <div style="font-size: 14px; color: #475569; text-align: center;">
+            <p>Patient <strong>${bill.patientName}</strong> is already waiting in the Doctor Queue.</p>
+            <div style="margin: 14px 0; display: inline-block; padding: 6px 18px; background-color: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 9999px; font-weight: 700; color: #047857; font-size: 15px;">
+              Token ${tokenLabel}
+            </div>
+            <p style="font-size: 13px; color: #64748b;">
+              Current Queue Status: <strong style="color: #2563eb;">${statusLabel}</strong>
+            </p>
+          </div>
+        `,
+        icon: "info",
+        confirmButtonText: "Understood",
+        confirmButtonColor: "#2563eb",
+      });
+      return;
+    }
+
     const due = Number(
       bill.dueAmount !== undefined
         ? bill.dueAmount
@@ -827,36 +940,123 @@ export default function Billing() {
 
     // If payment is not fully settled (Due > 0 or Status not Paid)
     if (due > 0 || (bill.paymentStatus && bill.paymentStatus !== "Paid")) {
-      toast.warning(
-        `Due amount ₹${due.toLocaleString("en-IN")} pending hai! Doctor Queue me bhejne se pehle payment clear karein.`,
-        { autoClose: 4500 }
-      );
-      // Automatically open the Collect Payment modal with this bill and due amount preset!
-      setPaymentBill(bill);
-      setPaymentAmount(due > 0 ? String(due) : "");
+      Swal.fire({
+        title: "Payment Due Pending!",
+        html: `
+          <div style="font-size: 14px; color: #475569; text-align: center;">
+            <p>Patient <strong>${bill.patientName}</strong> has a pending due of <strong style="color: #dc2626;">₹${due.toLocaleString("en-IN")}</strong>.</p>
+            <p style="margin-top: 8px; font-size: 12px; color: #64748b;">
+              Hospital policy requires full payment clearance before assigning an OPD token.
+            </p>
+          </div>
+        `,
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonText: "Collect Payment Now",
+        cancelButtonText: "Cancel",
+        confirmButtonColor: "#d97706",
+        cancelButtonColor: "#94a3b8",
+      }).then((result) => {
+        if (result.isConfirmed) {
+          setPaymentBill(bill);
+          setPaymentAmount(due > 0 ? String(due) : "");
+        }
+      });
       return;
     }
 
-    const token = addPatientToDoctorQueue(bill);
+    // Confirmation Modal before adding to queue
+    const confirmResult = await Swal.fire({
+      title: "Send to Doctor Queue?",
+      html: `
+        <div style="text-align: left; font-size: 13px; color: #475569;">
+          <p style="margin-bottom: 12px;">Are you sure you want to send <strong>${bill.patientName}</strong> to the Doctor OPD Queue?</p>
+          <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 12px; font-size: 12px; line-height: 1.6;">
+            <div><strong>Doctor:</strong> ${bill.doctor || "Dr. Vinish Kumar Singh"}</div>
+            <div><strong>Clinic:</strong> ${bill.hospital || "Rudraksh IVF & Urology Centre"}</div>
+            <div><strong>Bill ID:</strong> ${bill.billId || "—"} <span style="color: #16a34a; font-weight: 600;">(₹${Number(bill.paidAmount || bill.totalAmount || 0).toLocaleString("en-IN")} Paid)</span></div>
+          </div>
+        </div>
+      `,
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonText: "Yes, Send to Queue",
+      cancelButtonText: "Cancel",
+      confirmButtonColor: "#2563eb",
+      cancelButtonColor: "#94a3b8",
+      reverseButtons: true,
+    });
 
-    if (token) {
-      setBills((prev) =>
-        prev.map((b) =>
-          b.billId === bill.billId ? { ...b, tokenNumber: token } : b,
-        ),
-      );
+    if (!confirmResult.isConfirmed) return;
 
-      toast.success(
-        `Patient ${bill.patientName} added to Doctor Queue with Token ${token}!`,
-        { autoClose: 4000 },
-      );
-    } else {
-      toast.error("Could not add patient to Doctor Queue.");
+    try {
+      const res = await addPatientToDoctorQueue(bill);
+      const token = res?.data?.tokenNumber || res?.tokenNumber;
+
+      if (res?.alreadyInQueue || res?.message?.toLowerCase().includes("already in")) {
+        Swal.fire({
+          title: "Already in Doctor Queue",
+          text:
+            res.message ||
+            `Patient ${bill.patientName} is already in Doctor Queue with Token ${token || "Assigned"}!`,
+          icon: "info",
+          confirmButtonColor: "#2563eb",
+        });
+      } else if (token) {
+        Swal.fire({
+          title: "Added to Doctor Queue!",
+          html: `
+            <div style="font-size: 14px; color: #475569; text-align: center;">
+              <p>Patient <strong>${bill.patientName}</strong> has been successfully added to the queue.</p>
+              <div style="margin: 14px 0; display: inline-block; padding: 8px 22px; background-color: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 9999px; font-weight: 800; color: #047857; font-size: 18px;">
+                Token #${token}
+              </div>
+              <p style="font-size: 12px; color: #64748b;">
+                Status: <strong>Waiting for Doctor</strong>
+              </p>
+            </div>
+          `,
+          icon: "success",
+          confirmButtonText: "Done",
+          confirmButtonColor: "#16a34a",
+          timer: 3500,
+          timerProgressBar: true,
+        });
+
+        setBills((prev) =>
+          prev.map((b) =>
+            b.billId === bill.billId ? { ...b, tokenNumber: token } : b
+          )
+        );
+      } else {
+        Swal.fire({
+          title: "Success",
+          text: `Patient ${bill.patientName} added to Doctor Queue!`,
+          icon: "success",
+          confirmButtonColor: "#16a34a",
+          timer: 2500,
+        });
+      }
+      fetchTodayQueue();
+    } catch (err) {
+      Swal.fire({
+        title: "Failed to Add to Queue",
+        text:
+          err?.response?.data?.message ||
+          "Could not add patient to Doctor Queue. Please try again.",
+        icon: "error",
+        confirmButtonColor: "#ef4444",
+      });
     }
   };
 
   // Trigger Doctor Queue Confirmation Popup
   const promptQueueAddition = (billObj, paidAmt) => {
+    // Safeguard: If consultation is already completed, never prompt to add back to doctor queue
+    if (getPatientConsultationStatus(billObj) === "COMPLETED") {
+      return;
+    }
+
     const due = Number(
       billObj.dueAmount !== undefined
         ? billObj.dueAmount
@@ -987,6 +1187,7 @@ export default function Billing() {
     };
 
     try {
+      setIsCreatingBill(true);
       const res = await createAdminBillApi(createdBill);
       const savedBill = res?.data || createdBill;
       setBills((prev) => [savedBill, ...prev]);
@@ -1004,6 +1205,8 @@ export default function Billing() {
     } catch (err) {
       console.error("Save bill error:", err);
       toast.error("Unable to save bill. Please try again.");
+    } finally {
+      setIsCreatingBill(false);
     }
   };
 
@@ -1251,6 +1454,7 @@ export default function Billing() {
     };
 
     try {
+      setIsProcessingPayment(true);
       await updateAdminBillApi(paymentBill.billId, updatePayload);
       setBills((prev) =>
         prev.map((bill) => (bill.billId === paymentBill.billId ? updated : bill)),
@@ -1267,12 +1471,14 @@ export default function Billing() {
         promptQueueAddition(updated, amount);
       } else if (newDueAmount > 0) {
         toast.info(
-          `Payment of ₹${amount.toLocaleString("en-IN")} recorded. Remaining due: ₹${newDueAmount.toLocaleString("en-IN")}. Doctor Queue me bhejne ke liye poora payment clear karein.`
+          `Payment of ₹${amount.toLocaleString("en-IN")} recorded. Remaining due: ₹${newDueAmount.toLocaleString("en-IN")}. Please clear full payment to send to Doctor Queue.`
         );
       }
     } catch (err) {
       console.error("Payment collection error:", err);
       toast.error("Unable to record payment. Please try again.");
+    } finally {
+      setIsProcessingPayment(false);
     }
   };
 
@@ -1768,7 +1974,7 @@ export default function Billing() {
                   Status
                 </th>
 
-                <th className="px-2.5 sm:px-3.5 py-2 text-center text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">
+                <th className="px-2.5 sm:px-3.5 py-2 text-left text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">
                   Action
                 </th>
               </tr>
@@ -1888,7 +2094,7 @@ export default function Billing() {
                     {/* Actions */}
 
                     <td className="px-2.5 sm:px-3.5 py-2 whitespace-nowrap">
-                      <div className="flex items-center justify-center gap-1 sm:gap-1.5">
+                      <div className="flex items-center justify-start gap-1 sm:gap-1.5">
                         {/* View */}
 
                         <button
@@ -1907,34 +2113,6 @@ export default function Billing() {
                           className="rounded-md border border-slate-200 bg-white p-1 sm:p-1.5 text-slate-600 transition hover:border-amber-200 hover:bg-amber-50 hover:text-amber-600"
                         >
                           <Pencil size={14} />
-                        </button>
-
-                        {/* Send / Push to Doctor Queue */}
-
-                        <button
-                          onClick={() => handleSendToDoctorQueue(bill)}
-                          title={
-                            (bill.dueAmount > 0 || (bill.paymentStatus && bill.paymentStatus !== "Paid"))
-                              ? `Due: ₹${bill.dueAmount || bill.totalAmount} Pending — Click to Collect Payment`
-                              : bill.tokenNumber
-                              ? `Token: ${bill.tokenNumber} (Click to re-sync in Queue)`
-                              : "Send to Doctor Queue"
-                          }
-                          className={`rounded-md border p-1 sm:p-1.5 transition flex items-center gap-1 ${
-                            (bill.dueAmount > 0 || (bill.paymentStatus && bill.paymentStatus !== "Paid"))
-                              ? "border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100"
-                              : bill.tokenNumber
-                              ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-semibold text-[11px]"
-                              : "border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-100"
-                          }`}
-                        >
-                          <Stethoscope size={13} />
-
-                          {bill.tokenNumber && (
-                            <span className="text-[10px] font-bold">
-                              {bill.tokenNumber}
-                            </span>
-                          )}
                         </button>
 
                         {/* Payment */}
@@ -1963,6 +2141,66 @@ export default function Billing() {
                           >
                             <Receipt size={14} />
                           </button>
+                        )}
+
+                        {/* Send / Push to Doctor Queue OR Visited Badge */}
+                        {getPatientConsultationStatus(bill) === "COMPLETED" ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              Swal.fire({
+                                title: "Consultation Completed",
+                                html: `Patient <strong>${bill.patientName}</strong> has already completed consultation (Visited).`,
+                                icon: "info",
+                                confirmButtonText: "OK",
+                                confirmButtonColor: "#059669",
+                              });
+                            }}
+                            title="Consultation Completed — Patient already visited doctor"
+                            className="rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1 text-emerald-700 transition flex items-center gap-1 cursor-pointer hover:bg-emerald-100 shadow-2xs"
+                          >
+                            <CheckCircle2 size={13} className="text-emerald-600" />
+                            <span className="text-[10px] font-bold text-emerald-700">Visited</span>
+                            {(bill.tokenNumber || getPatientQueueItem(bill)?.tokenNumber) && (
+                              <span className="text-[10px] font-mono text-emerald-600 opacity-80">
+                                {bill.tokenNumber || getPatientQueueItem(bill)?.tokenNumber}
+                              </span>
+                            )}
+                          </button>
+                        ) : (
+                          (() => {
+                            const queueItem = getPatientQueueItem(bill);
+                            const activeToken = bill.tokenNumber || queueItem?.tokenNumber;
+                            const isDue = (bill.dueAmount > 0 || (bill.paymentStatus && bill.paymentStatus !== "Paid"));
+
+                            return (
+                              <button
+                                onClick={() => handleSendToDoctorQueue(bill)}
+                                title={
+                                  isDue
+                                    ? `Due: ₹${bill.dueAmount || bill.totalAmount} Pending — Click to Collect Payment`
+                                    : activeToken
+                                    ? `In Doctor Queue: Token ${activeToken} (${queueItem?.status || "Waiting"}) — Click to check`
+                                    : "Send to Doctor Queue"
+                                }
+                                className={`rounded-md border p-1 sm:p-1.5 transition flex items-center gap-1 cursor-pointer ${
+                                  isDue
+                                    ? "border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100"
+                                    : activeToken
+                                    ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-semibold text-[11px]"
+                                    : "border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-100"
+                                }`}
+                              >
+                                <Stethoscope size={13} />
+
+                                {activeToken && (
+                                  <span className="text-[10px] font-bold">
+                                    {activeToken}
+                                  </span>
+                                )}
+                              </button>
+                            );
+                          })()
                         )}
                       </div>
                     </td>
@@ -2812,11 +3050,20 @@ export default function Billing() {
 
                   <button
                     type="submit"
-                    className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-1.5 text-xs font-bold text-white shadow-xs transition hover:bg-blue-700 active:scale-95"
+                    disabled={isCreatingBill}
+                    className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-1.5 text-xs font-bold text-white shadow-xs transition hover:bg-blue-700 active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
                   >
-                    <CheckCircle2 size={15} />
-
-                    <span>Generate & Save Bill</span>
+                    {isCreatingBill ? (
+                      <>
+                        <Loader2 size={15} className="animate-spin" />
+                        <span>Generating...</span>
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 size={15} />
+                        <span>Generate & Save Bill</span>
+                      </>
+                    )}
                   </button>
                 </div>
               </form>
@@ -3709,11 +3956,21 @@ export default function Billing() {
 
               <button
                 type="button"
+                disabled={isProcessingPayment}
                 onClick={handleCollectPayment}
-                className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed transition"
               >
-                <CheckCircle2 size={16} />
-                Confirm Payment
+                {isProcessingPayment ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    <span>Processing...</span>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 size={16} />
+                    <span>Confirm Payment</span>
+                  </>
+                )}
               </button>
             </div>
           </div>
@@ -3831,6 +4088,11 @@ export default function Billing() {
                       try {
                         setAddingToQueue(true);
                         const res = await addToQueueApi(queueConfirmData.payload);
+                        if (res?.isCompleted || res?.success === false) {
+                          toast.info(res?.message || "Patient has already completed consultation today.");
+                          fetchTodayQueue();
+                          return;
+                        }
                         const assignedToken = res?.data?.tokenNumber || queueConfirmData.tokenNumber;
                         if (assignedToken) {
                           setBills((prev) =>
@@ -3846,9 +4108,10 @@ export default function Billing() {
                         toast.success(
                           `Patient ${queueConfirmData.patientName} added to Doctor Queue (${assignedToken || "Waiting"})!`
                         );
+                        fetchTodayQueue();
                       } catch (err) {
                         console.error("Queue add error:", err);
-                        toast.error("Unable to add patient to queue. Please try again.");
+                        toast.error(err?.response?.data?.message || "Unable to add patient to queue. Please try again.");
                       } finally {
                         setAddingToQueue(false);
                         setQueueConfirmData(null);

@@ -53,33 +53,36 @@ const Patient = () => {
   const [editingPatient, setEditingPatient] = useState(null);
 
   // Fetch real patients from MongoDB via Backend API
-  const fetchPatients = useCallback(async (page = currentPage) => {
-    setLoading(true);
-    try {
-      const res = await getPatientsApi({
-        search: debouncedSearch,
-        gender: genderFilter,
-        page,
-        limit: pageSize,
-      });
+  const fetchPatients = useCallback(
+    async (page = currentPage) => {
+      setLoading(true);
+      try {
+        const res = await getPatientsApi({
+          search: debouncedSearch,
+          gender: genderFilter,
+          page,
+          limit: pageSize,
+        });
 
-      if (res && res.data && Array.isArray(res.data)) {
-        setPatients(res.data);
-        const total = res.total ?? res.data.length;
-        setTotalPatients(total);
-        setTotalPages(res.totalPages || Math.ceil(total / pageSize) || 1);
-      } else if (Array.isArray(res)) {
-        setPatients(res);
-        setTotalPatients(res.length);
-        setTotalPages(Math.ceil(res.length / pageSize) || 1);
+        if (res && res.data && Array.isArray(res.data)) {
+          setPatients(res.data);
+          const total = res.total ?? res.data.length;
+          setTotalPatients(total);
+          setTotalPages(res.totalPages || Math.ceil(total / pageSize) || 1);
+        } else if (Array.isArray(res)) {
+          setPatients(res);
+          setTotalPatients(res.length);
+          setTotalPages(Math.ceil(res.length / pageSize) || 1);
+        }
+      } catch (error) {
+        console.error("Error fetching patients:", error);
+        toast.error("Failed to load patients list");
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.error("Error fetching patients:", error);
-      toast.error("Failed to load patients list");
-    } finally {
-      setLoading(false);
-    }
-  }, [debouncedSearch, genderFilter, pageSize, currentPage]);
+    },
+    [debouncedSearch, genderFilter, pageSize, currentPage],
+  );
 
   useEffect(() => {
     setCurrentPage(1);
@@ -104,7 +107,9 @@ const Patient = () => {
         search: debouncedSearch,
         gender: genderFilter,
       });
-      const dataToExport = Array.isArray(fullRes) ? fullRes : (fullRes?.data || patients);
+      const dataToExport = Array.isArray(fullRes)
+        ? fullRes
+        : fullRes?.data || patients;
 
       if (!dataToExport || dataToExport.length === 0) {
         toast.warning("No patient records to export");
@@ -126,9 +131,9 @@ const Patient = () => {
       ];
 
       const rows = dataToExport.map((p) => {
-        const fullName = (
-          p.name || `${p.firstName || ""} ${p.lastName || ""}`
-        ).trim() || "Patient";
+        const fullName =
+          (p.name || `${p.firstName || ""} ${p.lastName || ""}`).trim() ||
+          "Patient";
         return [
           `"${p.uhid || ""}"`,
           `"${fullName.replace(/"/g, '""')}"`,
@@ -155,7 +160,7 @@ const Patient = () => {
       link.setAttribute("href", url);
       link.setAttribute(
         "download",
-        `Dr_Vinish_Patients_${new Date().toISOString().slice(0, 10)}.csv`
+        `Dr_Vinish_Patients_${new Date().toISOString().slice(0, 10)}.csv`,
       );
       document.body.appendChild(link);
       link.click();
@@ -186,8 +191,9 @@ const Patient = () => {
       setSaving(true);
       try {
         const calculatedAge = editingPatient.dob
-          ? new Date().getFullYear() - new Date(editingPatient.dob).getFullYear()
-          : (editingPatient.age || 35);
+          ? new Date().getFullYear() -
+            new Date(editingPatient.dob).getFullYear()
+          : editingPatient.age || 35;
 
         const res = await registerPatientApi({
           firstName: editingPatient.firstName,
@@ -228,10 +234,10 @@ const Patient = () => {
               age: editingPatient.dob
                 ? new Date().getFullYear() -
                   new Date(editingPatient.dob).getFullYear()
-                : (patient.age || 30),
+                : patient.age || 30,
             }
-          : patient
-      )
+          : patient,
+      ),
     );
 
     toast.success("Patient updated");
@@ -252,7 +258,7 @@ const Patient = () => {
             </span>
           </div>
           <p className="mt-0.5 sm:mt-1 text-xs sm:text-sm text-slate-500">
-            Comprehensive database of registered clinic patients and OPD consultation history
+              Access previously registered patient records and their complete OPD history.
           </p>
         </div>
 
@@ -274,7 +280,9 @@ const Patient = () => {
           >
             <RefreshCw
               size={15}
-              className={loading ? "animate-spin text-blue-600" : "text-slate-500"}
+              className={
+                loading ? "animate-spin text-blue-600" : "text-slate-500"
+              }
             />
             <span>Refresh</span>
           </button>
@@ -323,9 +331,19 @@ const Patient = () => {
               Patient List
             </h2>
             <p className="mt-0.5 text-xs text-slate-500">
-              Showing <span className="font-semibold text-slate-700">{totalPatients > 0 ? (currentPage - 1) * pageSize + 1 : 0}</span> to{" "}
-              <span className="font-semibold text-slate-700">{Math.min(currentPage * pageSize, totalPatients)}</span> of{" "}
-              <span className="font-semibold text-blue-600">{totalPatients}</span> patients
+              Showing{" "}
+              <span className="font-semibold text-slate-700">
+                {totalPatients > 0 ? (currentPage - 1) * pageSize + 1 : 0}
+              </span>{" "}
+              to{" "}
+              <span className="font-semibold text-slate-700">
+                {Math.min(currentPage * pageSize, totalPatients)}
+              </span>{" "}
+              of{" "}
+              <span className="font-semibold text-blue-600">
+                {totalPatients}
+              </span>{" "}
+              patients
             </p>
           </div>
 
@@ -406,8 +424,13 @@ const Patient = () => {
                 patients.map((patient) => {
                   const pFirst = patient.firstName || "";
                   const pLast = patient.lastName || "";
-                  const fullName = (patient.name || `${pFirst} ${pLast}`).trim() || "Patient";
-                  const initialFirst = (pFirst?.[0] || patient.name?.[0] || "P").toUpperCase();
+                  const fullName =
+                    (patient.name || `${pFirst} ${pLast}`).trim() || "Patient";
+                  const initialFirst = (
+                    pFirst?.[0] ||
+                    patient.name?.[0] ||
+                    "P"
+                  ).toUpperCase();
                   const initialLast = (pLast?.[0] || "").toUpperCase();
 
                   return (
@@ -429,7 +452,8 @@ const Patient = () => {
                       <td className="px-3 py-2.5">
                         <div className="flex items-center gap-2">
                           <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-blue-100 text-xs font-semibold text-blue-600">
-                            {initialFirst}{initialLast}
+                            {initialFirst}
+                            {initialLast}
                           </div>
 
                           <div>
@@ -463,7 +487,8 @@ const Patient = () => {
                       <td className="px-3 py-2.5">
                         <span className="inline-flex items-center gap-1 rounded-full border border-blue-100 bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-700">
                           <Activity size={12} />
-                          {patient.totalVisits || 1} {patient.totalVisits > 1 ? "visits" : "visit"}
+                          {patient.totalVisits || 1}{" "}
+                          {patient.totalVisits > 1 ? "visits" : "visit"}
                         </span>
                       </td>
 
@@ -478,9 +503,7 @@ const Patient = () => {
                           </button>
 
                           <button
-                            onClick={() =>
-                              setEditingPatient({ ...patient })
-                            }
+                            onClick={() => setEditingPatient({ ...patient })}
                             title="Edit Patient"
                             className="rounded-md border border-slate-200 p-1.5 text-slate-600 transition hover:bg-slate-100 hover:text-blue-600"
                           >
@@ -493,14 +516,8 @@ const Patient = () => {
                 })
               ) : (
                 <tr>
-                  <td
-                    colSpan="7"
-                    className="px-5 py-12 text-center"
-                  >
-                    <User
-                      size={40}
-                      className="mx-auto mb-3 text-slate-300"
-                    />
+                  <td colSpan="7" className="px-5 py-12 text-center">
+                    <User size={40} className="mx-auto mb-3 text-slate-300" />
 
                     <p className="font-medium text-slate-600">
                       No patients found
@@ -519,9 +536,19 @@ const Patient = () => {
         {/* Server-Side Pagination Bar */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-slate-200 px-4 py-3 bg-white">
           <div className="text-xs text-slate-500">
-            Showing <span className="font-semibold text-slate-700">{totalPatients > 0 ? (currentPage - 1) * pageSize + 1 : 0}</span> to{" "}
-            <span className="font-semibold text-slate-700">{Math.min(currentPage * pageSize, totalPatients)}</span> of{" "}
-            <span className="font-semibold text-slate-700">{totalPatients}</span> patients
+            Showing{" "}
+            <span className="font-semibold text-slate-700">
+              {totalPatients > 0 ? (currentPage - 1) * pageSize + 1 : 0}
+            </span>{" "}
+            to{" "}
+            <span className="font-semibold text-slate-700">
+              {Math.min(currentPage * pageSize, totalPatients)}
+            </span>{" "}
+            of{" "}
+            <span className="font-semibold text-slate-700">
+              {totalPatients}
+            </span>{" "}
+            patients
           </div>
 
           <div className="flex items-center gap-2">
@@ -568,19 +595,23 @@ const Patient = () => {
 
       {/* View Patient Modal */}
       {selectedPatient && (
-        <Modal
-          title="Patient Details"
-          onClose={() => setSelectedPatient(null)}
-        >
+        <Modal title="Patient Details" onClose={() => setSelectedPatient(null)}>
           <div className="mb-5 flex items-center gap-4 rounded-lg bg-slate-50 p-4">
             <div className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-100 text-lg font-bold text-blue-600">
-              {(selectedPatient.firstName?.[0] || selectedPatient.name?.[0] || "P").toUpperCase()}
+              {(
+                selectedPatient.firstName?.[0] ||
+                selectedPatient.name?.[0] ||
+                "P"
+              ).toUpperCase()}
               {(selectedPatient.lastName?.[0] || "").toUpperCase()}
             </div>
 
             <div>
               <h3 className="text-lg font-semibold text-slate-800">
-                {(selectedPatient.name || `${selectedPatient.firstName || ""} ${selectedPatient.lastName || ""}`).trim()}
+                {(
+                  selectedPatient.name ||
+                  `${selectedPatient.firstName || ""} ${selectedPatient.lastName || ""}`
+                ).trim()}
               </h3>
 
               <div className="flex items-center gap-2">
@@ -629,7 +660,11 @@ const Patient = () => {
             <InfoItem
               icon={<Phone size={17} />}
               label="Emergency Contact"
-              value={selectedPatient.emergencyContact || selectedPatient.mobile || "—"}
+              value={
+                selectedPatient.emergencyContact ||
+                selectedPatient.mobile ||
+                "—"
+              }
             />
 
             <InfoItem
@@ -640,7 +675,9 @@ const Patient = () => {
 
             <InfoItem
               label="Latest Diagnosis / Reason"
-              value={selectedPatient.latestProblem || "General Urology Consultation"}
+              value={
+                selectedPatient.latestProblem || "General Urology Consultation"
+              }
             />
 
             <InfoItem
@@ -663,11 +700,7 @@ const Patient = () => {
       {/* Edit Patient Modal */}
       {editingPatient && (
         <Modal
-          title={
-            editingPatient.id
-              ? "Edit Patient"
-              : "Register New Patient"
-          }
+          title={editingPatient.id ? "Edit Patient" : "Register New Patient"}
           onClose={() => setEditingPatient(null)}
         >
           <form onSubmit={handleSavePatient}>
@@ -801,8 +834,12 @@ const Patient = () => {
               >
                 {saving && <Loader2 size={16} className="animate-spin" />}
                 {editingPatient.id
-                  ? (saving ? "Updating..." : "Update Patient")
-                  : (saving ? "Registering..." : "Register Patient")}
+                  ? saving
+                    ? "Updating..."
+                    : "Update Patient"
+                  : saving
+                    ? "Registering..."
+                    : "Register Patient"}
               </button>
             </div>
           </form>
@@ -831,13 +868,7 @@ const InfoItem = ({ icon, label, value }) => {
   );
 };
 
-const Input = ({
-  label,
-  type = "text",
-  value,
-  onChange,
-  required = false,
-}) => {
+const Input = ({ label, type = "text", value, onChange, required = false }) => {
   return (
     <div>
       <label className="mb-1.5 block text-xs sm:text-sm font-medium text-slate-700">
@@ -875,7 +906,7 @@ const Modal = ({ title, children, onClose }) => {
         <div className="p-3.5 sm:p-5">{children}</div>
       </div>
     </div>,
-    document.body
+    document.body,
   );
 };
 

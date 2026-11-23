@@ -19,6 +19,7 @@ import {
   X,
   CheckCircle2,
   AlertCircle,
+  Loader2,
 } from "lucide-react";
 import { updateQueueStatusApi } from "../../api/queueApi";
 import {
@@ -105,6 +106,8 @@ export default function Consultation() {
   const [consultation, setConsultation] = useState(EMPTY_CONSULTATION);
   const [medicines, setMedicines] = useState([{ ...EMPTY_MEDICINE }]);
   const [isSaved, setIsSaved] = useState(false);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
+  const [isCompleting, setIsCompleting] = useState(false);
   const [showPrescriptionModal, setShowPrescriptionModal] = useState(false);
   const [previousHistory, setPreviousHistory] = useState([]);
 
@@ -234,18 +237,32 @@ export default function Consultation() {
 
   const handleSaveDraft = async () => {
     try {
-      await persistConsultation("DRAFT");
+      setIsSavingDraft(true);
+      await Promise.all([
+        persistConsultation("DRAFT"),
+        new Promise((resolve) => setTimeout(resolve, 400)),
+      ]);
       setIsSaved(true);
       toast.success("Consultation draft saved successfully.");
     } catch (error) {
       console.error("Unable to save consultation draft:", error);
       toast.error("Unable to save consultation draft.");
+    } finally {
+      setIsSavingDraft(false);
     }
   };
 
   const handleCompleteConsultation = async () => {
     try {
-      await persistConsultation("COMPLETED");
+      setIsCompleting(true);
+      const [res] = await Promise.all([
+        persistConsultation("COMPLETED"),
+        new Promise((resolve) => setTimeout(resolve, 500)),
+      ]);
+
+      if (res && res.success === false) {
+        throw new Error(res.message || "Failed to save consultation");
+      }
 
       // 1. Mark appointment visited if exists
       const targetAptId = currentPatient.appointmentId || currentPatient.appointment?._id || currentPatient.appointment;
@@ -271,6 +288,8 @@ export default function Consultation() {
     } catch (error) {
       console.error("Unable to complete consultation:", error);
       toast.error("Unable to save the completed consultation.");
+    } finally {
+      setIsCompleting(false);
     }
   };
 
@@ -780,20 +799,48 @@ export default function Consultation() {
 
                 <button
                   type="button"
+                  disabled={isSavingDraft || isCompleting}
                   onClick={handleSaveDraft}
-                  className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 font-semibold text-sm"
+                  className={`inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl border border-slate-300 font-semibold text-sm transition min-w-[140px] ${
+                    isSavingDraft
+                      ? "bg-slate-100 text-slate-500 cursor-wait opacity-90"
+                      : "bg-white text-slate-700 hover:bg-slate-50 cursor-pointer active:scale-98 disabled:opacity-60 disabled:cursor-not-allowed"
+                  }`}
                 >
-                  <Save className="w-4 h-4" />
-                  Save Draft
+                  {isSavingDraft ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin text-slate-600 shrink-0" />
+                      <span>Saving Draft...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4 shrink-0" />
+                      <span>Save Draft</span>
+                    </>
+                  )}
                 </button>
 
                 <button
                   type="button"
+                  disabled={isSavingDraft || isCompleting}
                   onClick={handleCompleteConsultation}
-                  className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm shadow-lg shadow-blue-600/20"
+                  className={`inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl font-semibold text-sm shadow-lg shadow-blue-600/20 transition min-w-[210px] ${
+                    isCompleting
+                      ? "bg-blue-500 text-white cursor-wait opacity-90 shadow-none"
+                      : "bg-blue-600 hover:bg-blue-700 text-white cursor-pointer active:scale-98 disabled:opacity-60 disabled:cursor-not-allowed"
+                  }`}
                 >
-                  <CheckCircle className="w-4 h-4" />
-                  Complete Consultation
+                  {isCompleting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin text-white shrink-0" />
+                      <span>Completing Consultation...</span>
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle className="w-4 h-4 shrink-0" />
+                      <span>Complete Consultation</span>
+                    </>
+                  )}
                 </button>
 
               </div>
