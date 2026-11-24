@@ -77,6 +77,12 @@ body.modal-open {
   border: 1px solid rgba(255, 255, 255, 0.5);
 }
 
+/* Dark table headers with high specificity to override per-table utilities */
+table thead th:nth-child(n) {
+  color: #ffffff;
+  background-color: #111827;
+}
+
 /* ==========================================================================
    Mobile Phone Responsive Scaling & Compact Optimization
    ========================================================================== */

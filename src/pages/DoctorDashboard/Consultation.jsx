@@ -56,6 +56,55 @@ const EMPTY_MEDICINE = {
   instructions: "",
 };
 
+const UROLOGY_MEDICINE_SUGGESTIONS = [
+  "Alfuzosin",
+  "Allopurinol",
+  "Amikacin",
+  "Amoxicillin + Clavulanic acid",
+  "Cefixime",
+  "Cefpodoxime",
+  "Ceftriaxone",
+  "Ciprofloxacin",
+  "Darifenacin",
+  "Doxycycline",
+  "Dutasteride",
+  "Febuxostat",
+  "Finasteride",
+  "Fosfomycin",
+  "Levofloxacin",
+  "Mirabegron",
+  "Nitrofurantoin",
+  "Norfloxacin",
+  "Ofloxacin",
+  "Oxybutynin",
+  "Potassium citrate",
+  "Sildenafil",
+  "Silodosin",
+  "Solifenacin",
+  "Tadalafil",
+  "Tamsulosin",
+  "Terazosin",
+  "Tolterodine",
+  "Trimethoprim + Sulfamethoxazole",
+  "Trospium",
+];
+
+const stripMedicineUnit = (value, unit) =>
+  String(value || "")
+    .replace(new RegExp(`\\s*${unit}\\s*$`, "i"), "")
+    .trim();
+
+const appendMedicineUnit = (value, unit) => {
+  const text = String(value || "").trim();
+  if (!text) return "";
+
+  const unitPattern = new RegExp(`^(\\d+(?:\\.\\d+)?)\\s*${unit}$`, "i");
+  const withUnit = text.match(unitPattern);
+  if (withUnit) return `${withUnit[1]} ${unit}`;
+  if (/^\d+(?:\.\d+)?$/.test(text)) return `${text} ${unit}`;
+  return text;
+};
+
 const getCurrentPatient = (locationPatient) => {
   if (locationPatient) {
     try {
@@ -109,6 +158,7 @@ export default function Consultation() {
   const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [isCompleting, setIsCompleting] = useState(false);
   const [showPrescriptionModal, setShowPrescriptionModal] = useState(false);
+  const [showPatientHistoryModal, setShowPatientHistoryModal] = useState(false);
   const [previousHistory, setPreviousHistory] = useState([]);
 
   // Fetch Patient Consultation History from MongoDB
@@ -197,12 +247,21 @@ export default function Consultation() {
   };
 
   const handleMedicineChange = (index, field, value) => {
+    const instructionShortcuts = {
+      a: "After food",
+      b: "Before food",
+    };
+    const nextValue =
+      field === "instructions"
+        ? instructionShortcuts[value.trim().toLowerCase()] || value
+        : value;
+
     setMedicines((prev) =>
       prev.map((medicine, i) =>
         i === index
           ? {
               ...medicine,
-              [field]: value,
+              [field]: nextValue,
             }
           : medicine
       )
@@ -229,7 +288,13 @@ export default function Consultation() {
       recordKey,
       patient: currentPatient,
       consultation,
-      medicines: medicines.filter((m) => m && m.name && m.name.trim()),
+      medicines: medicines
+        .filter((m) => m && m.name && m.name.trim())
+        .map((medicine) => ({
+          ...medicine,
+          dosage: appendMedicineUnit(medicine.dosage, "mg"),
+          duration: appendMedicineUnit(medicine.duration, "days"),
+        })),
       status,
     };
     return await saveConsultationApi(payload);
@@ -314,6 +379,14 @@ export default function Consultation() {
           </div>
 
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowPatientHistoryModal(true)}
+              className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-xs sm:text-sm font-semibold text-white shadow-sm transition hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-300"
+            >
+              <ClipboardList className="h-4 w-4" />
+              Patient History
+            </button>
             {isSaved && (
               <span className="flex items-center gap-1.5 text-xs sm:text-sm text-green-600 font-medium">
                 <CheckCircle className="w-4 h-4" />
@@ -396,82 +469,10 @@ export default function Consultation() {
         </section>
 
         {/* Main Content */}
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-
-          {/* Patient History */}
-          <section className="bg-white rounded-2xl border border-slate-200 shadow-sm xl:col-span-1">
-            <div className="p-5 border-b border-slate-200">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center">
-                  <ClipboardList className="w-5 h-5 text-purple-600" />
-                </div>
-
-                <div>
-                  <h2 className="font-bold text-slate-800">
-                    Patient History
-                  </h2>
-
-                  <p className="text-xs text-slate-500">
-                    Previous consultations
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="p-5 space-y-4">
-              {/* Allergies */}
-              <div className="rounded-xl bg-red-50 border border-red-100 p-4">
-                <p className="text-xs font-semibold text-red-500 uppercase">
-                  Allergies
-                </p>
-
-                <p className="text-sm font-medium text-slate-700 mt-1">
-                  No known allergies
-                </p>
-              </div>
-
-              {/* Medical History */}
-              <div>
-                <h3 className="text-sm font-bold text-slate-700 mb-3">
-                  Previous Visits
-                </h3>
-
-                <div className="space-y-3">
-                  {previousHistory.map((item, index) => (
-                    <div
-                      key={index}
-                      className="border border-slate-200 rounded-xl p-4"
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-xs font-semibold text-blue-600">
-                          {item.date}
-                        </span>
-
-                        <span className="text-[10px] px-2 py-1 rounded-full bg-slate-100 text-slate-600">
-                          Previous Visit
-                        </span>
-                      </div>
-
-                      <h4 className="font-semibold text-slate-800 mt-2">
-                        {item.diagnosis}
-                      </h4>
-
-                      <p className="text-xs text-slate-500 mt-1">
-                        Prescription: {item.prescription}
-                      </p>
-
-                      <p className="text-xs text-slate-500 mt-1">
-                        {item.notes}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </section>
+        <div className="grid grid-cols-1 gap-6">
 
           {/* Current Consultation */}
-          <section className="bg-white rounded-2xl border border-slate-200 shadow-sm xl:col-span-2">
+          <section className="bg-white rounded-2xl border border-slate-200 shadow-sm">
 
             <div className="p-5 border-b border-slate-200">
               <div className="flex items-center gap-3">
@@ -662,7 +663,7 @@ export default function Consultation() {
                         )}
                       </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 gap-4">
 
                         <Input
                           label="Medicine Name"
@@ -675,6 +676,7 @@ export default function Consultation() {
                             )
                           }
                           placeholder="Medicine name"
+                          list="urology-medicine-suggestions"
                         />
 
                         <Input
@@ -687,7 +689,8 @@ export default function Consultation() {
                               e.target.value
                             )
                           }
-                          placeholder="e.g. 500 mg"
+                          placeholder="e.g. 500"
+                          suffix="mg"
                         />
 
                         <Input
@@ -713,7 +716,8 @@ export default function Consultation() {
                               e.target.value
                             )
                           }
-                          placeholder="e.g. 5 Days"
+                          placeholder="e.g. 5"
+                          suffix="days"
                         />
 
                         <Input
@@ -739,13 +743,41 @@ export default function Consultation() {
                               e.target.value
                             )
                           }
-                          placeholder="After food / Before food"
+                          placeholder="Type a for After food or b for Before food"
+                          onFocus={(event) => {
+                            if (
+                              ["After food", "Before food"].includes(
+                                event.target.value
+                              )
+                            ) {
+                              event.target.select();
+                            }
+                          }}
+                          onKeyDown={(event) => {
+                            if (
+                              ["After food", "Before food"].includes(
+                                event.currentTarget.value
+                              ) &&
+                              ["a", "b"].includes(event.key.toLowerCase())
+                            ) {
+                              event.currentTarget.select();
+                            }
+                          }}
                         />
 
                       </div>
                     </div>
                   ))}
+                  <datalist id="urology-medicine-suggestions">
+                    {UROLOGY_MEDICINE_SUGGESTIONS.map((name) => (
+                      <option key={name} value={name} />
+                    ))}
+                  </datalist>
                 </div>
+                <p className="mt-2 text-xs text-slate-500">
+                  Suggestions are common generic names only. Confirm the
+                  medicine and enter the patient-specific dose and duration.
+                </p>
               </div>
 
               {/* Advice */}
@@ -849,6 +881,100 @@ export default function Consultation() {
           </section>
         </div>
       </div>
+
+      {/* Patient History Modal */}
+      {showPatientHistoryModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-900/60 p-3 backdrop-blur-sm sm:p-6"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              setShowPatientHistoryModal(false);
+            }
+          }}
+        >
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="patient-history-title"
+            className="my-auto flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
+          >
+            <header className="flex items-center justify-between gap-3 border-b border-slate-200 p-4 sm:p-5">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-50">
+                  <ClipboardList className="h-5 w-5 text-red-600" />
+                </div>
+                <div>
+                  <h2 id="patient-history-title" className="font-bold text-slate-800">
+                    Patient History
+                  </h2>
+                  <p className="text-xs text-slate-500">
+                    {currentPatient.name || "Previous consultations"}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowPatientHistoryModal(false)}
+                aria-label="Close patient history"
+                className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </header>
+
+            <div className="space-y-5 overflow-y-auto p-4 sm:p-5">
+              <div className="rounded-xl border border-red-100 bg-red-50 p-4">
+                <p className="text-xs font-semibold uppercase text-red-500">
+                  Allergies
+                </p>
+                <p className="mt-1 text-sm font-medium text-slate-700">
+                  No known allergies
+                </p>
+              </div>
+
+              <div>
+                <h3 className="mb-3 text-sm font-bold text-slate-700">
+                  Previous Visits
+                </h3>
+                {previousHistory.length > 0 ? (
+                  <div className="space-y-3">
+                    {previousHistory.map((item, index) => (
+                      <article
+                        key={`${item.date}-${index}`}
+                        className="rounded-xl border border-slate-200 p-4"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-xs font-semibold text-blue-600">
+                            {item.date}
+                          </span>
+                          <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] text-slate-600">
+                            Previous Visit
+                          </span>
+                        </div>
+                        <h4 className="mt-2 font-semibold text-slate-800">
+                          {item.diagnosis}
+                        </h4>
+                        <p className="mt-1 text-xs text-slate-500">
+                          Prescription: {item.prescription}
+                        </p>
+                        {item.notes && (
+                          <p className="mt-1 whitespace-pre-line text-xs text-slate-500">
+                            {item.notes}
+                          </p>
+                        )}
+                      </article>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="rounded-xl border border-dashed border-slate-200 p-4 text-sm text-slate-500">
+                    No previous consultations found.
+                  </p>
+                )}
+              </div>
+            </div>
+          </section>
+        </div>
+      )}
 
       {/* Prescription Slip Preview & Print Modal */}
       {showPrescriptionModal && (
@@ -1004,9 +1130,9 @@ export default function Consultation() {
                             <tr key={idx} className="hover:bg-slate-50/50">
                               <td className="py-2.5 px-3 text-slate-500 font-mono text-center">{idx + 1}</td>
                               <td className="py-2.5 px-3 font-bold text-slate-900">{med.name}</td>
-                              <td className="py-2.5 px-3 text-slate-700">{med.dosage || "—"}</td>
+                              <td className="py-2.5 px-3 text-slate-700">{appendMedicineUnit(med.dosage, "mg") || "—"}</td>
                               <td className="py-2.5 px-3 text-slate-700">{med.frequency || "—"}</td>
-                              <td className="py-2.5 px-3 text-slate-700">{med.duration || "—"}</td>
+                              <td className="py-2.5 px-3 text-slate-700">{appendMedicineUnit(med.duration, "days") || "—"}</td>
                               <td className="py-2.5 px-3 text-slate-600 italic">{med.instructions || "After food"}</td>
                             </tr>
                           ))}
@@ -1155,21 +1281,39 @@ function Input({
   onChange,
   placeholder,
   type = "text",
+  list,
+  suffix,
+  onFocus,
+  onKeyDown,
 }) {
+  const displayValue = suffix ? stripMedicineUnit(value, suffix) : value;
+  const showSuffix =
+    suffix && /^\d+(?:\.\d+)?$/.test(String(displayValue || "").trim());
+
   return (
     <div>
       <label className="block text-xs font-semibold text-slate-500 mb-1.5">
         {label}
       </label>
 
-      <input
-        type={type}
-        name={name}
-        value={value}
-        onChange={onChange}
-        placeholder={placeholder}
-        className="input-field"
-      />
+      <div className="relative">
+        <input
+          type={type}
+          name={name}
+          value={displayValue}
+          onChange={onChange}
+          onFocus={onFocus}
+          onKeyDown={onKeyDown}
+          placeholder={placeholder}
+          list={list}
+          className={`input-field ${showSuffix ? "pr-14" : ""}`}
+        />
+        {showSuffix && (
+          <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-slate-500">
+            {suffix}
+          </span>
+        )}
+      </div>
     </div>
   );
 }

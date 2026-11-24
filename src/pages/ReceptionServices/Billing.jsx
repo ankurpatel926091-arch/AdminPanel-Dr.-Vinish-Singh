@@ -117,6 +117,19 @@ const CLINIC_CENTRES = [
 
 const initialBills = [];
 
+const upsertBill = (currentBills, bill) => {
+  const billVisitId = String(bill.visitId || "");
+  return [
+    bill,
+    ...currentBills.filter(
+      (existingBill) =>
+        existingBill.billId !== bill.billId &&
+        (!billVisitId ||
+          String(existingBill.visitId || "") !== billVisitId),
+    ),
+  ];
+};
+
 /* =========================================
 
    Status Styles
@@ -551,7 +564,9 @@ export default function Billing() {
       const targetVisitId = visitId || appointment?.visitId;
 
       if (targetVisitId) {
-        const existing = bills.find((b) => b.visitId === targetVisitId);
+        const existing = bills.find(
+          (bill) => String(bill.visitId || "") === String(targetVisitId),
+        );
 
         if (existing) {
           if (autoOpenPayment && existing.dueAmount > 0) {
@@ -591,21 +606,32 @@ export default function Billing() {
             invoiceStatus: "Unpaid",
           };
 
-          setBills((prev) => [newBill, ...prev]);
+          createAdminBillApi(newBill)
+            .then((res) => {
+              if (!res?.success || !res?.data) {
+                throw new Error(res?.message || "Unable to save the bill.");
+              }
 
-          createAdminBillApi(newBill).then((res) => {
-            if (res?.data) {
-              setBills((prev) =>
-                prev.map((b) => (b.visitId === targetVisitId ? res.data : b)),
-              );
-            }
-          });
+              const savedBill = res.data;
+              setBills((prev) => upsertBill(prev, savedBill));
 
-          if (autoOpenPayment) {
-            setPaymentBill(newBill);
-            setPaymentAmount("1000");
-            setPaymentMode("Cash");
-          }
+              if (
+                res.alreadyExists ||
+                savedBill.billId !== generatedBillId
+              ) {
+                toast.info(`Existing bill ${savedBill.billId} loaded.`);
+              }
+
+              if (autoOpenPayment) {
+                setPaymentBill(savedBill);
+                setPaymentAmount(String(Number(savedBill.dueAmount) || 0));
+                setPaymentMode(savedBill.paymentMode || "Cash");
+              }
+            })
+            .catch((error) => {
+              console.error("Unable to create visit bill:", error);
+              toast.error(error.message || "Unable to save the visit bill.");
+            });
         }
       }
     }
@@ -1189,10 +1215,88 @@ export default function Billing() {
     try {
       setIsCreatingBill(true);
       const res = await createAdminBillApi(createdBill);
-      const savedBill = res?.data || createdBill;
-      setBills((prev) => [savedBill, ...prev]);
-      toast.success(`Bill ${billId} created successfully!`);
+      if (!res?.success || !res?.data) {
+        throw new Error(res?.message || "Unable to save bill.");
+      }
 
+      const savedBill = res.data;
+      const alreadyExists =
+        res.alreadyExists === true ||
+        (savedBill.billId !== billId &&
+          String(savedBill.visitId || "") === String(visitId));
+
+      if (alreadyExists) {
+        if (String(savedBill.visitId || "") !== String(visitId)) {
+          throw new Error(
+            "The generated bill number conflicts with another visit. Please try again.",
+          );
+        }
+
+        const existingPaid = Number(savedBill.paidAmount) || 0;
+        if (formTotalAmount < existingPaid) {
+          toast.error(
+            "The bill total cannot be lower than the amount already received.",
+          );
+          return;
+        }
+
+        const updatedPaidAmount = Math.max(existingPaid, formPaidAmount);
+        const updatedDueAmount = Math.max(
+          0,
+          formTotalAmount - updatedPaidAmount,
+        );
+        const updatedPaymentStatus =
+          updatedDueAmount === 0
+            ? "Paid"
+            : updatedPaidAmount > 0
+              ? "Partial"
+              : "Pending";
+        const paymentUpdate = await updateAdminBillApi(savedBill.billId, {
+          diagnosis: finalDiagnosis,
+          services: createdBill.services,
+          discount: formDiscount,
+          totalAmount: formTotalAmount,
+          paidAmount: updatedPaidAmount,
+          dueAmount: updatedDueAmount,
+          paymentMode:
+            updatedPaidAmount > existingPaid
+              ? newBillForm.paymentMode
+              : savedBill.paymentMode,
+          paymentStatus: updatedPaymentStatus,
+          invoiceStatus: updatedPaymentStatus,
+          notes: createdBill.notes,
+        });
+
+        if (!paymentUpdate?.success || !paymentUpdate?.data) {
+          throw new Error(
+            paymentUpdate?.message || "Unable to update the existing bill.",
+          );
+        }
+
+        const updatedBill = paymentUpdate.data;
+        setBills((prev) => upsertBill(prev, updatedBill));
+        setSelectedBill(updatedBill);
+        setShowCreateModal(false);
+        setNewBillForm(defaultBillForm);
+        toast.success(
+          `Existing bill ${updatedBill.billId} updated. Received ₹${updatedPaidAmount.toLocaleString("en-IN")}; due ₹${updatedDueAmount.toLocaleString("en-IN")}.`,
+        );
+
+        if (
+          updatedDueAmount === 0 &&
+          updatedPaidAmount > existingPaid
+        ) {
+          promptQueueAddition(
+            updatedBill,
+            updatedPaidAmount - existingPaid,
+          );
+        }
+        return;
+      }
+
+      setBills((prev) => upsertBill(prev, savedBill));
+      setTotalBillsCount((count) => count + 1);
+      toast.success(`Bill ${savedBill.billId} created successfully!`);
       setShowCreateModal(false);
       setNewBillForm(defaultBillForm);
       setSelectedBill(savedBill);
@@ -1204,7 +1308,7 @@ export default function Billing() {
       }
     } catch (err) {
       console.error("Save bill error:", err);
-      toast.error("Unable to save bill. Please try again.");
+      toast.error(err.message || "Unable to save bill. Please try again.");
     } finally {
       setIsCreatingBill(false);
     }
@@ -1436,8 +1540,10 @@ export default function Billing() {
       return;
     }
 
-    const newPaidAmount = paymentBill.paidAmount + amount;
-    const newDueAmount = paymentBill.totalAmount - newPaidAmount;
+    const currentPaidAmount = Number(paymentBill.paidAmount) || 0;
+    const totalAmount = Number(paymentBill.totalAmount) || 0;
+    const newPaidAmount = currentPaidAmount + amount;
+    const newDueAmount = Math.max(0, totalAmount - newPaidAmount);
     const newStatus = newDueAmount === 0 ? "Paid" : "Partial";
 
     const updatePayload = {
@@ -1448,17 +1554,14 @@ export default function Billing() {
       invoiceStatus: newStatus,
     };
 
-    const updated = {
-      ...paymentBill,
-      ...updatePayload,
-    };
-
     try {
       setIsProcessingPayment(true);
-      await updateAdminBillApi(paymentBill.billId, updatePayload);
-      setBills((prev) =>
-        prev.map((bill) => (bill.billId === paymentBill.billId ? updated : bill)),
-      );
+      const res = await updateAdminBillApi(paymentBill.billId, updatePayload);
+      if (!res?.success || !res?.data) {
+        throw new Error(res?.message || "Unable to update the existing bill.");
+      }
+      const savedUpdatedBill = res.data;
+      setBills((prev) => upsertBill(prev, savedUpdatedBill));
       toast.success(`Payment of ₹${amount.toLocaleString("en-IN")} recorded successfully!`);
 
       setPaymentBill(null);
@@ -1468,7 +1571,7 @@ export default function Billing() {
       // Prompt Receptionist: Would you like to add patient to Doctor Queue?
       // Only prompt when due is completely 0 (full payment cleared)
       if (newDueAmount === 0 && newPaidAmount > 0) {
-        promptQueueAddition(updated, amount);
+        promptQueueAddition(savedUpdatedBill, amount);
       } else if (newDueAmount > 0) {
         toast.info(
           `Payment of ₹${amount.toLocaleString("en-IN")} recorded. Remaining due: ₹${newDueAmount.toLocaleString("en-IN")}. Please clear full payment to send to Doctor Queue.`
@@ -1946,35 +2049,35 @@ export default function Billing() {
           <table className="w-full min-w-[760px] text-left border-collapse">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50/80">
-                <th className="px-2.5 sm:px-3.5 py-2 text-left text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">
+                <th className="px-2.5 sm:px-3.5 py-2 text-left text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-blue-700 bg-blue-50/70 whitespace-nowrap">
                   Bill / Visit
                 </th>
 
-                <th className="px-2.5 sm:px-3.5 py-2 text-left text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">
+                <th className="px-2.5 sm:px-3.5 py-2 text-left text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-violet-700 bg-violet-50/70 whitespace-nowrap">
                   Patient
                 </th>
 
-                <th className="px-2.5 sm:px-3.5 py-2 text-left text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">
+                <th className="px-2.5 sm:px-3.5 py-2 text-left text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-indigo-700 bg-indigo-50/70 whitespace-nowrap">
                   Doctor & Clinic
                 </th>
 
-                <th className="px-2.5 sm:px-3.5 py-2 text-right text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">
+                <th className="px-2.5 sm:px-3.5 py-2 text-right text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-700 bg-slate-100 whitespace-nowrap">
                   Total
                 </th>
 
-                <th className="px-2.5 sm:px-3.5 py-2 text-right text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">
+                <th className="px-2.5 sm:px-3.5 py-2 text-right text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50/70 whitespace-nowrap">
                   Paid
                 </th>
 
-                <th className="px-2.5 sm:px-3.5 py-2 text-right text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">
+                <th className="px-2.5 sm:px-3.5 py-2 text-right text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-rose-700 bg-rose-50/70 whitespace-nowrap">
                   Due
                 </th>
 
-                <th className="px-2.5 sm:px-3.5 py-2 text-left text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">
+                <th className="px-2.5 sm:px-3.5 py-2 text-left text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-amber-700 bg-amber-50/70 whitespace-nowrap">
                   Status
                 </th>
 
-                <th className="px-2.5 sm:px-3.5 py-2 text-left text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">
+                <th className="px-2.5 sm:px-3.5 py-2 text-left text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-cyan-700 bg-cyan-50/70 whitespace-nowrap">
                   Action
                 </th>
               </tr>
@@ -3707,9 +3810,7 @@ export default function Billing() {
                     <span className="font-mono text-base">
                       ₹
                       {Number(
-                        selectedBill.paidAmount ||
-                        selectedBill.totalAmount ||
-                        0,
+                        selectedBill.paidAmount ?? 0,
                       ).toLocaleString("en-IN")}
                     </span>
                   </div>

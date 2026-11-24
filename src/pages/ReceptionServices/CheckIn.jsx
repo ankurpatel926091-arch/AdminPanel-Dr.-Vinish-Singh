@@ -632,8 +632,8 @@ export default function CheckIn() {
                         </span>
                       </td>
 
-                      <td className="px-3.5 py-2.5 whitespace-nowrap text-center">
-                        <div className="flex items-center justify-center gap-1.5">
+                      <td className="px-3.5 py-2.5 whitespace-nowrap text-left">
+                        <div className="flex items-center justify-start gap-1.5">
                           {canCheckIn && (
                             <button
                               onClick={() => openCheckIn(appointment)}
@@ -647,15 +647,6 @@ export default function CheckIn() {
                           {alreadyChecked && (
                             <>
                               <button
-                                onClick={() => openCheckIn(appointment)}
-                                className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 hover:bg-emerald-100 transition"
-                                title="View Check-in Details"
-                              >
-                                <CheckCircle2 size={13} />
-                                Details
-                              </button>
-
-                              <button
                                 onClick={() => proceedToBilling(appointment)}
                                 className="inline-flex items-center gap-1 rounded-lg bg-blue-600 px-2.5 py-1 text-[11px] font-semibold text-white transition hover:bg-blue-700 shadow-xs"
                                 title="Proceed to OPD Billing"
@@ -663,6 +654,15 @@ export default function CheckIn() {
                                 <Receipt size={13} />
                                 Billing
                                 <ArrowRight size={12} />
+                              </button>
+
+                              <button
+                                onClick={() => openCheckIn(appointment)}
+                                className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 hover:bg-emerald-100 transition"
+                                title="View Check-in Details"
+                              >
+                                <CheckCircle2 size={13} />
+                                Details
                               </button>
                             </>
                           )}
